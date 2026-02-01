@@ -1,0 +1,77 @@
+{
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo da tarefa"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o detalhada"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["todo", "in_progress", "done"],
+      "default": "todo",
+      "description": "Status da tarefa"
+    },
+    "kanban_column": {
+      "type": "string",
+      "enum": ["todo", "in_progress", "in_review", "done"],
+      "description": "Coluna do Kanban"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["baixa", "media", "alta", "urgente"],
+      "default": "media",
+      "description": "Prioridade"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de vencimento"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Email do respons\u00e1vel"
+    },
+    "assigned_name": {
+      "type": "string",
+      "description": "Nome do respons\u00e1vel"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "ID do cliente relacionado"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "process_id": {
+      "type": "string",
+      "description": "ID do processo relacionado"
+    },
+    "process_number": {
+      "type": "string",
+      "description": "N\u00famero do processo"
+    }
+  },
+  "required": ["title", "status"],
+  "rls": {
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,426 @@
+{
+  "name": "BeneficioAposentadoriaRural",
+  "type": "object",
+  "properties": {
+    "beneficio_id": {
+      "type": "string",
+      "description": "ID do benef\u00edcio principal"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "reside_zona": {
+      "type": "string",
+      "enum": ["urbana", "rural"],
+      "description": "Reside em zona urbana ou rural"
+    },
+    "tempo_residencia_local": {
+      "type": "string",
+      "description": "H\u00e1 quanto tempo reside no local atual"
+    },
+    "morou_fora": {
+      "type": "boolean",
+      "description": "J\u00e1 morou fora por algum per\u00edodo?"
+    },
+    "detalhes_morou_fora": {
+      "type": "string",
+      "description": "Quando e onde morou fora"
+    },
+    "trabalha_exclusivo_agricultura": {
+      "type": "boolean",
+      "description": "Trabalha exclusivamente na agricultura?"
+    },
+    "faz_bico": {
+      "type": "string",
+      "description": "Faz algum bico/trabalho extra"
+    },
+    "exerceu_atividade_urbana": {
+      "type": "boolean",
+      "description": "J\u00e1 exerceu alguma atividade urbana formal?"
+    },
+    "detalhes_atividade_urbana": {
+      "type": "string",
+      "description": "Especificar atividade e per\u00edodo urbano"
+    },
+    "membros_grupo_familiar": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "cpf": {
+            "type": "string"
+          },
+          "parentesco": {
+            "type": "string"
+          },
+          "trabalha_roca": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Membros do grupo familiar"
+    },
+    "estado_civil": {
+      "type": "string",
+      "enum": ["solteiro", "casado", "uniao_estavel", "divorciado", "viuvo"],
+      "description": "Estado civil do requerente"
+    },
+    "nome_conjuge": {
+      "type": "string",
+      "description": "Nome do c\u00f4njuge/companheiro(a)"
+    },
+    "atividade_conjuge": {
+      "type": "string",
+      "description": "Atividade do c\u00f4njuge/companheiro(a)"
+    },
+    "vinculo_formal_familia": {
+      "type": "boolean",
+      "description": "Algu\u00e9m da casa trabalha/trabalhou com carteira assinada?"
+    },
+    "empresa_autonomo": {
+      "type": "boolean",
+      "description": "Algu\u00e9m teve empresa ou contribuiu como aut\u00f4nomo?"
+    },
+    "detalhes_vinculo_formal": {
+      "type": "string",
+      "description": "Detalhar v\u00ednculos formais"
+    },
+    "renda_exclusiva_roca": {
+      "type": "boolean",
+      "description": "A renda da fam\u00edlia \u00e9 exclusivamente da ro\u00e7a?"
+    },
+    "outras_fontes_renda": {
+      "type": "string",
+      "description": "Especificar outras fontes de renda"
+    },
+    "recebeu_beneficio": {
+      "type": "boolean",
+      "description": "J\u00e1 recebeu algum benef\u00edcio como agricultor?"
+    },
+    "beneficios_recebidos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Benef\u00edcios recebidos"
+    },
+    "beneficio_outro_especificar": {
+      "type": "string",
+      "description": "Especificar outro benef\u00edcio"
+    },
+    "conjuge_recebeu_beneficio": {
+      "type": "boolean",
+      "description": "C\u00f4njuge j\u00e1 recebeu benef\u00edcio como agricultor?"
+    },
+    "detalhes_beneficio_conjuge": {
+      "type": "string",
+      "description": "Especificar benef\u00edcio do c\u00f4njuge"
+    },
+    "trabalha_agricultura_desde": {
+      "type": "string",
+      "format": "date",
+      "description": "Trabalha na agricultura desde quando"
+    },
+    "propriedade_inicial": {
+      "type": "string",
+      "description": "Propriedade onde iniciou o trabalho"
+    },
+    "proprietario_terra_inicial": {
+      "type": "string",
+      "description": "Propriet\u00e1rio da terra inicial"
+    },
+    "propriedades_trabalhadas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome_localizacao": {
+            "type": "string"
+          },
+          "proprietario": {
+            "type": "string"
+          },
+          "periodo_inicio": {
+            "type": "string"
+          },
+          "periodo_fim": {
+            "type": "string"
+          },
+          "tempo_trabalhado": {
+            "type": "string"
+          },
+          "atividades": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Hist\u00f3rico de propriedades trabalhadas"
+    },
+    "tempo_propriedade_atual": {
+      "type": "string",
+      "description": "H\u00e1 quanto tempo trabalha na propriedade atual"
+    },
+    "dono_terra_atual": {
+      "type": "string",
+      "description": "De quem \u00e9 a terra atual"
+    },
+    "transporte_roca": {
+      "type": "string",
+      "enum": [
+        "a_pe",
+        "bicicleta",
+        "moto",
+        "carro",
+        "transporte_coletivo",
+        "outro"
+      ],
+      "description": "Transporte utilizado para ir \u00e0 ro\u00e7a"
+    },
+    "tempo_deslocamento": {
+      "type": "string",
+      "description": "Tempo de deslocamento at\u00e9 a ro\u00e7a"
+    },
+    "frequencia_ida_roca": {
+      "type": "string",
+      "enum": ["diariamente", "5_6_dias", "3_4_dias", "ocasionalmente"],
+      "description": "Frequ\u00eancia de ida \u00e0 ro\u00e7a"
+    },
+    "instrumentos_lavoura": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Instrumentos utilizados na lavoura"
+    },
+    "instrumentos_outros": {
+      "type": "string",
+      "description": "Outros instrumentos especificados"
+    },
+    "o_que_planta": {
+      "type": "string",
+      "description": "O que planta"
+    },
+    "cria_animais": {
+      "type": "boolean",
+      "description": "Cria animais?"
+    },
+    "quais_animais": {
+      "type": "string",
+      "description": "Quais animais cria"
+    },
+    "finalidade_producao": {
+      "type": "string",
+      "enum": ["subsistencia", "subsistencia_venda", "comercializacao"],
+      "description": "Finalidade da produ\u00e7\u00e3o"
+    },
+    "atividades_rocado": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Atividades que desenvolve no ro\u00e7ado"
+    },
+    "atividades_rocado_outros": {
+      "type": "string",
+      "description": "Outras atividades no ro\u00e7ado"
+    },
+    "afastou_atividade": {
+      "type": "boolean",
+      "description": "J\u00e1 se afastou da atividade de agricultor?"
+    },
+    "atividade_afastamento": {
+      "type": "string",
+      "description": "Atividade desenvolvida durante afastamento"
+    },
+    "periodo_afastamento_inicio": {
+      "type": "string",
+      "format": "date",
+      "description": "In\u00edcio do per\u00edodo de afastamento"
+    },
+    "periodo_afastamento_fim": {
+      "type": "string",
+      "format": "date",
+      "description": "Fim do per\u00edodo de afastamento"
+    },
+    "filiado_associacao": {
+      "type": "boolean",
+      "description": "\u00c9 filiado a alguma associa\u00e7\u00e3o de moradores?"
+    },
+    "nome_associacao": {
+      "type": "string",
+      "description": "Nome da associa\u00e7\u00e3o"
+    },
+    "filiado_sindicato": {
+      "type": "boolean",
+      "description": "\u00c9 filiado ao Sindicato dos Trabalhadores Rurais?"
+    },
+    "filiado_sindicato_desde": {
+      "type": "string",
+      "format": "date",
+      "description": "Desde quando \u00e9 filiado ao sindicato"
+    },
+    "paga_contribuicao_sindical": {
+      "type": "boolean",
+      "description": "Paga contribui\u00e7\u00e3o sindical?"
+    },
+    "trabalhando_atualmente": {
+      "type": "boolean",
+      "description": "Est\u00e1 trabalhando atualmente?"
+    },
+    "possui_doc_comprova_rural": {
+      "type": "boolean",
+      "description": "Possui documenta\u00e7\u00e3o que comprove atividade rural?"
+    },
+    "possui_dap": {
+      "type": "boolean",
+      "description": "Possui DAP?"
+    },
+    "possui_caf": {
+      "type": "boolean",
+      "description": "Possui CAF?"
+    },
+    "recebeu_seguro_safra": {
+      "type": "boolean",
+      "description": "J\u00e1 recebeu Seguro Safra?"
+    },
+    "fez_emprestimo_rural": {
+      "type": "boolean",
+      "description": "J\u00e1 fez algum empr\u00e9stimo rural?"
+    },
+    "detalhes_emprestimo": {
+      "type": "string",
+      "description": "Detalhar empr\u00e9stimos rurais"
+    },
+    "situacao_propriedade": {
+      "type": "string",
+      "enum": ["proprietario", "arrendatario", "meeiro", "posseiro"],
+      "description": "Situa\u00e7\u00e3o quanto \u00e0 propriedade rural"
+    },
+    "dono_terra_se_nao_proprietario": {
+      "type": "string",
+      "description": "Quem \u00e9 o dono da terra se n\u00e3o for propriet\u00e1rio"
+    },
+    "possui_doc_terra": {
+      "type": "boolean",
+      "description": "Possui documento da terra?"
+    },
+    "tamanho_propriedade": {
+      "type": "string",
+      "description": "Tamanho da propriedade"
+    },
+    "localizacao_propriedade": {
+      "type": "string",
+      "description": "Localiza\u00e7\u00e3o da propriedade"
+    },
+    "o_que_cultivava": {
+      "type": "string",
+      "description": "O que era cultivado"
+    },
+    "havia_empregados": {
+      "type": "boolean",
+      "description": "Havia empregados na propriedade?"
+    },
+    "quantidade_empregados": {
+      "type": "integer",
+      "description": "Quantos empregados"
+    },
+    "trabalha_sozinho_familia": {
+      "type": "string",
+      "enum": ["sozinho", "com_familia"],
+      "description": "Trabalhava sozinho ou com fam\u00edlia"
+    },
+    "pais_labor_urbano": {
+      "type": "boolean",
+      "description": "Pai ou m\u00e3e possu\u00edam labor urbano?"
+    },
+    "pais_outras_rendas": {
+      "type": "boolean",
+      "description": "Pai ou m\u00e3e tinham outras fontes de renda?"
+    },
+    "detalhes_renda_pais": {
+      "type": "string",
+      "description": "Especificar outras fontes de renda dos pais"
+    },
+    "testemunhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "cpf": {
+            "type": "string"
+          },
+          "telefone": {
+            "type": "string"
+          },
+          "relacao": {
+            "type": "string"
+          },
+          "periodo_inicio": {
+            "type": "string"
+          },
+          "periodo_fim": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Testemunhas do labor rural"
+    },
+    "observacoes_gerais": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es gerais do caso"
+    }
+  },
+  "required": ["beneficio_id", "client_id"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": {
+          "$ne": "guest"
+        }
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

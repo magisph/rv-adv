@@ -1,0 +1,244 @@
+{
+  "name": "BeneficioBPC_Idoso",
+  "type": "object",
+  "properties": {
+    "beneficio_id": {
+      "type": "string",
+      "description": "ID do benef\u00edcio principal"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "cadunico_atualizado": {
+      "type": "boolean",
+      "description": "Cadastro \u00danico atualizado?"
+    },
+    "num_membros_cadunico": {
+      "type": "integer",
+      "description": "N\u00famero de membros no Cad\u00danico"
+    },
+    "renda_declarada_cadunico": {
+      "type": "number",
+      "description": "Renda declarada no Cad\u00danico (R$)"
+    },
+    "membros_grupo_familiar": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "cpf": {
+            "type": "string"
+          },
+          "parentesco": {
+            "type": "string"
+          },
+          "data_nascimento": {
+            "type": "string"
+          },
+          "idade": {
+            "type": "integer"
+          }
+        }
+      },
+      "description": "Membros do grupo familiar"
+    },
+    "valor_total_renda": {
+      "type": "number",
+      "description": "Valor total da renda familiar (R$)"
+    },
+    "origem_renda": {
+      "type": "string",
+      "description": "Origem da renda"
+    },
+    "auxilios_governamentais": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Aux\u00edlios governamentais recebidos"
+    },
+    "auxilio_outros": {
+      "type": "string",
+      "description": "Outros aux\u00edlios especificados"
+    },
+    "membros_vinculos": {
+      "type": "string",
+      "description": "Membros com v\u00ednculo empregat\u00edcio/benef\u00edcios"
+    },
+    "despesas_relevantes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Despesas que comprometem a renda"
+    },
+    "detalhar_despesas": {
+      "type": "string",
+      "description": "Detalhamento das despesas com valores"
+    },
+    "beneficio_outro_membro": {
+      "type": "boolean",
+      "description": "Algu\u00e9m acima de 65 anos ou PCD recebe benef\u00edcio/BPC?"
+    },
+    "especificar_beneficio_outro": {
+      "type": "string",
+      "description": "Especificar outros benef\u00edcios no grupo"
+    },
+    "origem_residencia": {
+      "type": "string",
+      "enum": ["propria", "alugada", "emprestada", "heranca", "posse"],
+      "description": "Origem da resid\u00eancia"
+    },
+    "origem_aquisicao": {
+      "type": "string",
+      "description": "Se pr\u00f3pria, como foi adquirida"
+    },
+    "valor_aluguel": {
+      "type": "number",
+      "description": "Valor mensal do aluguel (R$)"
+    },
+    "num_comodos": {
+      "type": "integer",
+      "description": "N\u00famero de c\u00f4modos"
+    },
+    "estado_conservacao": {
+      "type": "string",
+      "enum": ["excelente", "bom", "regular", "precario"],
+      "description": "Estado de conserva\u00e7\u00e3o do im\u00f3vel"
+    },
+    "caracteristicas_imovel": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Caracter\u00edsticas do im\u00f3vel"
+    },
+    "infraestrutura_rua": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Infraestrutura da rua"
+    },
+    "descricao_imovel": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o detalhada do im\u00f3vel"
+    },
+    "bens_residencia": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Bens na resid\u00eancia"
+    },
+    "bens_valor": {
+      "type": "string",
+      "description": "Bens de valor e origem"
+    },
+    "possui_veiculos": {
+      "type": "boolean",
+      "description": "Ve\u00edculos no n\u00facleo familiar"
+    },
+    "veiculos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string"
+          },
+          "marca_modelo": {
+            "type": "string"
+          },
+          "ano": {
+            "type": "integer"
+          },
+          "proprietario": {
+            "type": "string"
+          },
+          "finalidade": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Detalhamento dos ve\u00edculos"
+    },
+    "apoio_financeiro_externo": {
+      "type": "boolean",
+      "description": "Recebe apoio financeiro de terceiros?"
+    },
+    "detalhar_apoio": {
+      "type": "string",
+      "description": "Detalhamento do apoio financeiro externo"
+    },
+    "fotos_residencia": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs das fotos da resid\u00eancia"
+    },
+    "precisa_atualizacao_cadunico": {
+      "type": "boolean",
+      "description": "Dados do Cad\u00danico precisam atualiza\u00e7\u00e3o?"
+    },
+    "especificar_atualizacao": {
+      "type": "string",
+      "description": "Especificar atualiza\u00e7\u00f5es necess\u00e1rias"
+    },
+    "observacoes_gerais": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es gerais do caso"
+    }
+  },
+  "required": ["beneficio_id", "client_id"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": {
+          "$ne": "guest"
+        }
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

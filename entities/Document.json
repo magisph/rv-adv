@@ -1,0 +1,114 @@
+{
+  "name": "Document",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do documento"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL do arquivo"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "peticao",
+        "prova",
+        "documento_pessoal",
+        "laudo",
+        "contrato",
+        "procuracao",
+        "outros"
+      ],
+      "description": "Tipo do documento (legado)"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["pessoais", "inss", "medicos", "judicial"],
+      "description": "Categoria principal do documento"
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Subcategoria do documento"
+    },
+    "parent_type": {
+      "type": "string",
+      "enum": ["client", "process"],
+      "description": "Tipo do registro pai"
+    },
+    "parent_id": {
+      "type": "string",
+      "description": "ID do registro pai (cliente ou processo)"
+    },
+    "folder_id": {
+      "type": "string",
+      "description": "ID da pasta onde o documento est\u00e1"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o ou observa\u00e7\u00f5es do documento"
+    },
+    "expiration_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de validade do documento"
+    },
+    "is_main": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se \u00e9 o documento principal da categoria"
+    },
+    "file_size": {
+      "type": "number",
+      "description": "Tamanho do arquivo em bytes"
+    },
+    "file_type": {
+      "type": "string",
+      "description": "Tipo/extens\u00e3o do arquivo"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags do documento"
+    },
+    "ocr_content": {
+      "type": "string",
+      "description": "Conte\u00fado extra\u00eddo por OCR"
+    },
+    "ocr_processed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o OCR foi processado"
+    },
+    "current_version": {
+      "type": "integer",
+      "default": 1,
+      "description": "Vers\u00e3o atual do documento"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se o documento est\u00e1 ativo"
+    }
+  },
+  "required": ["name", "parent_type", "parent_id"],
+  "rls": {
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    }
+  }
+}

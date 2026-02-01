@@ -1,0 +1,60 @@
+{
+  "name": "Deadline",
+  "type": "object",
+  "properties": {
+    "process_id": {
+      "type": "string",
+      "description": "ID do processo relacionado"
+    },
+    "process_number": {
+      "type": "string",
+      "description": "N\u00famero do processo para refer\u00eancia"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Data limite"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o do prazo"
+    },
+    "alert_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se o alerta est\u00e1 ativo"
+    },
+    "responsible_email": {
+      "type": "string",
+      "description": "E-mail do respons\u00e1vel"
+    },
+    "responsible_name": {
+      "type": "string",
+      "description": "Nome do respons\u00e1vel"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["baixa", "media", "alta", "urgente"],
+      "default": "media",
+      "description": "Prioridade do prazo"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pendente", "concluido", "cancelado"],
+      "default": "pendente",
+      "description": "Status do prazo"
+    }
+  },
+  "required": ["process_id", "due_date", "description"],
+  "rls": {
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

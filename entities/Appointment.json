@@ -1,0 +1,66 @@
+{
+  "name": "Appointment",
+  "type": "object",
+  "properties": {
+    "client_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora do compromisso"
+    },
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo do compromisso"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas sobre o compromisso"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["agendado", "realizado", "cancelado"],
+      "default": "agendado",
+      "description": "Status do compromisso"
+    },
+    "location": {
+      "type": "string",
+      "description": "Local do compromisso"
+    },
+    "alerts_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se alertas est\u00e3o ativos"
+    },
+    "alert_days": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "description": "Dias antes para alertar (7, 3, 1, 0)"
+    }
+  },
+  "required": ["client_id", "date", "title"],
+  "rls": {
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    }
+  }
+}

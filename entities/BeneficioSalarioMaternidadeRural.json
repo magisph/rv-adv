@@ -1,0 +1,311 @@
+{
+  "name": "BeneficioSalarioMaternidadeRural",
+  "type": "object",
+  "properties": {
+    "beneficio_id": {
+      "type": "string",
+      "description": "ID do benef\u00edcio principal"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "tipo_evento": {
+      "type": "string",
+      "enum": ["parto", "adocao", "guarda_judicial", "aborto_nao_criminoso"],
+      "description": "Tipo de evento"
+    },
+    "data_parto_evento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do parto/evento"
+    },
+    "data_prevista_parto": {
+      "type": "string",
+      "format": "date",
+      "description": "Data prevista do parto"
+    },
+    "gestante_atualmente": {
+      "type": "boolean",
+      "description": "Est\u00e1 gestante atualmente?"
+    },
+    "semanas_gestacao": {
+      "type": "integer",
+      "description": "Semanas de gesta\u00e7\u00e3o"
+    },
+    "tipo_parto": {
+      "type": "string",
+      "enum": ["normal", "cesarea", "forceps"],
+      "description": "Tipo de parto"
+    },
+    "numero_filhos_parto": {
+      "type": "integer",
+      "description": "N\u00famero de filhos no parto"
+    },
+    "filhos_adotados": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "cpf": {
+            "type": "string"
+          },
+          "data_nascimento": {
+            "type": "string"
+          },
+          "certidao_nascimento": {
+            "type": "string"
+          },
+          "dnv": {
+            "type": "string"
+          },
+          "num_processo": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Filhos/Adotados"
+    },
+    "primeiro_filho": {
+      "type": "boolean",
+      "description": "\u00c9 o primeiro filho?"
+    },
+    "quantidade_filhos": {
+      "type": "integer",
+      "description": "Quantos filhos j\u00e1 teve"
+    },
+    "recebeu_salario_maternidade": {
+      "type": "boolean",
+      "description": "J\u00e1 recebeu sal\u00e1rio-maternidade anteriormente?"
+    },
+    "detalhes_salario_anterior": {
+      "type": "string",
+      "description": "Quando e por qual \u00f3rg\u00e3o"
+    },
+    "complicacoes_gestacao": {
+      "type": "boolean",
+      "description": "Teve complica\u00e7\u00f5es na gesta\u00e7\u00e3o/parto?"
+    },
+    "detalhes_complicacoes": {
+      "type": "string",
+      "description": "Detalhar complica\u00e7\u00f5es"
+    },
+    "afastou_trabalho_gestacao": {
+      "type": "boolean",
+      "description": "Precisou afastar-se do trabalho durante gesta\u00e7\u00e3o?"
+    },
+    "periodo_afastamento_inicio": {
+      "type": "string",
+      "format": "date",
+      "description": "In\u00edcio do afastamento"
+    },
+    "periodo_afastamento_fim": {
+      "type": "string",
+      "format": "date",
+      "description": "Fim do afastamento"
+    },
+    "trabalhando_periodo_carencia": {
+      "type": "boolean",
+      "description": "Estava trabalhando na atividade rural no per\u00edodo de car\u00eancia?"
+    },
+    "detalhes_trabalho_10_meses": {
+      "type": "string",
+      "description": "Per\u00edodo de trabalho rural nos 10 meses anteriores"
+    },
+    "afastou_apos_parto": {
+      "type": "boolean",
+      "description": "Afastou-se da atividade rural ap\u00f3s o parto?"
+    },
+    "data_afastamento_parto": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de afastamento"
+    },
+    "estado_civil": {
+      "type": "string",
+      "enum": ["solteira", "casada", "uniao_estavel", "divorciada", "viuva"],
+      "description": "Estado civil"
+    },
+    "nome_conjuge": {
+      "type": "string",
+      "description": "Nome do c\u00f4njuge/companheiro"
+    },
+    "cpf_conjuge": {
+      "type": "string",
+      "description": "CPF do c\u00f4njuge"
+    },
+    "conjuge_trabalha_rural": {
+      "type": "boolean",
+      "description": "C\u00f4njuge trabalha na atividade rural?"
+    },
+    "conjuge_vinculo_urbano": {
+      "type": "boolean",
+      "description": "C\u00f4njuge possui v\u00ednculo urbano/contribui INSS?"
+    },
+    "detalhes_vinculo_conjuge": {
+      "type": "string",
+      "description": "Especificar v\u00ednculo do c\u00f4njuge"
+    },
+    "observacoes_maternidade": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre maternidade"
+    },
+    "reside_zona": {
+      "type": "string",
+      "enum": ["urbana", "rural"],
+      "description": "Reside em zona urbana ou rural"
+    },
+    "tempo_residencia_local": {
+      "type": "string",
+      "description": "H\u00e1 quanto tempo reside no local atual"
+    },
+    "trabalha_exclusivo_agricultura": {
+      "type": "boolean",
+      "description": "Trabalha exclusivamente na agricultura?"
+    },
+    "membros_grupo_familiar": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "cpf": {
+            "type": "string"
+          },
+          "parentesco": {
+            "type": "string"
+          },
+          "trabalha_roca": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Membros do grupo familiar"
+    },
+    "trabalha_agricultura_desde": {
+      "type": "string",
+      "format": "date",
+      "description": "Trabalha na agricultura desde quando"
+    },
+    "propriedades_trabalhadas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome_localizacao": {
+            "type": "string"
+          },
+          "proprietario": {
+            "type": "string"
+          },
+          "periodo_inicio": {
+            "type": "string"
+          },
+          "periodo_fim": {
+            "type": "string"
+          },
+          "tempo_trabalhado": {
+            "type": "string"
+          },
+          "atividades": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Hist\u00f3rico de propriedades trabalhadas"
+    },
+    "filiado_sindicato": {
+      "type": "boolean",
+      "description": "\u00c9 filiado ao Sindicato dos Trabalhadores Rurais?"
+    },
+    "filiado_sindicato_desde": {
+      "type": "string",
+      "format": "date",
+      "description": "Desde quando \u00e9 filiado ao sindicato"
+    },
+    "possui_dap": {
+      "type": "boolean",
+      "description": "Possui DAP?"
+    },
+    "possui_caf": {
+      "type": "boolean",
+      "description": "Possui CAF?"
+    },
+    "testemunhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "cpf": {
+            "type": "string"
+          },
+          "telefone": {
+            "type": "string"
+          },
+          "relacao": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Testemunhas do labor rural"
+    },
+    "observacoes_gerais": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es gerais do caso"
+    }
+  },
+  "required": ["beneficio_id", "client_id"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": {
+          "$ne": "guest"
+        }
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

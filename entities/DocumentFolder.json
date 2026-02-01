@@ -1,0 +1,44 @@
+{
+  "name": "DocumentFolder",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome da pasta"
+    },
+    "parent_id": {
+      "type": "string",
+      "description": "ID da pasta pai (para subpastas)"
+    },
+    "parent_type": {
+      "type": "string",
+      "enum": ["client", "process", "general"],
+      "description": "Tipo do contexto da pasta"
+    },
+    "parent_ref_id": {
+      "type": "string",
+      "description": "ID do cliente ou processo relacionado"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o da pasta"
+    }
+  },
+  "required": ["name", "parent_type"],
+  "rls": {
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    }
+  }
+}

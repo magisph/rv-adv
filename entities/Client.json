@@ -1,0 +1,188 @@
+{
+  "name": "Client",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "description": "Nome completo do cliente"
+    },
+    "cpf_cnpj": {
+      "type": "string",
+      "description": "CPF ou CNPJ do cliente"
+    },
+    "data_nascimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de nascimento"
+    },
+    "rg": {
+      "type": "string",
+      "description": "RG do cliente"
+    },
+    "data_emissao_rg": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de emiss\u00e3o do RG"
+    },
+    "orgao_expedidor": {
+      "type": "string",
+      "description": "\u00d3rg\u00e3o expedidor do RG"
+    },
+    "estado_civil": {
+      "type": "string",
+      "enum": ["solteiro", "casado", "uniao_estavel", "divorciado", "viuvo"],
+      "description": "Estado civil"
+    },
+    "grau_escolaridade": {
+      "type": "string",
+      "enum": [
+        "analfabeto",
+        "fundamental_incompleto",
+        "fundamental_completo",
+        "medio_incompleto",
+        "medio_completo",
+        "superior_incompleto",
+        "superior_completo",
+        "pos_graduacao"
+      ],
+      "description": "Grau de escolaridade"
+    },
+    "profissao": {
+      "type": "string",
+      "description": "Profiss\u00e3o do cliente"
+    },
+    "password": {
+      "type": "string",
+      "description": "Senha do cliente"
+    },
+    "email": {
+      "type": "string",
+      "description": "E-mail de contato"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Telefone de contato"
+    },
+    "address": {
+      "type": "string",
+      "description": "Endere\u00e7o completo"
+    },
+    "city": {
+      "type": "string",
+      "description": "Cidade"
+    },
+    "state": {
+      "type": "string",
+      "description": "Estado"
+    },
+    "zip_code": {
+      "type": "string",
+      "description": "CEP"
+    },
+    "senha_meu_inss": {
+      "type": "string",
+      "description": "Senha do MEU INSS"
+    },
+    "inscrito_cadunico": {
+      "type": "boolean",
+      "description": "\u00c9 inscrito no Cadastro \u00danico?"
+    },
+    "possui_senha_gov": {
+      "type": "boolean",
+      "description": "Possui a senha GOV?"
+    },
+    "senha_gov": {
+      "type": "string",
+      "description": "Senha GOV"
+    },
+    "possui_biometria": {
+      "type": "boolean",
+      "description": "J\u00e1 possui biometria?"
+    },
+    "pedido_anterior_inss": {
+      "type": "boolean",
+      "description": "J\u00e1 ingressou com algum pedido perante o INSS ou na via judicial?"
+    },
+    "numero_processo_administrativo": {
+      "type": "string",
+      "description": "N\u00famero do Processo Administrativo (NB)"
+    },
+    "numero_processo_judicial": {
+      "type": "string",
+      "description": "N\u00famero do Processo Judicial"
+    },
+    "observacoes_processos_anteriores": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre processos anteriores"
+    },
+    "birth_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de nascimento (campo legado)"
+    },
+    "benefit_type": {
+      "type": "string",
+      "enum": [
+        "aposentadoria_idade_rural",
+        "incapacidade",
+        "pensao_morte",
+        "bpc_loas",
+        "outros"
+      ],
+      "description": "Tipo de benef\u00edcio pretendido (campo legado)"
+    },
+    "area": {
+      "type": "string",
+      "enum": ["previdenciario", "civel", "procuradoria_mulher", "outros"],
+      "description": "\u00c1rea de atua\u00e7\u00e3o do cliente"
+    },
+    "observations": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es gerais"
+    },
+    "documents_checklist": {
+      "type": "object",
+      "description": "Status dos documentos do checklist (campo legado)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "inativo",
+        "processo_andamento",
+        "processo_concluido",
+        "prospecto"
+      ],
+      "default": "ativo",
+      "description": "Status do cliente"
+    }
+  },
+  "required": [
+    "full_name",
+    "cpf_cnpj",
+    "data_nascimento",
+    "estado_civil",
+    "phone",
+    "address",
+    "inscrito_cadunico",
+    "possui_senha_gov",
+    "possui_biometria",
+    "pedido_anterior_inss"
+  ],
+  "rls": {
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    }
+  }
+}

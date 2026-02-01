@@ -1,0 +1,321 @@
+{
+  "name": "BeneficioIncapacidadeRural",
+  "type": "object",
+  "properties": {
+    "beneficio_id": {
+      "type": "string",
+      "description": "ID do benef\u00edcio principal"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "cid_patologia": {
+      "type": "string",
+      "description": "Patologia/Defici\u00eancia - CID"
+    },
+    "data_inicio_sintomas": {
+      "type": "string",
+      "format": "date",
+      "description": "Quando come\u00e7ou a sentir os sintomas"
+    },
+    "decorreu_acidente": {
+      "type": "boolean",
+      "description": "Decorreu de algum acidente?"
+    },
+    "detalhes_acidente": {
+      "type": "string",
+      "description": "Detalhar o acidente"
+    },
+    "historico_sintomas": {
+      "type": "string",
+      "description": "Hist\u00f3rico detalhado dos sintomas desde o in\u00edcio"
+    },
+    "pesquisa_cid": {
+      "type": "string",
+      "description": "Pesquisa/informa\u00e7\u00f5es sobre o CID"
+    },
+    "impacto_vida": {
+      "type": "string",
+      "description": "Como os sintomas afetam a vida do requerente"
+    },
+    "impacto_labor": {
+      "type": "string",
+      "description": "Como os sintomas afetam o exerc\u00edcio do labor habitual"
+    },
+    "atividades_trabalho": {
+      "type": "string",
+      "description": "Quais atividades executa(va) no trabalho"
+    },
+    "saude_dificulta_atividades": {
+      "type": "boolean",
+      "description": "Os problemas de sa\u00fade dificultam o exerc\u00edcio dessas atividades?"
+    },
+    "como_dificulta": {
+      "type": "string",
+      "description": "Como dificultam"
+    },
+    "data_afastamento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de afastamento das atividades laborais"
+    },
+    "faz_tratamento": {
+      "type": "boolean",
+      "description": "Faz algum tipo de tratamento?"
+    },
+    "tipos_tratamento": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tipos de tratamento"
+    },
+    "tratamento_outro": {
+      "type": "string",
+      "description": "Outro tratamento especificado"
+    },
+    "possui_relatorios_tratamento": {
+      "type": "boolean",
+      "description": "Possui relat\u00f3rios ou atestados do tratamento?"
+    },
+    "toma_medicacoes": {
+      "type": "boolean",
+      "description": "Toma medica\u00e7\u00f5es?"
+    },
+    "quais_medicacoes": {
+      "type": "string",
+      "description": "Quais medica\u00e7\u00f5es"
+    },
+    "medicacoes_efeitos_colaterais": {
+      "type": "boolean",
+      "description": "As medica\u00e7\u00f5es t\u00eam efeitos colaterais?"
+    },
+    "quais_efeitos_colaterais": {
+      "type": "string",
+      "description": "Quais efeitos colaterais"
+    },
+    "documentos_medicos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "arquivo_url": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Documentos m\u00e9dicos organizados cronologicamente"
+    },
+    "reside_zona": {
+      "type": "string",
+      "enum": ["urbana", "rural"],
+      "description": "Reside em zona urbana ou rural"
+    },
+    "tempo_residencia_local": {
+      "type": "string",
+      "description": "H\u00e1 quanto tempo reside no local atual"
+    },
+    "morou_fora": {
+      "type": "boolean",
+      "description": "J\u00e1 morou fora por algum per\u00edodo?"
+    },
+    "detalhes_morou_fora": {
+      "type": "string",
+      "description": "Quando e onde morou fora"
+    },
+    "trabalha_exclusivo_agricultura": {
+      "type": "boolean",
+      "description": "Trabalha exclusivamente na agricultura?"
+    },
+    "faz_bico": {
+      "type": "string",
+      "description": "Faz algum bico/trabalho extra"
+    },
+    "exerceu_atividade_urbana": {
+      "type": "boolean",
+      "description": "J\u00e1 exerceu alguma atividade urbana formal?"
+    },
+    "detalhes_atividade_urbana": {
+      "type": "string",
+      "description": "Especificar atividade e per\u00edodo urbano"
+    },
+    "membros_grupo_familiar": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "cpf": {
+            "type": "string"
+          },
+          "parentesco": {
+            "type": "string"
+          },
+          "trabalha_roca": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Membros do grupo familiar"
+    },
+    "estado_civil": {
+      "type": "string",
+      "enum": ["solteiro", "casado", "uniao_estavel", "divorciado", "viuvo"],
+      "description": "Estado civil do requerente"
+    },
+    "nome_conjuge": {
+      "type": "string",
+      "description": "Nome do c\u00f4njuge/companheiro(a)"
+    },
+    "atividade_conjuge": {
+      "type": "string",
+      "description": "Atividade do c\u00f4njuge/companheiro(a)"
+    },
+    "trabalha_agricultura_desde": {
+      "type": "string",
+      "format": "date",
+      "description": "Trabalha na agricultura desde quando"
+    },
+    "propriedade_inicial": {
+      "type": "string",
+      "description": "Propriedade onde iniciou o trabalho"
+    },
+    "proprietario_terra_inicial": {
+      "type": "string",
+      "description": "Propriet\u00e1rio da terra inicial"
+    },
+    "propriedades_trabalhadas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome_localizacao": {
+            "type": "string"
+          },
+          "proprietario": {
+            "type": "string"
+          },
+          "periodo_inicio": {
+            "type": "string"
+          },
+          "periodo_fim": {
+            "type": "string"
+          },
+          "tempo_trabalhado": {
+            "type": "string"
+          },
+          "atividades": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Hist\u00f3rico de propriedades trabalhadas"
+    },
+    "filiado_sindicato": {
+      "type": "boolean",
+      "description": "\u00c9 filiado ao Sindicato dos Trabalhadores Rurais?"
+    },
+    "filiado_sindicato_desde": {
+      "type": "string",
+      "format": "date",
+      "description": "Desde quando \u00e9 filiado ao sindicato"
+    },
+    "possui_dap": {
+      "type": "boolean",
+      "description": "Possui DAP?"
+    },
+    "possui_caf": {
+      "type": "boolean",
+      "description": "Possui CAF?"
+    },
+    "testemunhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "cpf": {
+            "type": "string"
+          },
+          "telefone": {
+            "type": "string"
+          },
+          "relacao": {
+            "type": "string"
+          },
+          "periodo_inicio": {
+            "type": "string"
+          },
+          "periodo_fim": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Testemunhas do labor rural"
+    },
+    "observacoes_gerais": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es gerais do caso"
+    }
+  },
+  "required": ["beneficio_id", "client_id"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": {
+          "$ne": "guest"
+        }
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

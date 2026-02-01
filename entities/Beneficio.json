@@ -1,0 +1,84 @@
+{
+  "name": "Beneficio",
+  "type": "object",
+  "properties": {
+    "client_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "categoria": {
+      "type": "string",
+      "enum": ["bpc_loas", "rural", "urbano"],
+      "description": "Categoria do benef\u00edcio"
+    },
+    "tipo_beneficio": {
+      "type": "string",
+      "description": "Tipo espec\u00edfico do benef\u00edcio"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "em_analise",
+        "documentacao_pendente",
+        "aguardando_protocolo",
+        "protocolado",
+        "indeferido",
+        "deferido",
+        "cancelado"
+      ],
+      "default": "em_analise",
+      "description": "Status do benef\u00edcio"
+    },
+    "numero_beneficio": {
+      "type": "string",
+      "description": "N\u00famero do benef\u00edcio (NB)"
+    },
+    "data_protocolo": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do protocolo"
+    },
+    "data_concessao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de concess\u00e3o"
+    },
+    "valor_beneficio": {
+      "type": "number",
+      "description": "Valor do benef\u00edcio"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre o benef\u00edcio"
+    },
+    "dados_especificos": {
+      "type": "object",
+      "description": "Dados espec\u00edficos do tipo de benef\u00edcio"
+    },
+    "checklist_documentos": {
+      "type": "object",
+      "description": "Status dos documentos do checklist"
+    }
+  },
+  "required": ["client_id", "categoria", "tipo_beneficio"],
+  "rls": {
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    }
+  }
+}
