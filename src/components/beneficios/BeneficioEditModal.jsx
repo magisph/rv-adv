@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useEffect } from "react";
+import { beneficioService } from "@/services";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -154,7 +154,7 @@ export default function BeneficioEditModal({
   ]);
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.Beneficio.update(beneficio.id, data),
+    mutationFn: (data) => beneficioService.update(beneficio.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["client-beneficios", clientId]);
       setHasChanges(false);
@@ -163,7 +163,7 @@ export default function BeneficioEditModal({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => base44.entities.Beneficio.delete(beneficio.id),
+    mutationFn: () => beneficioService.delete(beneficio.id),
     onSuccess: () => {
       queryClient.invalidateQueries(["client-beneficios", clientId]);
       onClose();

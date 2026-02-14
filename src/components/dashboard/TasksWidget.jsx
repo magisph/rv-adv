@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useEffect } from "react";
+import { authService } from "@/services/authService";
+import { userService, taskService, notificationService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -150,11 +151,11 @@ export default function TasksWidget() {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const userData = await base44.auth.me();
+        const userData = await authService.getCurrentUser();
         setUser(userData);
 
         // Verificar modo colaborativo
-        const allUsers = await base44.entities.User.list();
+        const allUsers = await userService.list();
         setIsCollaborativeMode(allUsers.length > 1);
 
         // Inicializar filtros de usuário (todos ativos)
@@ -173,7 +174,7 @@ export default function TasksWidget() {
   // Buscar usuários para filtros
   const { data: allUsers = [] } = useQuery({
     queryKey: ["all-users"],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => userService.list(),
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
@@ -190,10 +191,10 @@ export default function TasksWidget() {
 
       if (isAdmin && viewMode === "all") {
         // Admin visualiza todas as tarefas
-        return base44.entities.Task.list();
+        return taskService.list();
       } else {
         // User comum ou admin no modo "minhas"
-        return base44.entities.Task.filter({ assigned_to: user.email });
+        return taskService.filter({ assigned_to: user.email });
       }
     },
     enabled: !!user?.email,
@@ -249,7 +250,7 @@ export default function TasksWidget() {
   }, [allTasks, user]);
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Task.update(id, data),
+    mutationFn: ({ id, data }) => taskService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["kanban-tasks"]);
       queryClient.invalidateQueries(["tasks"]);
@@ -257,7 +258,7 @@ export default function TasksWidget() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Task.delete(id),
+    mutationFn: (id) => taskService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries(["kanban-tasks"]);
       queryClient.invalidateQueries(["tasks"]);
@@ -265,7 +266,7 @@ export default function TasksWidget() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Task.create(data),
+    mutationFn: (data) => taskService.create(data),
     onSuccess: async (task) => {
       queryClient.invalidateQueries(["kanban-tasks"]);
       queryClient.invalidateQueries(["tasks"]);
@@ -274,7 +275,7 @@ export default function TasksWidget() {
       setQuickTaskTitle("");
 
       if (task.assigned_to && user && task.assigned_to !== user.email) {
-        await base44.entities.Notification.create({
+        await notificationService.create({
           title: "Nova Tarefa Atribuída",
           message: `${task.title}${task.client_name ? ` - Cliente: ${task.client_name}` : ""}`,
           type: "tarefa",
@@ -326,7 +327,7 @@ export default function TasksWidget() {
     if (!isAdmin && destination.droppableId === "done") {
       const admin = allUsers.find((u) => u.role === "admin");
       if (admin) {
-        await base44.entities.Notification.create({
+        await notificationService.create({
           title: "Tarefa Concluída",
           message: `${user.full_name} concluiu: "${task.title}"`,
           type: "tarefa",
@@ -593,7 +594,7 @@ export default function TasksWidget() {
 
     // Notificar novo responsável
     if (newUser.email !== user.email) {
-      await base44.entities.Notification.create({
+      await notificationService.create({
         title: "Tarefa Atribuída",
         message: `"${task.title}" foi atribuída a você`,
         type: "tarefa",

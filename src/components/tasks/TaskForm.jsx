@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useEffect } from "react";
+import { authService } from "@/services/authService";
+import { userService, clientService, processService, beneficioService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,7 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
 
   useEffect(() => {
     const loadUser = async () => {
-      const user = await base44.auth.me();
+      const user = await authService.getCurrentUser();
       setCurrentUser(user);
     };
     loadUser();
@@ -43,7 +44,7 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
 
   const { data: users = [] } = useQuery({
     queryKey: ["users-list"],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => userService.list(),
   });
 
   const isAdmin = currentUser?.role === "admin";
@@ -51,17 +52,17 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-list"],
-    queryFn: () => base44.entities.Client.list(),
+    queryFn: () => clientService.list(),
   });
 
   const { data: processes = [] } = useQuery({
     queryKey: ["processes-list"],
-    queryFn: () => base44.entities.Process.list(),
+    queryFn: () => processService.list(),
   });
 
   const { data: beneficios = [] } = useQuery({
     queryKey: ["beneficios-list"],
-    queryFn: () => base44.entities.Beneficio.list(),
+    queryFn: () => beneficioService.list(),
   });
 
   useEffect(() => {

@@ -1,5 +1,7 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { authService } from "@/services/authService";
+import { processService, processMoveService, documentService, deadlineService, notificationService } from "@/services";
+import { aiService } from "@/services/aiService";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -65,7 +67,7 @@ export default function ProcessDetail() {
 
   const { data: process, isLoading } = useQuery({
     queryKey: ["process", processId],
-    queryFn: () => base44.entities.Process.filter({ id: processId }),
+    queryFn: () => processService.filter({ id: processId }),
     select: (data) => data[0],
     enabled: !!processId,
   });
@@ -73,14 +75,14 @@ export default function ProcessDetail() {
   const { data: moves = [], isLoading: loadingMoves } = useQuery({
     queryKey: ["process-moves", processId],
     queryFn: () =>
-      base44.entities.ProcessMove.filter({ process_id: processId }),
+      processMoveService.filter({ process_id: processId }),
     enabled: !!processId,
   });
 
   const { data: documents = [] } = useQuery({
     queryKey: ["process-documents", processId],
     queryFn: () =>
-      base44.entities.Document.filter({
+      documentService.filter({
         parent_type: "process",
         parent_id: processId,
       }),
@@ -89,12 +91,12 @@ export default function ProcessDetail() {
 
   const { data: deadlines = [] } = useQuery({
     queryKey: ["process-deadlines", processId],
-    queryFn: () => base44.entities.Deadline.filter({ process_id: processId }),
+    queryFn: () => deadlineService.filter({ process_id: processId }),
     enabled: !!processId,
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.Process.update(processId, data),
+    mutationFn: (data) => processService.update(processId, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["process", processId]);
       setShowEditForm(false);
@@ -105,7 +107,7 @@ export default function ProcessDetail() {
     setIsSyncing(true);
 
     // Simulate DataJud API call
-    const response = await base44.integrations.Core.InvokeLLM({
+    const response = await aiService.invokeLLM({
       prompt: `Simule a resposta de uma API de consulta processual (DataJud) para o processo número ${process.process_number}.
       Gere 3 movimentações processuais recentes com datas dos últimos 30 dias.
       Cada movimentação deve ter: data, descrição detalhada, e tipo (escolha entre: despacho, sentenca, decisao, peticao, intimacao, citacao, audiencia, outros).
@@ -133,7 +135,7 @@ export default function ProcessDetail() {
 
     // Insert the simulated moves
     for (const mov of response.movimentacoes) {
-      await base44.entities.ProcessMove.create({
+      await processMoveService.create({
         process_id: processId,
         process_number: process.process_number,
         date: mov.data,
@@ -144,7 +146,7 @@ export default function ProcessDetail() {
     }
 
     // Create notification for each move
-    const user = await base44.auth.me();
+    const user = await authService.getCurrentUser();
     for (const mov of response.movimentacoes) {
       const priority =
         mov.tipo === "sentenca"
@@ -153,7 +155,7 @@ export default function ProcessDetail() {
             ? "importante"
             : "informativa";
 
-      await base44.entities.Notification.create({
+      await notificationService.create({
         title: `Nova Movimentação: ${mov.tipo}`,
         message: `${mov.descricao.substring(0, 100)}...`,
         type: "movimentacao",

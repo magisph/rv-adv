@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import { useEffect } from "react";
+import { deadlineService, taskService, appointmentService, notificationService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { differenceInDays, isToday, isPast, addHours } from "date-fns";
 
@@ -11,7 +11,7 @@ export default function NotificationMonitor({ user }) {
   // Buscar dados que precisam de monitoramento
   const { data: deadlines = [] } = useQuery({
     queryKey: ["monitor-deadlines"],
-    queryFn: () => base44.entities.Deadline.filter({ status: "pendente" }),
+    queryFn: () => deadlineService.filter({ status: "pendente" }),
     enabled: !!user,
     refetchInterval: 60000, // Verificar a cada 1 minuto
   });
@@ -19,7 +19,7 @@ export default function NotificationMonitor({ user }) {
   const { data: tasks = [] } = useQuery({
     queryKey: ["monitor-tasks"],
     queryFn: () =>
-      base44.entities.Task.filter({
+      taskService.filter({
         assigned_to: user?.email,
         status: { $ne: "done" },
       }),
@@ -29,7 +29,7 @@ export default function NotificationMonitor({ user }) {
 
   const { data: appointments = [] } = useQuery({
     queryKey: ["monitor-appointments"],
-    queryFn: () => base44.entities.Appointment.filter({ status: "agendado" }),
+    queryFn: () => appointmentService.filter({ status: "agendado" }),
     enabled: !!user,
     refetchInterval: 60000,
   });
@@ -47,7 +47,7 @@ export default function NotificationMonitor({ user }) {
         const daysUntil = differenceInDays(dueDate, today);
 
         // Verificar se já existe notificação para este prazo hoje
-        const existingNotifications = await base44.entities.Notification.filter(
+        const existingNotifications = await notificationService.filter(
           {
             user_email: deadline.responsible_email || user.email,
             related_id: deadline.id,
@@ -79,7 +79,7 @@ export default function NotificationMonitor({ user }) {
                   ? "importante"
                   : "informativa";
 
-          await base44.entities.Notification.create({
+          await notificationService.create({
             user_email: deadline.responsible_email || user.email,
             type: "prazo",
             priority: priority,
@@ -112,7 +112,7 @@ export default function NotificationMonitor({ user }) {
         const daysUntil = differenceInDays(dueDate, now);
 
         // Verificar se já existe notificação
-        const existingNotifications = await base44.entities.Notification.filter(
+        const existingNotifications = await notificationService.filter(
           {
             user_email: task.assigned_to,
             related_id: task.id,
@@ -150,7 +150,7 @@ export default function NotificationMonitor({ user }) {
                 ? "⚠️ Tarefa vence em 1 hora"
                 : "Tarefa vence em 1 dia";
 
-          await base44.entities.Notification.create({
+          await notificationService.create({
             user_email: task.assigned_to,
             type: "tarefa",
             priority: priority,
@@ -183,7 +183,7 @@ export default function NotificationMonitor({ user }) {
         const daysUntil = differenceInDays(appointmentDate, now);
 
         // Verificar se já existe notificação recente
-        const existingNotifications = await base44.entities.Notification.filter(
+        const existingNotifications = await notificationService.filter(
           {
             user_email: user.email,
             related_id: appointment.id,
@@ -214,7 +214,7 @@ export default function NotificationMonitor({ user }) {
                 ? "⚠️ Agendamento em 1 hora"
                 : "Agendamento amanhã";
 
-          await base44.entities.Notification.create({
+          await notificationService.create({
             user_email: user.email,
             type: "compromisso",
             priority: priority,

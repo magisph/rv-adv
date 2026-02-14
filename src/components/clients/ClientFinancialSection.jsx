@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { financialService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,12 +34,12 @@ export default function ClientFinancialSection({ clientId, clientName }) {
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["client-financial", clientId],
-    queryFn: () => base44.entities.Financial.filter({ client_id: clientId }),
+    queryFn: () => financialService.filter({ client_id: clientId }),
     enabled: !!clientId,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Financial.create(data),
+    mutationFn: (data) => financialService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries(["client-financial", clientId]);
       queryClient.invalidateQueries(["all-financial"]);

@@ -26,6 +26,22 @@ export const authService = {
       return this.getCurrentUser();
   },
 
+  async updateMe(userData) {
+    // Separate user_metadata from top-level auth fields
+    const updatePayload = {};
+    const { email, phone, ...metadata } = userData;
+    
+    if (email) updatePayload.email = email;
+    if (phone) updatePayload.phone = phone;
+    if (Object.keys(metadata).length > 0) {
+      updatePayload.data = metadata;
+    }
+    
+    const { data, error } = await supabase.auth.updateUser(updatePayload);
+    if (error) throw error;
+    return this._mapUser(data.user);
+  },
+
   _mapUser(supabaseUser) {
     if (!supabaseUser) return null;
     return {

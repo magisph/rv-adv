@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { processService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -84,14 +84,14 @@ export default function Processes() {
 
   const { data: processes = [], isLoading } = useQuery({
     queryKey: ["processes"],
-    queryFn: () => base44.entities.Process.list("-created_date"),
+    queryFn: () => processService.list("-created_date"),
     staleTime: 2 * 60 * 1000, // 2 minutos
     cacheTime: 10 * 60 * 1000, // 10 minutos
     keepPreviousData: true,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Process.create(data),
+    mutationFn: (data) => processService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries(["processes"]);
       setShowForm(false);
@@ -99,7 +99,7 @@ export default function Processes() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Process.update(id, data),
+    mutationFn: ({ id, data }) => processService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["processes"]);
       setShowForm(false);
@@ -108,7 +108,7 @@ export default function Processes() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Process.delete(id),
+    mutationFn: (id) => processService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["processes"]),
   });
 

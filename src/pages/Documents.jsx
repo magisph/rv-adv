@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { documentService, documentFolderService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,16 +41,16 @@ export default function Documents() {
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["all-documents"],
-    queryFn: () => base44.entities.Document.list("-created_date"),
+    queryFn: () => documentService.list("-created_date"),
   });
 
   const { data: folders = [] } = useQuery({
     queryKey: ["document-folders"],
-    queryFn: () => base44.entities.DocumentFolder.list(),
+    queryFn: () => documentFolderService.list(),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Document.delete(id),
+    mutationFn: (id) => documentService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["all-documents"]),
   });
 

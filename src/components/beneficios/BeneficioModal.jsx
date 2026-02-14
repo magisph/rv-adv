@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { beneficioService } from "@/services";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -69,7 +69,7 @@ export default function BeneficioModal({
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Beneficio.create(data),
+    mutationFn: (data) => beneficioService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries(["client-beneficios", clientId]);
       handleClose();

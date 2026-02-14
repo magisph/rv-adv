@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { authService } from "@/services/authService";
+import { taskService, notificationService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,11 +63,11 @@ export default function Tasks() {
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks"],
-    queryFn: () => base44.entities.Task.list("-created_date"),
+    queryFn: () => taskService.list("-created_date"),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Task.create(data),
+    mutationFn: (data) => taskService.create(data),
     onSuccess: async (task) => {
       queryClient.invalidateQueries(["tasks"]);
       queryClient.invalidateQueries(["my-tasks"]);
@@ -75,8 +76,8 @@ export default function Tasks() {
 
       // Create notification for assigned user
       if (task.assigned_to) {
-        const currentUser = await base44.auth.me();
-        await base44.entities.Notification.create({
+        const currentUser = await authService.getCurrentUser();
+        await notificationService.create({
           title: "Nova Tarefa Atribuída",
           message: `${task.title}${task.client_name ? ` - Cliente: ${task.client_name}` : ""}`,
           type: "tarefa",
@@ -90,7 +91,7 @@ export default function Tasks() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Task.update(id, data),
+    mutationFn: ({ id, data }) => taskService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["tasks"]);
       queryClient.invalidateQueries(["my-tasks"]);
@@ -101,7 +102,7 @@ export default function Tasks() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Task.delete(id),
+    mutationFn: (id) => taskService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["tasks"]),
   });
 

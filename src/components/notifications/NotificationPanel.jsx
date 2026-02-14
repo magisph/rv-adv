@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { notificationService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -81,13 +81,13 @@ export default function NotificationPanel({ user, onClose }) {
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ["notifications", user?.email],
     queryFn: () =>
-      base44.entities.Notification.filter({ user_email: user.email }),
+      notificationService.filter({ user_email: user.email }),
     enabled: !!user?.email,
     refetchInterval: 10000, // Atualiza a cada 10 segundos
   });
 
   const markAsReadMutation = useMutation({
-    mutationFn: (id) => base44.entities.Notification.update(id, { read: true }),
+    mutationFn: (id) => notificationService.update(id, { read: true }),
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });
 
@@ -96,7 +96,7 @@ export default function NotificationPanel({ user, onClose }) {
       const unread = notifications.filter((n) => !n.read);
       await Promise.all(
         unread.map((n) =>
-          base44.entities.Notification.update(n.id, { read: true }),
+          notificationService.update(n.id, { read: true }),
         ),
       );
     },
@@ -104,7 +104,7 @@ export default function NotificationPanel({ user, onClose }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Notification.delete(id),
+    mutationFn: (id) => notificationService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });
 
@@ -112,7 +112,7 @@ export default function NotificationPanel({ user, onClose }) {
     mutationFn: async () => {
       const read = notifications.filter((n) => n.read);
       await Promise.all(
-        read.map((n) => base44.entities.Notification.delete(n.id)),
+        read.map((n) => notificationService.delete(n.id)),
       );
     },
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useEffect } from "react";
+import { authService } from "@/services/authService";
+import { deadlineService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -72,7 +73,7 @@ export default function Deadlines() {
 
   useEffect(() => {
     const loadUser = async () => {
-      const u = await base44.auth.me();
+      const u = await authService.getCurrentUser();
       setUser(u);
     };
     loadUser();
@@ -80,11 +81,11 @@ export default function Deadlines() {
 
   const { data: deadlines = [], isLoading } = useQuery({
     queryKey: ["deadlines"],
-    queryFn: () => base44.entities.Deadline.list("-due_date"),
+    queryFn: () => deadlineService.list("-due_date"),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Deadline.create(data),
+    mutationFn: (data) => deadlineService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries(["deadlines"]);
       setShowForm(false);
@@ -92,7 +93,7 @@ export default function Deadlines() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Deadline.update(id, data),
+    mutationFn: ({ id, data }) => deadlineService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["deadlines"]);
       setShowForm(false);
@@ -101,7 +102,7 @@ export default function Deadlines() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Deadline.delete(id),
+    mutationFn: (id) => deadlineService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["deadlines"]),
   });
 

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
+import { aiService } from "@/services/aiService";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +15,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, AlertCircle, Upload } from "lucide-react";
-import { base44 } from "@/lib/adapters/legacyBase44";
 
 const TIPOS_TRATAMENTO = [
   "Fisioterapia",
@@ -95,7 +95,7 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
   const handleFileUpload = async (index, file) => {
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await aiService.uploadFile({ file });
       atualizarDocumentoMedico(index, "arquivo_url", file_url);
     } catch (error) {
       console.error("Erro ao fazer upload:", error);

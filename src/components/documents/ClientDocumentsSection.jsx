@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { documentService, clientService } from "@/services";
+import { aiService } from "@/services/aiService";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -362,7 +363,7 @@ function DocumentTypeCard({
   const uploadMutation = useMutation({
     mutationFn: async ({ file, typeId, fields }) => {
       // Upload do arquivo
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await aiService.uploadFile({ file });
 
       // Verificar se é documento suportado por OCR
       const ocrTypes = ["rg", "cpf", "cnh", "comprovante_endereco"];
@@ -379,7 +380,7 @@ function DocumentTypeCard({
       }
 
       // Criar documento
-      return base44.entities.Document.create({
+      return documentService.create({
         name: file.name,
         file_url,
         category: categoryKey,
@@ -404,7 +405,7 @@ function DocumentTypeCard({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (docId) => base44.entities.Document.delete(docId),
+    mutationFn: (docId) => documentService.delete(docId),
     onSuccess: () => {
       toast.success("Documento excluído");
       onRefresh();
@@ -836,7 +837,7 @@ export default function ClientDocumentsSection({
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["client-documents-full", clientId],
     queryFn: () =>
-      base44.entities.Document.filter({
+      documentService.filter({
         parent_type: "client",
         parent_id: clientId,
       }),
@@ -847,7 +848,7 @@ export default function ClientDocumentsSection({
 
   const { data: client } = useQuery({
     queryKey: ["client", clientId],
-    queryFn: () => base44.entities.Client.filter({ id: clientId }),
+    queryFn: () => clientService.filter({ id: clientId }),
     select: (data) => data[0],
     enabled: !!clientId,
     staleTime: 3 * 60 * 1000,

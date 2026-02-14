@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { documentService } from "@/services";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,7 +100,7 @@ export default function DocumentListModal({
 
   const deleteMutation = useMutation({
     mutationFn: (docId) =>
-      base44.entities.Document.update(docId, { is_active: false }),
+      documentService.update(docId, { is_active: false }),
     onSuccess: () => {
       setDeleteConfirm(null);
       onRefresh();
@@ -115,10 +115,10 @@ export default function DocumentListModal({
           (d) => d.is_main && d.id !== docId,
         );
         for (const doc of mainDocs) {
-          await base44.entities.Document.update(doc.id, { is_main: false });
+          await documentService.update(doc.id, { is_main: false });
         }
       }
-      return base44.entities.Document.update(docId, { is_main: isMain });
+      return documentService.update(docId, { is_main: isMain });
     },
     onSuccess: onRefresh,
   });

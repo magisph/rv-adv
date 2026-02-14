@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { processMoveService } from "@/services";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,7 @@ export default function ProcessMoveForm({
 
   const createMutation = useMutation({
     mutationFn: (data) =>
-      base44.entities.ProcessMove.create({
+      processMoveService.create({
         ...data,
         process_id: processId,
         process_number: processNumber,

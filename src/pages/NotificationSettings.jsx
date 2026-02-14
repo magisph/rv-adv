@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useEffect } from "react";
+import { authService } from "@/services/authService";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -150,7 +150,7 @@ export default function NotificationSettings() {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const userData = await base44.auth.me();
+        const userData = await authService.getCurrentUser();
         setUser(userData);
 
         // Carregar configurações salvas do usuário
@@ -172,7 +172,7 @@ export default function NotificationSettings() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      await base44.auth.updateMe({
+      await authService.updateMe({
         notification_settings: settings,
         push_settings: pushSettings,
         silent_mode: silentMode,

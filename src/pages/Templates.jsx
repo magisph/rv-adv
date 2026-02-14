@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { templateService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,11 +61,11 @@ export default function Templates() {
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["templates"],
-    queryFn: () => base44.entities.Template.list("-created_date"),
+    queryFn: () => templateService.list("-created_date"),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Template.create(data),
+    mutationFn: (data) => templateService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries(["templates"]);
       setShowForm(false);
@@ -73,7 +73,7 @@ export default function Templates() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Template.update(id, data),
+    mutationFn: ({ id, data }) => templateService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["templates"]);
       setShowForm(false);
@@ -83,7 +83,7 @@ export default function Templates() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Template.delete(id),
+    mutationFn: (id) => templateService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["templates"]),
   });
 

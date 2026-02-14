@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useEffect } from "react";
+import { authService } from "@/services/authService";
+import { taskService, appointmentService, deadlineService } from "@/services";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ export default function CalendarSettings() {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const userData = await base44.auth.me();
+        const userData = await authService.getCurrentUser();
         setUser(userData);
 
         // Verificar se já está conectado ao Google Calendar
@@ -46,10 +47,8 @@ export default function CalendarSettings() {
         // Verificar status de conexão
         try {
           // Tentar obter token de acesso para verificar conexão
-          const token =
-            await base44.asServiceRole.connectors.getAccessToken(
-              "googlecalendar",
-            );
+          const token = null; // TODO: Implementar integração OAuth com Google Calendar
+            console.warn('[CalendarSettings] OAuth não implementado — requer backend com fluxo OAuth2');
           setIsConnected(!!token);
         } catch (e) {
           setIsConnected(false);
@@ -64,14 +63,9 @@ export default function CalendarSettings() {
   const handleConnect = async () => {
     try {
       // Solicitar autorização OAuth
-      const authUrl =
-        await base44.asServiceRole.connectors.requestOAuthAuthorization(
-          "googlecalendar",
-          [
-            "https://www.googleapis.com/auth/calendar",
-            "https://www.googleapis.com/auth/calendar.events",
-          ],
-        );
+        // TODO: Implementar fluxo OAuth2 com backend
+        console.warn('[CalendarSettings] OAuth não implementado — requer backend com fluxo OAuth2');
+        const authUrl = null;
 
       // Redirecionar para autorização
       window.location.href = authUrl;
@@ -90,7 +84,7 @@ export default function CalendarSettings() {
       )
     ) {
       try {
-        await base44.auth.updateMe({
+        await authService.updateMe({
           calendar_connected: false,
           calendar_settings: syncSettings,
         });
@@ -106,19 +100,19 @@ export default function CalendarSettings() {
     setIsSyncing(true);
     try {
       // Buscar tarefas pendentes
-      const tasks = await base44.entities.Task.filter({
+      const tasks = await taskService.filter({
         assigned_to: user.email,
         status: { $ne: "done" },
         due_date: { $ne: null },
       });
 
       // Buscar agendamentos
-      const appointments = await base44.entities.Appointment.filter({
+      const appointments = await appointmentService.filter({
         status: "agendado",
       });
 
       // Buscar prazos
-      const deadlines = await base44.entities.Deadline.filter({
+      const deadlines = await deadlineService.filter({
         status: "pendente",
       });
 
@@ -181,7 +175,7 @@ export default function CalendarSettings() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      await base44.auth.updateMe({
+      await authService.updateMe({
         calendar_settings: syncSettings,
       });
     },

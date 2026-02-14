@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useEffect } from "react";
+import { clientService, processService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,12 +63,12 @@ export default function FinancialForm({
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-list"],
-    queryFn: () => base44.entities.Client.list(),
+    queryFn: () => clientService.list(),
   });
 
   const { data: processes = [] } = useQuery({
     queryKey: ["processes-list"],
-    queryFn: () => base44.entities.Process.list(),
+    queryFn: () => processService.list(),
   });
 
   useEffect(() => {

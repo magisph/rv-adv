@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useEffect } from "react";
+import { documentService } from "@/services";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ export default function DocumentEditModal({ document, onSuccess, onCancel }) {
   }, [document]);
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.Document.update(document.id, data),
+    mutationFn: (data) => documentService.update(document.id, data),
     onSuccess: () => {
       onSuccess("Documento atualizado com sucesso");
     },

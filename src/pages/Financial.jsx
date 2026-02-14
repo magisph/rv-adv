@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { financialService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -75,11 +75,11 @@ export default function Financial() {
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["financial"],
-    queryFn: () => base44.entities.Financial.list("-date"),
+    queryFn: () => financialService.list("-date"),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Financial.create(data),
+    mutationFn: (data) => financialService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries(["financial"]);
       setShowForm(false);
@@ -87,7 +87,7 @@ export default function Financial() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Financial.update(id, data),
+    mutationFn: ({ id, data }) => financialService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["financial"]);
       setShowForm(false);
@@ -96,7 +96,7 @@ export default function Financial() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Financial.delete(id),
+    mutationFn: (id) => financialService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["financial"]),
   });
 

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { aiService } from "@/services/aiService";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -140,9 +141,8 @@ export default function OCRExtractor({
           return;
       }
 
-      const result = await base44.integrations.Core.InvokeLLM({
+      const result = await aiService.invokeLLM({
         prompt,
-        file_urls: [fileUrl],
         response_json_schema: schema,
       });
 

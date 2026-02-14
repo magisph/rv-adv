@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useEffect } from "react";
+import { clientService, processService } from "@/services";
+import { aiService } from "@/services/aiService";
 import { useQuery } from "@tanstack/react-query";
 import ReactQuill from "react-quill";
 import { Button } from "@/components/ui/button";
@@ -44,12 +45,12 @@ export default function TemplateEditor({
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-list"],
-    queryFn: () => base44.entities.Client.list(),
+    queryFn: () => clientService.list(),
   });
 
   const { data: processes = [] } = useQuery({
     queryKey: ["processes-list"],
-    queryFn: () => base44.entities.Process.list(),
+    queryFn: () => processService.list(),
   });
 
   useEffect(() => {
@@ -65,7 +66,7 @@ export default function TemplateEditor({
   const handleImproveWithAI = async () => {
     setIsImproving(true);
 
-    const response = await base44.integrations.Core.InvokeLLM({
+    const response = await aiService.invokeLLM({
       prompt: `Você é um advogado experiente. Reescreva o texto abaixo em tom jurídico formal,
       melhorando a linguagem, a estrutura e a clareza. Mantenha todas as variáveis no formato {{variavel}}.
 

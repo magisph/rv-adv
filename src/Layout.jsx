@@ -1,7 +1,8 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+﻿import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "./utils";
-import { base44 } from "@/lib/adapters/legacyBase44";
+import { authService } from "@/services/authService";
+import { clientService, processService, notificationService } from "@/services";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
@@ -41,7 +42,7 @@ export default function Layout({ children, currentPageName }) {
   // Cache user data com staleTime longo para evitar recarregamentos
   const { data: user } = useQuery({
     queryKey: ["current-user"],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => authService.getCurrentUser(),
     staleTime: 5 * 60 * 1000, // 5 minutos
     cacheTime: 30 * 60 * 1000, // 30 minutos
     retry: false,
@@ -55,12 +56,12 @@ export default function Layout({ children, currentPageName }) {
       // Prefetch apenas dados essenciais do dashboard
       queryClient.prefetchQuery({
         queryKey: ["clients"],
-        queryFn: () => base44.entities.Client.list("-created_date", 10),
+        queryFn: () => clientService.list("-created_date", 10),
         staleTime: 2 * 60 * 1000,
       });
       queryClient.prefetchQuery({
         queryKey: ["processes"],
-        queryFn: () => base44.entities.Process.list("-created_date", 10),
+        queryFn: () => processService.list("-created_date", 10),
         staleTime: 2 * 60 * 1000,
       });
     }
@@ -79,7 +80,7 @@ export default function Layout({ children, currentPageName }) {
   const handleLogout = async () => {
     // Limpar cache antes de fazer logout
     queryClient.clear();
-    await base44.auth.logout();
+    await authService.logout();
   };
 
   // Prefetch ao hover nos links de navegação
@@ -87,13 +88,13 @@ export default function Layout({ children, currentPageName }) {
     if (pageName === "Clients") {
       queryClient.prefetchQuery({
         queryKey: ["clients"],
-        queryFn: () => base44.entities.Client.list("-created_date"),
+        queryFn: () => clientService.list("-created_date"),
         staleTime: 2 * 60 * 1000,
       });
     } else if (pageName === "Processes") {
       queryClient.prefetchQuery({
         queryKey: ["processes"],
-        queryFn: () => base44.entities.Process.list("-created_date"),
+        queryFn: () => processService.list("-created_date"),
         staleTime: 2 * 60 * 1000,
       });
     }
@@ -324,7 +325,7 @@ function NotificationBell({ user }) {
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications-header", user?.email],
     queryFn: () =>
-      base44.entities.Notification.filter({
+      notificationService.filter({
         user_email: user.email,
         read: false,
       }),

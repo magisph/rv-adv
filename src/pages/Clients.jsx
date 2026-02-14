@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { clientService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -65,14 +65,14 @@ export default function Clients() {
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients"],
-    queryFn: () => base44.entities.Client.list("-created_date"),
+    queryFn: () => clientService.list("-created_date"),
     staleTime: 2 * 60 * 1000, // 2 minutos
     cacheTime: 10 * 60 * 1000, // 10 minutos
     keepPreviousData: true,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Client.create(data),
+    mutationFn: (data) => clientService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries(["clients"]);
       setShowForm(false);
@@ -80,7 +80,7 @@ export default function Clients() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Client.update(id, data),
+    mutationFn: ({ id, data }) => clientService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["clients"]);
       setShowForm(false);
@@ -89,7 +89,7 @@ export default function Clients() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Client.delete(id),
+    mutationFn: (id) => clientService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["clients"]),
   });
 

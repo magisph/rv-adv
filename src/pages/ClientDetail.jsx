@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { authService } from "@/services/authService";
+import { clientService, processService, appointmentService, beneficioService, documentService, notificationService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -107,7 +108,7 @@ export default function ClientDetail() {
 
   const { data: client, isLoading } = useQuery({
     queryKey: ["client", clientId],
-    queryFn: () => base44.entities.Client.filter({ id: clientId }),
+    queryFn: () => clientService.filter({ id: clientId }),
     select: (data) => data[0],
     enabled: !!clientId,
     staleTime: 3 * 60 * 1000, // 3 minutos
@@ -116,7 +117,7 @@ export default function ClientDetail() {
 
   const { data: processes = [] } = useQuery({
     queryKey: ["client-processes", clientId],
-    queryFn: () => base44.entities.Process.filter({ client_id: clientId }),
+    queryFn: () => processService.filter({ client_id: clientId }),
     enabled: !!clientId,
     staleTime: 3 * 60 * 1000,
     cacheTime: 15 * 60 * 1000,
@@ -124,7 +125,7 @@ export default function ClientDetail() {
 
   const { data: appointments = [] } = useQuery({
     queryKey: ["client-appointments", clientId],
-    queryFn: () => base44.entities.Appointment.filter({ client_id: clientId }),
+    queryFn: () => appointmentService.filter({ client_id: clientId }),
     enabled: !!clientId,
     staleTime: 2 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
@@ -132,7 +133,7 @@ export default function ClientDetail() {
 
   const { data: beneficios = [] } = useQuery({
     queryKey: ["client-beneficios", clientId],
-    queryFn: () => base44.entities.Beneficio.filter({ client_id: clientId }),
+    queryFn: () => beneficioService.filter({ client_id: clientId }),
     enabled: !!clientId,
     staleTime: 3 * 60 * 1000,
     cacheTime: 15 * 60 * 1000,
@@ -141,7 +142,7 @@ export default function ClientDetail() {
   const { data: clientDocuments = [] } = useQuery({
     queryKey: ["client-documents", clientId],
     queryFn: () =>
-      base44.entities.Document.filter({
+      documentService.filter({
         parent_type: "client",
         parent_id: clientId,
       }),
@@ -151,7 +152,7 @@ export default function ClientDetail() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.Client.update(clientId, data),
+    mutationFn: (data) => clientService.update(clientId, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["client", clientId]);
       setShowEditForm(false);
@@ -159,7 +160,7 @@ export default function ClientDetail() {
   });
 
   const createAppointmentMutation = useMutation({
-    mutationFn: (data) => base44.entities.Appointment.create(data),
+    mutationFn: (data) => appointmentService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries(["client-appointments", clientId]);
       setShowAppointmentForm(false);
@@ -168,7 +169,7 @@ export default function ClientDetail() {
   });
 
   const updateAppointmentMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Appointment.update(id, data),
+    mutationFn: ({ id, data }) => appointmentService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["client-appointments", clientId]);
       setShowAppointmentForm(false);
@@ -177,7 +178,7 @@ export default function ClientDetail() {
   });
 
   const deleteAppointmentMutation = useMutation({
-    mutationFn: (id) => base44.entities.Appointment.delete(id),
+    mutationFn: (id) => appointmentService.delete(id),
     onSuccess: () =>
       queryClient.invalidateQueries(["client-appointments", clientId]),
   });
@@ -191,14 +192,14 @@ export default function ClientDetail() {
       : await createAppointmentMutation.mutateAsync(data);
 
     if (data.alerts_enabled && data.alert_days && data.alert_days.length > 0) {
-      const user = await base44.auth.me();
+      const user = await authService.getCurrentUser();
       const appointmentDate = new Date(data.date);
 
       for (const daysBefore of data.alert_days) {
         const notificationDate = new Date(appointmentDate);
         notificationDate.setDate(notificationDate.getDate() - daysBefore);
 
-        await base44.entities.Notification.create({
+        await notificationService.create({
           title:
             daysBefore === 0
               ? "Compromisso hoje"
@@ -226,11 +227,11 @@ export default function ClientDetail() {
     ) {
       deleteAppointmentMutation.mutate(appointment.id);
 
-      const notifications = await base44.entities.Notification.filter({
+      const notifications = await notificationService.filter({
         related_id: appointment.id,
       });
       for (const notification of notifications) {
-        await base44.entities.Notification.delete(notification.id);
+        await notificationService.delete(notification.id);
       }
     }
   };

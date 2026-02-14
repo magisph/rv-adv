@@ -72,7 +72,7 @@ export class BaseService {
       return data;
   }
   
-  // Custom filter method matching Base44 signature
+  // Custom filter method
   async filter(filters, orderBy = "created_date", limit = 100) {
       let query = supabase.from(this.table).select("*");
       

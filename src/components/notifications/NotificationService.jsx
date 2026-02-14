@@ -1,5 +1,5 @@
-import { base44 } from "@/lib/adapters/legacyBase44";
-
+﻿import { authService } from "@/services/authService";
+import { notificationService } from "@/services";
 /**
  * Serviço centralizado para criar notificações no sistema
  */
@@ -11,8 +11,8 @@ export const createDeadlineNotification = async (deadline, daysUntil) => {
   const priority =
     daysUntil <= 2 ? "urgente" : daysUntil <= 7 ? "importante" : "informativa";
 
-  await base44.entities.Notification.create({
-    user_email: deadline.responsible_email || (await base44.auth.me()).email,
+  await notificationService.create({
+    user_email: deadline.responsible_email || (await authService.getCurrentUser()).email,
     type: "prazo",
     priority: priority,
     title:
@@ -31,7 +31,7 @@ export const createDeadlineNotification = async (deadline, daysUntil) => {
 export const createTaskAssignedNotification = async (task) => {
   if (!task.assigned_to) return;
 
-  await base44.entities.Notification.create({
+  await notificationService.create({
     user_email: task.assigned_to,
     type: "tarefa",
     priority: task.priority === "urgente" ? "urgente" : "importante",
@@ -51,7 +51,7 @@ export const createTaskDueNotification = async (task, daysUntil) => {
   const priority =
     daysUntil <= 0 ? "urgente" : daysUntil === 0 ? "importante" : "informativa";
 
-  await base44.entities.Notification.create({
+  await notificationService.create({
     user_email: task.assigned_to,
     type: "tarefa",
     priority: priority,
@@ -71,10 +71,10 @@ export const createTaskDueNotification = async (task, daysUntil) => {
  * Cria notificação para agendamento próximo
  */
 export const createAppointmentNotification = async (appointment, daysUntil) => {
-  const user = await base44.auth.me();
+  const user = await authService.getCurrentUser();
   const priority = daysUntil === 0 ? "importante" : "informativa";
 
-  await base44.entities.Notification.create({
+  await notificationService.create({
     user_email: user.email,
     type: "compromisso",
     priority: priority,
@@ -92,7 +92,7 @@ export const createAppointmentNotification = async (appointment, daysUntil) => {
  * Cria notificação para nova movimentação processual
  */
 export const createProcessMoveNotification = async (move) => {
-  const user = await base44.auth.me();
+  const user = await authService.getCurrentUser();
 
   const priority =
     move.move_type === "sentenca"
@@ -101,7 +101,7 @@ export const createProcessMoveNotification = async (move) => {
         ? "importante"
         : "informativa";
 
-  await base44.entities.Notification.create({
+  await notificationService.create({
     user_email: user.email,
     type: "movimentacao",
     priority: priority,
@@ -119,7 +119,7 @@ export const createDocumentNotification = async (
   document,
   actionType = "upload",
 ) => {
-  const user = await base44.auth.me();
+  const user = await authService.getCurrentUser();
 
   const title =
     actionType === "upload"
@@ -137,7 +137,7 @@ export const createDocumentNotification = async (
         ? "urgente"
         : "informativa";
 
-  await base44.entities.Notification.create({
+  await notificationService.create({
     user_email: user.email,
     type: "documento",
     priority: priority,
@@ -155,9 +155,9 @@ export const createDocumentNotification = async (
  * Cria notificação para novo cliente cadastrado
  */
 export const createNewClientNotification = async (client) => {
-  const user = await base44.auth.me();
+  const user = await authService.getCurrentUser();
 
-  await base44.entities.Notification.create({
+  await notificationService.create({
     user_email: user.email,
     type: "sistema",
     priority: "informativa",
@@ -172,7 +172,7 @@ export const createNewClientNotification = async (client) => {
  * Cria notificação para benefício atualizado
  */
 export const createBeneficioNotification = async (beneficio, status) => {
-  const user = await base44.auth.me();
+  const user = await authService.getCurrentUser();
 
   const priority =
     status === "deferido"
@@ -192,7 +192,7 @@ export const createBeneficioNotification = async (beneficio, status) => {
           ? "📝 Benefício Protocolado"
           : "Benefício Atualizado";
 
-  await base44.entities.Notification.create({
+  await notificationService.create({
     user_email: user.email,
     type: "sistema",
     priority: priority,
@@ -207,17 +207,17 @@ export const createBeneficioNotification = async (beneficio, status) => {
  * Limpa notificações antigas (executar periodicamente)
  */
 export const cleanOldNotifications = async (daysOld = 30) => {
-  const user = await base44.auth.me();
+  const user = await authService.getCurrentUser();
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
-  const oldNotifications = await base44.entities.Notification.filter({
+  const oldNotifications = await notificationService.filter({
     user_email: user.email,
     read: true,
     created_date: { $lt: cutoffDate.toISOString() },
   });
 
   for (const notification of oldNotifications) {
-    await base44.entities.Notification.delete(notification.id);
+    await notificationService.delete(notification.id);
   }
 };

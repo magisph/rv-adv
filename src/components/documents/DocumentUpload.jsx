@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { documentService } from "@/services";
+import { aiService } from "@/services/aiService";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,7 @@ export default function DocumentUpload({
 
   const uploadMutation = useMutation({
     mutationFn: async (data) => {
-      const { file_url } = await base44.integrations.Core.UploadFile({
+      const { file_url } = await aiService.uploadFile({
         file: data.file,
       });
 
@@ -48,7 +49,7 @@ export default function DocumentUpload({
         ocr_processed: false,
       };
 
-      return base44.entities.Document.create(docData);
+      return documentService.create(docData);
     },
     onSuccess: () => {
       onSuccess?.();

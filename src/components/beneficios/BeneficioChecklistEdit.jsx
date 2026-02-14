@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { aiService } from "@/services/aiService";
+
 import { useMutation } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -749,7 +750,7 @@ export default function BeneficioChecklistEdit({
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, docId }) => {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await aiService.uploadFile({ file });
       return { file_url, docId };
     },
     onSuccess: ({ file_url, docId }) => {

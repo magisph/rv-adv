@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useEffect } from "react";
+import { authService } from "@/services/authService";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ export default function Settings() {
 
   useEffect(() => {
     const loadUser = async () => {
-      const userData = await base44.auth.me();
+      const userData = await authService.getCurrentUser();
       setUser(userData);
       setFormData({
         full_name: userData.full_name || "",
@@ -53,9 +53,9 @@ export default function Settings() {
   }, []);
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.auth.updateMe(data),
+    mutationFn: (data) => authService.updateMe(data),
     onSuccess: async () => {
-      const userData = await base44.auth.me();
+      const userData = await authService.getCurrentUser();
       setUser(userData);
     },
   });

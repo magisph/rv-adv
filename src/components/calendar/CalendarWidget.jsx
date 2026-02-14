@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState } from "react";
+import { taskService, appointmentService, deadlineService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ export default function CalendarWidget({ user }) {
   const { data: tasks = [] } = useQuery({
     queryKey: ["calendar-tasks", user?.email],
     queryFn: () =>
-      base44.entities.Task.filter({
+      taskService.filter({
         assigned_to: user.email,
         status: { $ne: "done" },
         due_date: { $ne: null },
@@ -32,7 +32,7 @@ export default function CalendarWidget({ user }) {
   const { data: appointments = [] } = useQuery({
     queryKey: ["calendar-appointments"],
     queryFn: () =>
-      base44.entities.Appointment.filter({
+      appointmentService.filter({
         status: "agendado",
       }),
     enabled: !!user,
@@ -41,7 +41,7 @@ export default function CalendarWidget({ user }) {
   const { data: deadlines = [] } = useQuery({
     queryKey: ["calendar-deadlines"],
     queryFn: () =>
-      base44.entities.Deadline.filter({
+      deadlineService.filter({
         status: "pendente",
       }),
     enabled: !!user,

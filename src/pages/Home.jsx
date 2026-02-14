@@ -1,5 +1,6 @@
-import React from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React from "react";
+import { authService } from "@/services/authService";
+import { clientService, processService, deadlineService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import {
   Users,
@@ -18,7 +19,7 @@ export default function Home() {
   // Cache do usuário compartilhado com Layout
   const { data: user } = useQuery({
     queryKey: ["current-user"],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => authService.getCurrentUser(),
     staleTime: 5 * 60 * 1000,
     cacheTime: 30 * 60 * 1000,
     retry: false,
@@ -27,14 +28,14 @@ export default function Home() {
   // Dashboard: carregar apenas últimos 10 de cada para performance
   const { data: clients = [], isLoading: loadingClients } = useQuery({
     queryKey: ["clients"],
-    queryFn: () => base44.entities.Client.list("-created_date", 10),
+    queryFn: () => clientService.list("-created_date", 10),
     staleTime: 2 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
   });
 
   const { data: processes = [], isLoading: loadingProcesses } = useQuery({
     queryKey: ["processes"],
-    queryFn: () => base44.entities.Process.list("-created_date", 10),
+    queryFn: () => processService.list("-created_date", 10),
     staleTime: 2 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
   });
@@ -42,7 +43,7 @@ export default function Home() {
   const { data: deadlines = [], isLoading: loadingDeadlines } = useQuery({
     queryKey: ["deadlines"],
     queryFn: () =>
-      base44.entities.Deadline.filter({ status: "pendente" }, "-due_date", 20),
+      deadlineService.filter({ status: "pendente" }, "-due_date", 20),
     staleTime: 1 * 60 * 1000,
     cacheTime: 5 * 60 * 1000,
   });

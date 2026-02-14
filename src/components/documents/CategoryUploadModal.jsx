@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from "react";
-import { base44 } from "@/lib/adapters/legacyBase44";
+﻿import React, { useState, useCallback } from "react";
+import { documentService } from "@/services";
+import { aiService } from "@/services/aiService";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,7 +137,7 @@ export default function CategoryUploadModal({
         setUploadProgress((prev) => ({ ...prev, [fileData.id]: 30 }));
 
         // Upload do arquivo
-        const { file_url } = await base44.integrations.Core.UploadFile({
+        const { file_url } = await aiService.uploadFile({
           file: fileData.file,
         });
 
@@ -150,7 +151,7 @@ export default function CategoryUploadModal({
 
         if (isOcrCompatible) {
           try {
-            const ocrResponse = await base44.integrations.Core.InvokeLLM({
+            const ocrResponse = await aiService.invokeLLM({
               prompt:
                 "Extraia todo o texto deste documento. Retorne o texto completo extraído sem nenhuma formatação adicional ou comentário.",
               file_urls: [file_url],
@@ -181,7 +182,7 @@ export default function CategoryUploadModal({
         setUploadProgress((prev) => ({ ...prev, [fileData.id]: 85 }));
 
         // Criar registro do documento
-        await base44.entities.Document.create({
+        await documentService.create({
           name: fileData.name,
           file_url,
           category,

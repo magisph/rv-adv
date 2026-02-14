@@ -11,6 +11,7 @@ export const documentService = new BaseService("documents");
 export const appointmentService = new BaseService("appointments");
 export const notificationService = new BaseService("notifications");
 export const templateService = new BaseService("templates");
+export const userService = new BaseService("users");
 
 // Specialized Entities
 export const beneficioService = new BaseService("beneficios");
