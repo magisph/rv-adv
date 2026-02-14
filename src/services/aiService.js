@@ -16,7 +16,7 @@ const PROVIDERS = {
   GEMINI: {
     baseUrl: import.meta.env.VITE_GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
     apiKey: import.meta.env.VITE_GEMINI_API_KEY,
-    defaultModel: import.meta.env.VITE_MODEL_VISION || 'gemini-2.0-flash'
+    defaultModel: import.meta.env.VITE_MODEL_VISION || 'gemini-3-flash-preview'
   },
   COHERE: {
     baseUrl: 'https://api.cohere.ai/v1',

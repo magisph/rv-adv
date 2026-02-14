@@ -24,3 +24,9 @@ export const beneficioSalarioMaternidadeRuralService = new BaseService("benefici
 export const documentFolderService = new BaseService("document_folders");
 export const documentVersionService = new BaseService("document_versions");
 export const processMoveService = new BaseService("process_moves");
+
+// AI Service - FASE B
+export { aiService } from './aiService';
+
+// Calendar Service - Google Calendar Integration
+export { calendarService } from './calendarService';
