@@ -4,8 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -34,7 +32,6 @@ import {
   ArrowLeft,
   Save,
   X,
-  Pencil,
   Trash2,
   FileText,
   CheckSquare,
@@ -160,13 +157,21 @@ export default function BeneficioEditModal({
       setHasChanges(false);
       onClose();
     },
+    onError: (error) => {
+      console.error("Erro ao salvar benefício:", error);
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => beneficioService.delete(beneficio.id),
     onSuccess: () => {
       queryClient.invalidateQueries(["client-beneficios", clientId]);
+      setShowDeleteDialog(false);
       onClose();
+    },
+    onError: (error) => {
+      console.error("Erro ao excluir benefício:", error);
+      setShowDeleteDialog(false);
     },
   });
 
@@ -211,7 +216,6 @@ export default function BeneficioEditModal({
 
   const handleDelete = () => {
     deleteMutation.mutate();
-    setShowDeleteDialog(false);
   };
 
   const handleForceClose = () => {
@@ -332,11 +336,11 @@ export default function BeneficioEditModal({
               <div className="space-y-1">
                 <Label className="text-xs text-slate-500">Cadastrado em</Label>
                 <Input
-                  value={
-                    beneficio.created_date
-                      ? format(new Date(beneficio.created_date), "dd/MM/yyyy")
-                      : "-"
-                  }
+                  value={(() => {
+                    if (!beneficio.created_date) return "-";
+                    const d = new Date(beneficio.created_date);
+                    return isNaN(d.getTime()) ? "-" : format(d, "dd/MM/yyyy");
+                  })()}
                   disabled
                   className="h-9 bg-slate-100"
                 />

@@ -721,7 +721,7 @@ export default function BeneficioChecklist({
   const documentos = CHECKLISTS[tipoBeneficio] || [];
 
   const handleToggle = (docId, checked) => {
-    onChange({ ...checklist, [docId]: checked });
+    onChange({ ...checklist, [docId]: checked === true });
   };
 
   const completedDocs = documentos.filter((doc) => checklist[doc.id]).length;

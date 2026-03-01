@@ -74,6 +74,9 @@ export default function BeneficioModal({
       queryClient.invalidateQueries(["client-beneficios", clientId]);
       handleClose();
     },
+    onError: (error) => {
+      console.error("Erro ao criar benefício:", error);
+    },
   });
 
   const handleClose = () => {
@@ -98,6 +101,10 @@ export default function BeneficioModal({
   };
 
   const handleSave = () => {
+    if (!categoria || !tipoBeneficio) {
+      console.warn("Categoria e tipo de benefício são obrigatórios.");
+      return;
+    }
     createMutation.mutate({
       client_id: clientId,
       client_name: clientName,

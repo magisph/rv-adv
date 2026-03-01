@@ -81,11 +81,12 @@ export default function BPCIdosoForm({ dados, onChange }) {
 
   const calcularIdade = (dataNascimento) => {
     if (!dataNascimento) return null;
+    // Usar componentes da data para evitar diferença de fuso horário
+    const [ano, mes, dia] = dataNascimento.split("-").map(Number);
     const hoje = new Date();
-    const nascimento = new Date(dataNascimento);
-    let idade = hoje.getFullYear() - nascimento.getFullYear();
-    const mes = hoje.getMonth() - nascimento.getMonth();
-    if (mes < 0 || (mes === 0 && hoje.getDate() < nascimento.getDate())) {
+    let idade = hoje.getFullYear() - ano;
+    const mesAtual = hoje.getMonth() + 1;
+    if (mesAtual < mes || (mesAtual === mes && hoje.getDate() < dia)) {
       idade--;
     }
     return idade;
@@ -201,7 +202,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                   onChange={(e) =>
                     handleChange(
                       "num_membros_cadunico",
-                      parseInt(e.target.value),
+                      e.target.value === "" ? null : parseInt(e.target.value, 10),
                     )
                   }
                 />
@@ -215,7 +216,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                   onChange={(e) =>
                     handleChange(
                       "renda_declarada_cadunico",
-                      parseFloat(e.target.value),
+                      e.target.value === "" ? null : parseFloat(e.target.value),
                     )
                   }
                 />
@@ -346,7 +347,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                 step="0.01"
                 value={dados.valor_total_renda || ""}
                 onChange={(e) =>
-                  handleChange("valor_total_renda", parseFloat(e.target.value))
+                  handleChange("valor_total_renda", e.target.value === "" ? null : parseFloat(e.target.value))
                 }
               />
             </div>
@@ -540,7 +541,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                     step="0.01"
                     value={dados.valor_aluguel || ""}
                     onChange={(e) =>
-                      handleChange("valor_aluguel", parseFloat(e.target.value))
+                      handleChange("valor_aluguel", e.target.value === "" ? null : parseFloat(e.target.value))
                     }
                   />
                 </div>
@@ -552,7 +553,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                   type="number"
                   value={dados.num_comodos || ""}
                   onChange={(e) =>
-                    handleChange("num_comodos", parseInt(e.target.value))
+                    handleChange("num_comodos", e.target.value === "" ? null : parseInt(e.target.value, 10))
                   }
                 />
               </div>
@@ -664,9 +665,14 @@ export default function BPCIdosoForm({ dados, onChange }) {
                     ? ""
                     : String(dados.possui_veiculos)
                 }
-                onValueChange={(v) =>
-                  handleChange("possui_veiculos", v === "true")
-                }
+                onValueChange={(v) => {
+                  const valor = v === "true";
+                  handleChange("possui_veiculos", valor);
+                  if (!valor) {
+                    setVeiculos([]);
+                    handleChange("veiculos", []);
+                  }
+                }}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="true" id="veic-sim" />
@@ -735,7 +741,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                             atualizarVeiculo(
                               index,
                               "ano",
-                              parseInt(e.target.value),
+                              e.target.value === "" ? null : parseInt(e.target.value, 10),
                             )
                           }
                         />

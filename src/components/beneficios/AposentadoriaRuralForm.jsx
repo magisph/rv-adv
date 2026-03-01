@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
 const PARENTESCOS = [
   "Cônjuge/Companheiro",
@@ -34,24 +34,6 @@ const BENEFICIOS = [
   "Outro",
 ];
 
-const INSTRUMENTOS = [
-  "Enxada",
-  "Foice",
-  "Facão",
-  "Trator",
-  "Arado",
-  "Plantadeira",
-  "Outros",
-];
-
-const ATIVIDADES_ROCADO = [
-  "Prepara a terra",
-  "Planta",
-  "Limpa/capina",
-  "Colhe",
-  "Cuida dos animais",
-  "Outros",
-];
 
 export default function AposentadoriaRuralForm({ dados, onChange }) {
   const [membros, setMembros] = useState(dados.membros_grupo_familiar || []);
@@ -118,7 +100,7 @@ export default function AposentadoriaRuralForm({ dados, onChange }) {
     const novas = [...propriedades];
     novas[index][field] = value;
 
-    // Calcular tempo trabalhado
+    // Calcular tempo trabalhado (com validação de ordem das datas)
     if (
       (field === "periodo_inicio" || field === "periodo_fim") &&
       novas[index].periodo_inicio &&
@@ -129,10 +111,14 @@ export default function AposentadoriaRuralForm({ dados, onChange }) {
       const meses =
         (fim.getFullYear() - inicio.getFullYear()) * 12 +
         (fim.getMonth() - inicio.getMonth());
-      const anos = Math.floor(meses / 12);
-      const mesesRestantes = meses % 12;
-      novas[index].tempo_trabalhado =
-        `${anos} ano(s) e ${mesesRestantes} mês(es)`;
+      if (meses >= 0) {
+        const anos = Math.floor(meses / 12);
+        const mesesRestantes = meses % 12;
+        novas[index].tempo_trabalhado =
+          `${anos} ano(s) e ${mesesRestantes} mês(es)`;
+      } else {
+        novas[index].tempo_trabalhado = "";
+      }
     }
 
     setPropriedades(novas);

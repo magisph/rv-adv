@@ -4,16 +4,10 @@ import { aiService } from "@/services/aiService";
 import { useMutation } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   CheckCircle2,
   Circle,
@@ -765,6 +759,10 @@ export default function BeneficioChecklistEdit({
       });
       setUploadingItem(null);
     },
+    onError: (error) => {
+      console.error("Erro no upload do arquivo:", error);
+      setUploadingItem(null);
+    },
   });
 
   const handleToggle = (docId, checked) => {
@@ -773,7 +771,7 @@ export default function BeneficioChecklistEdit({
       ...checklist,
       [docId]: {
         ...currentItem,
-        checked,
+        checked: checked === true,
       },
     });
   };

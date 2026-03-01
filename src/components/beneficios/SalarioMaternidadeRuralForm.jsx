@@ -109,6 +109,7 @@ export default function SalarioMaternidadeRuralForm({ dados, onChange }) {
     const novas = [...propriedades];
     novas[index][field] = value;
 
+    // Calcular tempo trabalhado (com validação de ordem das datas)
     if (
       (field === "periodo_inicio" || field === "periodo_fim") &&
       novas[index].periodo_inicio &&
@@ -119,10 +120,14 @@ export default function SalarioMaternidadeRuralForm({ dados, onChange }) {
       const meses =
         (fim.getFullYear() - inicio.getFullYear()) * 12 +
         (fim.getMonth() - inicio.getMonth());
-      const anos = Math.floor(meses / 12);
-      const mesesRestantes = meses % 12;
-      novas[index].tempo_trabalhado =
-        `${anos} ano(s) e ${mesesRestantes} mês(es)`;
+      if (meses >= 0) {
+        const anos = Math.floor(meses / 12);
+        const mesesRestantes = meses % 12;
+        novas[index].tempo_trabalhado =
+          `${anos} ano(s) e ${mesesRestantes} mês(es)`;
+      } else {
+        novas[index].tempo_trabalhado = "";
+      }
     }
 
     setPropriedades(novas);
@@ -296,7 +301,7 @@ export default function SalarioMaternidadeRuralForm({ dados, onChange }) {
                     type="number"
                     value={dados.semanas_gestacao || ""}
                     onChange={(e) =>
-                      handleChange("semanas_gestacao", parseInt(e.target.value))
+                      handleChange("semanas_gestacao", e.target.value === "" ? null : parseInt(e.target.value, 10))
                     }
                   />
                 </div>
@@ -329,7 +334,7 @@ export default function SalarioMaternidadeRuralForm({ dados, onChange }) {
                     onChange={(e) =>
                       handleChange(
                         "numero_filhos_parto",
-                        parseInt(e.target.value),
+                        e.target.value === "" ? null : parseInt(e.target.value, 10),
                       )
                     }
                     placeholder="Ex: 1 (único), 2 (gêmeos)"
@@ -480,7 +485,7 @@ export default function SalarioMaternidadeRuralForm({ dados, onChange }) {
                     onChange={(e) =>
                       handleChange(
                         "quantidade_filhos",
-                        parseInt(e.target.value),
+                        e.target.value === "" ? null : parseInt(e.target.value, 10),
                       )
                     }
                   />

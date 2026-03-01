@@ -40,43 +40,6 @@ export default function BeneficioFormulario({
       return <SalarioMaternidadeRuralForm dados={dados} onChange={onChange} />;
     }
 
-    // BPC/LOAS - Idoso (fallback antigo, manter para compatibilidade)
-    if (tipoBeneficio === "bpc_loas_idoso_old") {
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Idade do Solicitante</Label>
-            <Input
-              type="number"
-              value={dados.idade || ""}
-              onChange={(e) => handleChange("idade", e.target.value)}
-              placeholder="65 anos ou mais"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Renda per capita familiar</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={dados.renda_per_capita || ""}
-              onChange={(e) => handleChange("renda_per_capita", e.target.value)}
-              placeholder="Valor em R$"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Número de pessoas no grupo familiar</Label>
-            <Input
-              type="number"
-              value={dados.num_pessoas_familia || ""}
-              onChange={(e) =>
-                handleChange("num_pessoas_familia", e.target.value)
-              }
-            />
-          </div>
-        </div>
-      );
-    }
-
     // BPC/LOAS - PCD
     if (tipoBeneficio === "bpc_loas_pcd") {
       return (
@@ -106,7 +69,7 @@ export default function BeneficioFormulario({
               type="number"
               step="0.01"
               value={dados.renda_per_capita || ""}
-              onChange={(e) => handleChange("renda_per_capita", e.target.value)}
+              onChange={(e) => handleChange("renda_per_capita", e.target.value === "" ? null : parseFloat(e.target.value))}
               placeholder="Valor em R$"
             />
           </div>
@@ -123,7 +86,7 @@ export default function BeneficioFormulario({
             <Input
               type="number"
               value={dados.idade_atual || ""}
-              onChange={(e) => handleChange("idade_atual", e.target.value)}
+              onChange={(e) => handleChange("idade_atual", e.target.value === "" ? null : parseInt(e.target.value, 10))}
             />
           </div>
           <div className="space-y-2">
@@ -132,7 +95,7 @@ export default function BeneficioFormulario({
               type="number"
               value={dados.tempo_contribuicao || ""}
               onChange={(e) =>
-                handleChange("tempo_contribuicao", e.target.value)
+                handleChange("tempo_contribuicao", e.target.value === "" ? null : parseInt(e.target.value, 10))
               }
             />
           </div>

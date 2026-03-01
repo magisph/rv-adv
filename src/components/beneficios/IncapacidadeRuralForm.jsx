@@ -1,5 +1,5 @@
 ﻿import React, { useState } from "react";
-import { aiService } from "@/services/aiService";
+import { aiService } from "@/services";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, AlertCircle, Upload } from "lucide-react";
+import { Plus, Trash2, AlertCircle } from "lucide-react";
 
 const TIPOS_TRATAMENTO = [
   "Fisioterapia",
@@ -52,7 +52,7 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
     dados.propriedades_trabalhadas || [],
   );
   const [testemunhas, setTestemunhas] = useState(dados.testemunhas || []);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingItems, setUploadingItems] = useState(new Set());
 
   const handleChange = (field, value) => {
     onChange({ ...dados, [field]: value });
@@ -93,14 +93,18 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
   };
 
   const handleFileUpload = async (index, file) => {
-    setUploading(true);
+    setUploadingItems((prev) => new Set(prev).add(index));
     try {
       const { file_url } = await aiService.uploadFile({ file });
       atualizarDocumentoMedico(index, "arquivo_url", file_url);
     } catch (error) {
       console.error("Erro ao fazer upload:", error);
     } finally {
-      setUploading(false);
+      setUploadingItems((prev) => {
+        const next = new Set(prev);
+        next.delete(index);
+        return next;
+      });
     }
   };
 
@@ -198,11 +202,16 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
     handleChange("testemunhas", novas);
   };
 
-  // Ordenar documentos médicos por data
+  // Ordenar documentos médicos por data (com proteção contra datas inválidas)
   const documentosOrdenados = [...documentosMedicos].sort((a, b) => {
+    if (!a.data && !b.data) return 0;
     if (!a.data) return 1;
     if (!b.data) return -1;
-    return new Date(a.data) - new Date(b.data);
+    const da = new Date(a.data);
+    const db = new Date(b.data);
+    if (isNaN(da.getTime())) return 1;
+    if (isNaN(db.getTime())) return -1;
+    return da - db;
   });
 
   return (
@@ -679,11 +688,11 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
                           <Input
                             type="file"
                             onChange={(e) => {
-                              const file = e.target.files[0];
+                              const file = e.target.files?.[0];
                               if (file) handleFileUpload(originalIndex, file);
                             }}
                             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                            disabled={uploading}
+                            disabled={uploadingItems.has(originalIndex)}
                           />
                           {doc.arquivo_url && (
                             <a
