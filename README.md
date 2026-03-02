@@ -1,39 +1,68 @@
-**Welcome to your Base44 project** 
+# ⚖️ RV-Adv (com Módulo PeríciaPro)
 
-**About**
+## 🎯 Sobre o Projeto
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+**RV-Adv** é um sistema integrado de gestão inteligente voltado para escritórios de advocacia. Desenvolvido como uma moderna *Single Page Application* (SPA), o sistema centraliza o controlo de clientes, processos judiciais, finanças e agenda. 
 
-This project contains everything you need to run your app locally.
+Recentemente, o sistema foi expandido com a incorporação nativa do módulo **PeríciaPro** (anteriormente um sistema legado isolado), trazendo capacidades avançadas de gestão de processos previdenciários e assistenciais (INSS e instâncias judiciais).
 
-**Edit the code in your local development environment**
+O grande diferencial tecnológico do projeto é a **integração com Inteligência Artificial**, que atua na leitura automatizada (OCR) e classificação heurística de documentos jurídicos e laudos médicos.
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+---
 
-**Prerequisites:** 
+## ✨ Funcionalidades Principais
 
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
+A arquitetura do sistema é dividida em domínios de negócio:
 
-```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
+* 👥 **Gestão de Clientes (`/clients`):** Cadastro completo, histórico e painel consolidado (*ClientDetail*).
+* 📂 **Controlo de Processos (`/processes`):** Acompanhamento de ações judiciais e movimentações.
+* 🏥 **Módulo PeríciaPro (`/modules/periciapro`):** Gestão rigorosa de perícias médicas (DIB, DCB, datas de agendamento), com motor de alertas proativo para evitar a perda de prazos.
+* 🧠 **GED & Inteligência Artificial (`/documents`):** Gerenciamento Eletrónico de Documentos com motor de extração de dados (OCR). Os laudos do PeríciaPro são processados automaticamente aqui logo após o upload.
+* 📅 **Prazos e Tarefas (`/deadlines` e `/tasks`):** Controlo de agenda com sincronização automatizada para o Google Calendar (via Edge Functions).
+* 💰 **Gestão Financeira (`/financial`):** Controlo de honorários, custas judiciais e pagamentos de clientes/perícias.
 
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
-```
+---
 
-Run the app: `npm run dev`
+## 🛠 Stack Tecnológico
 
-**Publish your changes**
+O projeto abandonou infraestruturas fechadas (BaaS legados) e opera numa stack moderna, segura e altamente escalável:
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+**Frontend (Client-Side):**
+* **Framework:** React 18 (com JSX)
+* **Build Tool:** Vite
+* **Roteamento:** React Router DOM v6
+* **Gestão de Estado & Cache:** TanStack Query v5 (React Query)
+* **Estilização & UI:** Tailwind CSS + Radix UI (arquitetura `shadcn/ui`)
+* **Ícones:** Lucide React
 
-**Docs & Support**
+**Backend & Infraestrutura (Supabase):**
+* **Base de Dados:** PostgreSQL (com tipagem rígida e RLS - *Row Level Security* nativo)
+* **Autenticação:** Supabase Auth (Sessões via JWT)
+* **Storage:** Supabase Storage (Buckets para PDFs, imagens e laudos)
+* **Serverless:** Supabase Edge Functions (Deno/TypeScript) para rotinas como a sincronização do Google Calendar.
+* **Tarefas Assíncronas:** `pg_cron` a rodar no banco de dados, empurrando alertas de prazos para o frontend via *Supabase Realtime*.
 
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
+---
 
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+## 📁 Estrutura de Diretórios (Monólito Modular)
+
+```text
+📦 rv-adv
+ ┣ 📂 src/
+ ┃ ┣ 📂 components/     # Componentes UI reutilizáveis e de domínio (RV-Adv)
+ ┃ ┣ 📂 hooks/          # Custom React hooks
+ ┃ ┣ 📂 lib/            # Configurações globais (Supabase client, QueryClient, utils)
+ ┃ ┣ 📂 pages/          # Telas principais de roteamento do sistema base
+ ┃ ┣ 📂 services/       # Camada de comunicação com o Supabase
+ ┃ ┗ 📂 modules/
+ ┃    ┗ 📂 periciapro/  # 🚨 [NOVO] Módulo Integrado de Perícias Previdenciárias
+ ┃       ┣ 📂 components/
+ ┃       ┣ 📂 pages/
+ ┃       ┣ 📂 services/
+ ┃       ┗ 📂 types/
+ ┣ 📂 supabase/         # ⚙️ Infraestrutura Backend
+ ┃ ┣ 📂 functions/      # Edge Functions em TypeScript (Google Calendar Sync, etc.)
+ ┃ ┗ 📂 migrations/     # Scripts SQL (Tabelas, RLS e pg_cron)
+ ┣ 📜 App.jsx           # Roteamento e injeção de Providers
+ ┣ 📜 package.json
+ ┗ 📜 vite.config.js
