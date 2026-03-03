@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { createPageUrl } from "./utils";
 import { authService } from "@/services/authService";
 import { clientService, processService, notificationService } from "@/services";
@@ -45,7 +45,6 @@ export default function Layout({ children, currentPageName }) {
     currentPageName?.startsWith("pericias-") ?? false
   );
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   // Cache user data com staleTime longo para evitar recarregamentos
   const { data: user } = useQuery({
@@ -92,42 +91,39 @@ export default function Layout({ children, currentPageName }) {
   };
 
   // Prefetch ao hover nos links de navegação
+  // Set theme-color meta tag imperatively (replaces invalid <head> in JSX)
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      document.head.appendChild(meta);
+    }
+    meta.content = '#1e3a5f';
+  }, []);
+
   const handleNavHover = (pageName) => {
-    if (pageName === "Clients") {
-      queryClient.prefetchQuery({
-        queryKey: ["clients"],
-        queryFn: () => clientService.list("-created_date"),
-        staleTime: 2 * 60 * 1000,
-      });
-    } else if (pageName === "Processes") {
-      queryClient.prefetchQuery({
-        queryKey: ["processes"],
-        queryFn: () => processService.list("-created_date"),
-        staleTime: 2 * 60 * 1000,
-      });
+    try {
+      if (pageName === "Clients") {
+        queryClient.prefetchQuery({
+          queryKey: ["clients"],
+          queryFn: () => clientService.list("-created_date"),
+          staleTime: 2 * 60 * 1000,
+        });
+      } else if (pageName === "Processes") {
+        queryClient.prefetchQuery({
+          queryKey: ["processes"],
+          queryFn: () => processService.list("-created_date"),
+          staleTime: 2 * 60 * 1000,
+        });
+      }
+    } catch (err) {
+      console.debug('[Layout] Prefetch ignorado:', err);
     }
   };
 
   return (
     <>
-      {/* PWA Metadados */}
-      <head>
-        <meta name="theme-color" content="#1e3a5f" />
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes"
-        />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="LegalFlow" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
-        <link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png" />
-        <link rel="apple-touch-icon" sizes="120x120" href="/icon-120.png" />
-      </head>
-
       <div className="min-h-screen bg-slate-50">
         <style>{`
           :root {
