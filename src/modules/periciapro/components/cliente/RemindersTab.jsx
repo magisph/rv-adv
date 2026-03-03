@@ -34,34 +34,49 @@ export default function RemindersTab({ reminders, periciaId, onUpdate }) {
   const handleCreate = async () => {
     if (!newReminder.titulo || !newReminder.data_lembrete) return;
 
-    await lembreteService.create({
-      ...newReminder,
-      pericia_id: periciaId,
-      concluido: false,
-    });
+    try {
+      await lembreteService.create({
+        ...newReminder,
+        pericia_id: periciaId,
+        concluido: false,
+      });
 
-    await activityLogService.create({
-      pericia_id: periciaId,
-      type: "reminder",
-      description: `Lembrete criado: ${newReminder.titulo}`,
-    });
+      await activityLogService.create({
+        pericia_id: periciaId,
+        type: "reminder",
+        description: `Lembrete criado: ${newReminder.titulo}`,
+      });
 
-    setNewReminder({ titulo: "", data_lembrete: "" });
-    setIsDialogOpen(false);
-    onUpdate();
+      setNewReminder({ titulo: "", data_lembrete: "" });
+      setIsDialogOpen(false);
+      onUpdate();
+    } catch (error) {
+      console.error("Erro ao criar lembrete:", error);
+      alert("Erro ao salvar lembrete. Verifique sua conexão e tente novamente.");
+    }
   };
 
   const toggleStatus = async (reminder) => {
-    await lembreteService.update(reminder.id, {
-      concluido: !reminder.concluido,
-    });
-    onUpdate();
+    try {
+      await lembreteService.update(reminder.id, {
+        concluido: !reminder.concluido,
+      });
+      onUpdate();
+    } catch (error) {
+      console.error("Erro ao atualizar lembrete:", error);
+      alert("Erro ao atualizar status. Tente novamente.");
+    }
   };
 
   const handleDelete = async (id) => {
     if (!confirm("Excluir lembrete?")) return;
-    await lembreteService.delete(id);
-    onUpdate();
+    try {
+      await lembreteService.delete(id);
+      onUpdate();
+    } catch (error) {
+      console.error("Erro ao excluir lembrete:", error);
+      alert("Erro ao excluir lembrete. Tente novamente.");
+    }
   };
 
   return (
@@ -145,7 +160,7 @@ export default function RemindersTab({ reminders, periciaId, onUpdate }) {
                   </p>
                   <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
                     <Calendar className="w-3 h-3" />
-                    {format(new Date(reminder.data_lembrete), "dd 'de' MMMM", {
+                    {format(new Date(reminder.data_lembrete + "T00:00:00"), "dd 'de' MMMM", {
                       locale: ptBR,
                     })}
                   </div>

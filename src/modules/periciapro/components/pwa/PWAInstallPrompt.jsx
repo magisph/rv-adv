@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -30,6 +30,8 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [platformName, setPlatformName] = useState("");
+  const platformNameRef = useRef("");
+  const isIOSRef = useRef(false);
   const [canShow, setCanShow] = useState(false);
 
   // Funções de gerenciamento de estado PWA
@@ -55,15 +57,16 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
     }
   };
 
-  const setPWAState = (dismissed, installed = false) => {
+  // Usa refs para evitar stale closure nos callbacks registrados nos event listeners
+  const setPWAState = useCallback((dismissed, installed = false) => {
     const state = {
       dismissed,
       installed,
       timestamp: new Date().toISOString(),
-      platform: platformName || (isIOS ? "ios" : "android/desktop"),
+      platform: platformNameRef.current || (isIOSRef.current ? "ios" : "android/desktop"),
     };
     localStorage.setItem(PWA_STORAGE_KEY, JSON.stringify(state));
-  };
+  }, []);
 
   // Delay para não sobrecarregar usuário
   useEffect(() => {
@@ -143,7 +146,9 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
         name = "Linux";
 
       setIsIOS(isValidIOS);
+      isIOSRef.current = isValidIOS;
       setPlatformName(name);
+      platformNameRef.current = name;
     };
 
     // Verificar requisitos PWA

@@ -19,8 +19,16 @@ export default function GoogleCalendarButton({
   if (!date) return null;
 
   const handleAddToCalendar = () => {
-    // Data base
-    const startDate = new Date(`${date}T${time || "00:00:00"}`);
+    // Normaliza o time para HH:MM:SS para evitar formatos inesperados do input[type=time]
+    const normalizedTime = time ? time.replace(/^(\d{2}:\d{2})$/, "$1:00") : "00:00:00";
+    const startDate = new Date(`${date}T${normalizedTime}`);
+
+    // Guarda contra Invalid Date (ex: time em formato AM/PM ou date inválido)
+    if (isNaN(startDate.getTime())) {
+      console.error("GoogleCalendarButton: data inválida", { date, time });
+      return;
+    }
+
     const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // Duração padrão de 1h
 
     // Formatação para string YYYYMMDDTHHMMSS (local, sem time zone conversion complexa, assumindo input local)

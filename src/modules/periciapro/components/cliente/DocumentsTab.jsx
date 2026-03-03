@@ -112,7 +112,9 @@ export default function DocumentsTab({ pericia, onUpdate }) {
     // O ideal seria passar o index correto.
     // Vamos confiar que quem chama handleDelete passa o documento e vamos achá-lo na lista original.
 
-    const novaLista = documentosAtuais.filter((d) => d !== docToDelete);
+    const novaLista = documentosAtuais.filter(
+      (d) => d.storage_path !== docToDelete.storage_path || d.url !== docToDelete.url
+    );
 
     await periciaService.update(pericia.id, { documentos: novaLista });
 
@@ -143,9 +145,7 @@ export default function DocumentsTab({ pericia, onUpdate }) {
       );
     }
 
-    return docs; // Manter ordem de inserção (mais antigos primeiro) ou inverter? Normalmente mais novos no final ou topo?
-    // O código original fazia append, então os novos estão no fim.
-    // Vamos inverter para mostrar os mais recentes primeiro.
+    // Inverte para mostrar os mais recentes primeiro
     return [...docs].reverse();
   }, [pericia.documentos, searchTerm, categoryFilter]);
 

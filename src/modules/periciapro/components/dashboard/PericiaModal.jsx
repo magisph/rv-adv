@@ -116,6 +116,24 @@ export default function PericiaModal({
     }
   };
 
+  const isValidCPF = (value) => {
+    const digits = value.replace(/\D/g, "");
+    if (digits.length !== 11) return false;
+    // Rejeita sequências repetidas (ex: 000...000, 111...111)
+    if (/^(\d)\1{10}$/.test(digits)) return false;
+
+    const calcDigit = (slice, factor) => {
+      const sum = slice.split("").reduce((acc, d, i) => acc + Number(d) * (factor - i), 0);
+      const remainder = (sum * 10) % 11;
+      return remainder === 10 || remainder === 11 ? 0 : remainder;
+    };
+
+    const d1 = calcDigit(digits.slice(0, 9), 10);
+    if (d1 !== Number(digits[9])) return false;
+    const d2 = calcDigit(digits.slice(0, 10), 11);
+    return d2 === Number(digits[10]);
+  };
+
   const formatCPF = (value) => {
     const numbers = value.replace(/\D/g, "");
     if (numbers.length <= 11) {
@@ -191,6 +209,8 @@ export default function PericiaModal({
 
     if (!formData.cpf.trim()) {
       newErrors.cpf = "CPF é obrigatório";
+    } else if (!isValidCPF(formData.cpf)) {
+      newErrors.cpf = "CPF inválido. Verifique os dígitos e tente novamente.";
     }
 
     if (

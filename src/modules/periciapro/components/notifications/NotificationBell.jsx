@@ -80,10 +80,10 @@ export default function NotificationBell({ userEmail }) {
   });
 
   const markAllAsReadMutation = useMutation({
-    mutationFn: async () => {
-      const unreadNotifications = notifications.filter((n) => !n.is_read);
+    // Recebe a lista atual como variável para evitar stale closure
+    mutationFn: async (unreadList) => {
       await Promise.all(
-        unreadNotifications.map((n) => notificationService.markAsRead(n.id)),
+        unreadList.map((n) => notificationService.markAsRead(n.id)),
       );
     },
     onSuccess: () => {
@@ -134,7 +134,7 @@ export default function NotificationBell({ userEmail }) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => markAllAsReadMutation.mutate()}
+              onClick={() => markAllAsReadMutation.mutate(notifications.filter((n) => !n.is_read))}
               disabled={markAllAsReadMutation.isPending}
               className="text-xs"
             >
