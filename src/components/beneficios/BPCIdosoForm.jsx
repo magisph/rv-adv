@@ -113,9 +113,9 @@ export default function BPCIdosoForm({ dados, onChange }) {
 
   const atualizarMembro = (index, field, value) => {
     const novosM = [...membros];
-    novosM[index][field] = value;
+    novosM[index] = { ...novosM[index], [field]: value };
     if (field === "data_nascimento") {
-      novosM[index].idade = calcularIdade(value);
+      novosM[index] = { ...novosM[index], idade: calcularIdade(value) };
     }
     setMembros(novosM);
     handleChange("membros_grupo_familiar", novosM);
@@ -142,7 +142,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
 
   const atualizarVeiculo = (index, field, value) => {
     const novosV = [...veiculos];
-    novosV[index][field] = value;
+    novosV[index] = { ...novosV[index], [field]: value };
     setVeiculos(novosV);
     handleChange("veiculos", novosV);
   };
@@ -198,7 +198,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                 <Label>Número de membros no CadÚnico</Label>
                 <Input
                   type="number"
-                  value={dados.num_membros_cadunico || ""}
+                  value={dados.num_membros_cadunico ?? ""}
                   onChange={(e) =>
                     handleChange(
                       "num_membros_cadunico",
@@ -212,7 +212,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                 <Input
                   type="number"
                   step="0.01"
-                  value={dados.renda_declarada_cadunico || ""}
+                  value={dados.renda_declarada_cadunico ?? ""}
                   onChange={(e) =>
                     handleChange(
                       "renda_declarada_cadunico",
@@ -345,7 +345,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
               <Input
                 type="number"
                 step="0.01"
-                value={dados.valor_total_renda || ""}
+                value={dados.valor_total_renda ?? ""}
                 onChange={(e) =>
                   handleChange("valor_total_renda", e.target.value === "" ? null : parseFloat(e.target.value))
                 }
@@ -539,7 +539,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                   <Input
                     type="number"
                     step="0.01"
-                    value={dados.valor_aluguel || ""}
+                    value={dados.valor_aluguel ?? ""}
                     onChange={(e) =>
                       handleChange("valor_aluguel", e.target.value === "" ? null : parseFloat(e.target.value))
                     }
@@ -551,7 +551,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                 <Label>Número de cômodos</Label>
                 <Input
                   type="number"
-                  value={dados.num_comodos || ""}
+                  value={dados.num_comodos ?? ""}
                   onChange={(e) =>
                     handleChange("num_comodos", e.target.value === "" ? null : parseInt(e.target.value, 10))
                   }

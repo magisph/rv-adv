@@ -77,8 +77,8 @@ export default function BeneficioFormulario({
       );
     }
 
-    // Aposentadoria por Idade (Rural/Urbano)
-    if (tipoBeneficio.includes("aposentadoria_idade")) {
+    // Aposentadoria por Idade Urbano (genérico)
+    if (tipoBeneficio === "aposentadoria_idade_urbano") {
       return (
         <div className="space-y-4">
           <div className="space-y-2">
@@ -116,8 +116,8 @@ export default function BeneficioFormulario({
       );
     }
 
-    // Benefício por Incapacidade (Rural/Urbano)
-    if (tipoBeneficio.includes("incapacidade")) {
+    // Benefício por Incapacidade Urbano (genérico)
+    if (tipoBeneficio === "incapacidade_urbano") {
       return (
         <div className="space-y-4">
           <div className="space-y-2">
@@ -153,8 +153,8 @@ export default function BeneficioFormulario({
       );
     }
 
-    // Salário-Maternidade (Rural/Urbano)
-    if (tipoBeneficio.includes("salario_maternidade")) {
+    // Salário-Maternidade Urbano (genérico)
+    if (tipoBeneficio === "salario_maternidade_urbano") {
       return (
         <div className="space-y-4">
           <div className="space-y-2">
@@ -180,7 +180,7 @@ export default function BeneficioFormulario({
     }
 
     // Pensão por Morte (Rural/Urbano)
-    if (tipoBeneficio.includes("pensao_morte")) {
+    if (tipoBeneficio === "pensao_morte_rural" || tipoBeneficio === "pensao_morte_urbano") {
       return (
         <div className="space-y-4">
           <div className="space-y-2">

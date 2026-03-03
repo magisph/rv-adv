@@ -70,7 +70,7 @@ export default function AposentadoriaRuralForm({ dados, onChange }) {
 
   const atualizarMembro = (index, field, value) => {
     const novos = [...membros];
-    novos[index][field] = value;
+    novos[index] = { ...novos[index], [field]: value };
     setMembros(novos);
     handleChange("membros_grupo_familiar", novos);
   };
@@ -98,7 +98,7 @@ export default function AposentadoriaRuralForm({ dados, onChange }) {
 
   const atualizarPropriedade = (index, field, value) => {
     const novas = [...propriedades];
-    novas[index][field] = value;
+    novas[index] = { ...novas[index], [field]: value };
 
     // Calcular tempo trabalhado (com validação de ordem das datas)
     if (
@@ -114,10 +114,9 @@ export default function AposentadoriaRuralForm({ dados, onChange }) {
       if (meses >= 0) {
         const anos = Math.floor(meses / 12);
         const mesesRestantes = meses % 12;
-        novas[index].tempo_trabalhado =
-          `${anos} ano(s) e ${mesesRestantes} mês(es)`;
+        novas[index] = { ...novas[index], tempo_trabalhado: `${anos} ano(s) e ${mesesRestantes} mês(es)` };
       } else {
-        novas[index].tempo_trabalhado = "";
+        novas[index] = { ...novas[index], tempo_trabalhado: "" };
       }
     }
 
@@ -148,7 +147,7 @@ export default function AposentadoriaRuralForm({ dados, onChange }) {
 
   const atualizarTestemunha = (index, field, value) => {
     const novas = [...testemunhas];
-    novas[index][field] = value;
+    novas[index] = { ...novas[index], [field]: value };
     setTestemunhas(novas);
     handleChange("testemunhas", novas);
   };

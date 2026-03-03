@@ -87,7 +87,7 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
 
   const atualizarDocumentoMedico = (index, field, value) => {
     const novos = [...documentosMedicos];
-    novos[index][field] = value;
+    novos[index] = { ...novos[index], [field]: value };
     setDocumentosMedicos(novos);
     handleChange("documentos_medicos", novos);
   };
@@ -124,7 +124,7 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
 
   const atualizarMembro = (index, field, value) => {
     const novos = [...membros];
-    novos[index][field] = value;
+    novos[index] = { ...novos[index], [field]: value };
     setMembros(novos);
     handleChange("membros_grupo_familiar", novos);
   };
@@ -152,7 +152,7 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
 
   const atualizarPropriedade = (index, field, value) => {
     const novas = [...propriedades];
-    novas[index][field] = value;
+    novas[index] = { ...novas[index], [field]: value };
 
     if (
       (field === "periodo_inicio" || field === "periodo_fim") &&
@@ -164,10 +164,13 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
       const meses =
         (fim.getFullYear() - inicio.getFullYear()) * 12 +
         (fim.getMonth() - inicio.getMonth());
-      const anos = Math.floor(meses / 12);
-      const mesesRestantes = meses % 12;
-      novas[index].tempo_trabalhado =
-        `${anos} ano(s) e ${mesesRestantes} mês(es)`;
+      if (meses >= 0) {
+        const anos = Math.floor(meses / 12);
+        const mesesRestantes = meses % 12;
+        novas[index] = { ...novas[index], tempo_trabalhado: `${anos} ano(s) e ${mesesRestantes} mês(es)` };
+      } else {
+        novas[index] = { ...novas[index], tempo_trabalhado: "" };
+      }
     }
 
     setPropriedades(novas);
@@ -197,7 +200,7 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
 
   const atualizarTestemunha = (index, field, value) => {
     const novas = [...testemunhas];
-    novas[index][field] = value;
+    novas[index] = { ...novas[index], [field]: value };
     setTestemunhas(novas);
     handleChange("testemunhas", novas);
   };

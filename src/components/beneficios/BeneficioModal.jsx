@@ -92,11 +92,15 @@ export default function BeneficioModal({
   const handleCategoriaChange = (value) => {
     setCategoria(value);
     setTipoBeneficio("");
+    setDadosEspecificos({});
+    setChecklistDocumentos({});
     setStep(2);
   };
 
   const handleTipoBeneficioChange = (value) => {
     setTipoBeneficio(value);
+    setDadosEspecificos({});
+    setChecklistDocumentos({});
     setStep(3);
   };
 

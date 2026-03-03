@@ -155,7 +155,6 @@ export default function BeneficioEditModal({
     onSuccess: () => {
       queryClient.invalidateQueries(["client-beneficios", clientId]);
       setHasChanges(false);
-      onClose();
     },
     onError: (error) => {
       console.error("Erro ao salvar benefício:", error);
@@ -184,14 +183,17 @@ export default function BeneficioEditModal({
   };
 
   const handleSave = () => {
-    updateMutation.mutate({
-      dados_especificos: dadosEspecificos,
-      checklist_documentos: checklistDocumentos,
-      status,
-      numero_beneficio: numeroBeneficio,
-      data_protocolo: dataProtocolo,
-      observacoes,
-    });
+    updateMutation.mutate(
+      {
+        dados_especificos: dadosEspecificos,
+        checklist_documentos: checklistDocumentos,
+        status,
+        numero_beneficio: numeroBeneficio,
+        data_protocolo: dataProtocolo,
+        observacoes,
+      },
+      { onSuccess: () => onClose() },
+    );
   };
 
   const handleSaveAndContinue = () => {
@@ -379,6 +381,7 @@ export default function BeneficioEditModal({
                   <TabsContent value="formulario" className="mt-0">
                     <div className="space-y-6">
                       <BeneficioFormulario
+                        key={beneficio.id}
                         categoria={beneficio.categoria}
                         tipoBeneficio={beneficio.tipo_beneficio}
                         dados={dadosEspecificos}
