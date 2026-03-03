@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Check } from "lucide-react";
+import { Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function InstallButton() {

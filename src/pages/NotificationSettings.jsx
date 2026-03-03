@@ -1,12 +1,11 @@
 ﻿import React, { useState, useEffect } from "react";
 import { authService } from "@/services/authService";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Bell,
@@ -14,12 +13,9 @@ import {
   CheckSquare,
   FolderOpen,
   FileText,
-  Users,
-  Volume2,
   Moon,
   Save,
   RotateCcw,
-  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 

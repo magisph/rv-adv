@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Shield, Save, Loader2 } from "lucide-react";
+import { User, Bell, Save, Loader2 } from "lucide-react";
 
 export default function Settings() {
   const [user, setUser] = useState(null);

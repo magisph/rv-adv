@@ -39,7 +39,6 @@ import {
   Search,
   MoreVertical,
   FolderOpen,
-  Eye,
   Edit,
   Trash2,
   Filter,

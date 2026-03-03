@@ -15,14 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+
+
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  FolderOpen,
   Upload,
   Eye,
   Download,
@@ -34,10 +29,8 @@ import {
   Heart,
   Sprout,
   Plus,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import OCRExtractor from "./OCRExtractor";
 
 // Definição das categorias e seus tipos de documentos

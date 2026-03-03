@@ -42,7 +42,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, differenceInDays, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import DeadlineForm from "@/components/deadlines/DeadlineForm";
 
 const PRIORITY_COLORS = {

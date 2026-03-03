@@ -7,7 +7,6 @@ import {
   FolderOpen,
   Calendar,
   AlertTriangle,
-  TrendingUp,
 } from "lucide-react";
 import StatsCard from "@/components/dashboard/StatsCard";
 import DeadlinesWidget from "@/components/dashboard/DeadlinesWidget";

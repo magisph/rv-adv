@@ -38,12 +38,10 @@ import {
   Calendar,
   MoreVertical,
   GripVertical,
-  Filter,
-  Trash2,
 } from "lucide-react";
-import { format, isPast, isToday, addDays, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 const PRIORITY_CONFIG = {

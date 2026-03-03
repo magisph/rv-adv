@@ -7,9 +7,6 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCw,
-  ChevronLeft,
-  ChevronRight,
-  Maximize2,
   FileText,
   ExternalLink,
 } from "lucide-react";

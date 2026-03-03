@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Save, X, FileText, Loader2, Tag, Plus } from "lucide-react";
+import { Save, X, FileText, Loader2, Plus } from "lucide-react";
 import { DOCUMENT_CATEGORIES } from "./DocumentCategories";
 import { format } from "date-fns";
 

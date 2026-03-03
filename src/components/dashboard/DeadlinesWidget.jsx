@@ -1,8 +1,8 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, AlertTriangle } from "lucide-react";
-import { format, differenceInDays, isAfter, parseISO } from "date-fns";
+import { Calendar, Clock } from "lucide-react";
+import { format, differenceInDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";

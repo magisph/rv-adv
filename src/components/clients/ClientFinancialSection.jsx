@@ -14,8 +14,6 @@ import {
   DollarSign,
   Plus,
   AlertCircle,
-  CheckCircle,
-  Clock,
 } from "lucide-react";
 import { format } from "date-fns";
 import FinancialForm from "@/components/financial/FinancialForm";

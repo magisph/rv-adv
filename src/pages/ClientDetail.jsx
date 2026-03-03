@@ -8,43 +8,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
+
 import {
   ArrowLeft,
   User,
-  Mail,
-  Phone,
   MapPin,
-  Calendar,
   FileText,
   FolderOpen,
   Edit,
-  CheckCircle,
-  Circle,
-  Clock,
   Plus,
-  MoreVertical,
-  Trash2,
-  Eye,
   Pencil,
 } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import ClientForm from "@/components/clients/ClientForm";
 import AppointmentForm from "@/components/appointments/AppointmentForm";
-import ClientFinancialSection from "@/components/clients/ClientFinancialSection";
 import ClientDocumentsSection from "@/components/documents/ClientDocumentsSection";
 import BeneficioModal from "@/components/beneficios/BeneficioModal";
 import BeneficioEditModal from "@/components/beneficios/BeneficioEditModal";

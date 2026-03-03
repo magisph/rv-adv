@@ -21,7 +21,6 @@ import {
   Building,
   Calendar,
   DollarSign,
-  FolderOpen,
   FileText,
   RefreshCw,
   Plus,

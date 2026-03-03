@@ -4,7 +4,6 @@ import { aiService } from "@/services/aiService";
 import { useQuery } from "@tanstack/react-query";
 import ReactQuill from "react-quill";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {

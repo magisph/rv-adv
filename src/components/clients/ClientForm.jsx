@@ -13,7 +13,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { User, FileText, Save, X, MapPin, Shield } from "lucide-react";
+import { User, Save, X, MapPin, Shield } from "lucide-react";
 
 const ESTADOS_CIVIS = {
   solteiro: "Solteiro(a)",

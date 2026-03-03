@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+﻿import React from "react";
 import { taskService, appointmentService, deadlineService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,10 +9,9 @@ import {
   CheckSquare,
   Clock,
   AlertCircle,
-  Plus,
   ExternalLink,
 } from "lucide-react";
-import { format, isToday, isTomorrow, addDays } from "date-fns";
+import { format, isToday, isTomorrow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
