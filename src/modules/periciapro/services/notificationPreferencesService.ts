@@ -17,29 +17,15 @@ export const notificationPreferencesService = {
   },
 
   async upsert(userId: string, payload: Partial<NotificationPreferences>): Promise<NotificationPreferences> {
-    const { data: existing } = await supabase
+    // BUG #17 fix: replace check-then-act (race condition) with atomic Supabase upsert.
+    // The old SELECT → INSERT/UPDATE pattern allowed two concurrent requests to both
+    // see "no existing record" and both attempt INSERT, causing duplicate rows or constraint errors.
+    const { data, error } = await supabase
       .from('notification_preferences')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (existing) {
-      const { data, error } = await supabase
-        .from('notification_preferences')
-        .update(payload)
-        .eq('id', existing.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    } else {
-      const { data, error } = await supabase
-        .from('notification_preferences')
-        .insert({ ...payload, user_id: userId })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    }
+      .upsert({ ...payload, user_id: userId }, { onConflict: 'user_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 };

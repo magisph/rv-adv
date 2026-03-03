@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { periciaService } from "@/modules/periciapro/services/periciaService";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,8 @@ import GoogleCalendarButton from "../components/calendar/GoogleCalendarButton";
 
 export default function Alertas() {
   const queryClient = useQueryClient();
+  // BUG #5 fix: state for error feedback on marcarComoVisto failure
+  const [marcarErro, setMarcarErro] = useState("");
 
   const { data: pericias = [], isLoading } = useQuery({
     queryKey: ["pericias"],
@@ -44,6 +46,12 @@ export default function Alertas() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pericias"] });
+      setMarcarErro("");
+    },
+    // BUG #5 fix: feedback visual quando a atualização falha
+    onError: (error) => {
+      console.error("[Alertas] Falha ao marcar como visto:", error);
+      setMarcarErro("Não foi possível marcar o alerta. Tente novamente.");
     },
   });
 
@@ -100,37 +108,39 @@ export default function Alertas() {
         );
         const alertasExibidos = pericia.alertas_pericia_exibidos || [];
 
-        // Verificar dias padrão e customizados
-        // (Idealmente buscaria das preferências, mas aqui usamos uma lista abrangente para exibição)
+        // BUG #4 fix: use find (sorted ascending) to get only the SINGLE most urgent
+        // unseen threshold, avoiding N duplicate cards for the same perícia.
         const diasVerificacao = [90, 60, 45, 30, 15, 10, 7, 5, 3, 2, 1];
+        const diaAtivo = [...diasVerificacao]
+          .sort((a, b) => a - b) // ascending: 1,2,3,5,7,10,...
+          .find(
+            (dias) =>
+              diasRestantes <= dias &&
+              diasRestantes >= 0 &&
+              !alertasExibidos.includes(dias),
+          );
 
-        diasVerificacao.forEach((dias) => {
-          if (
-            diasRestantes <= dias &&
-            diasRestantes >= 0 &&
-            !alertasExibidos.includes(dias)
-          ) {
-            listaAlertas.push({
-              id: pericia.id,
-              tipo: "pericia",
-              dias: dias,
-              titulo: `Perícia agendada em ${diasRestantes} ${diasRestantes === 1 ? "dia" : "dias"}`,
-              descricao: `Perícia de ${pericia.nome} está prevista para ${format(new Date(pericia.data_pericia + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}${pericia.horario_pericia ? ` às ${pericia.horario_pericia}` : ""}`,
-              data: pericia.data_pericia,
-              horario: pericia.horario_pericia,
-              diasRestantes,
-              cliente: pericia.nome,
-              cpf: pericia.cpf,
-              prioridade:
-                diasRestantes <= 1
-                  ? "alta"
-                  : diasRestantes <= 15
-                    ? "media"
-                    : "baixa",
-              pericia: pericia,
-            });
-          }
-        });
+        if (diaAtivo !== undefined) {
+          listaAlertas.push({
+            id: pericia.id,
+            tipo: "pericia",
+            dias: diaAtivo,
+            titulo: `Perícia agendada em ${diasRestantes} ${diasRestantes === 1 ? "dia" : "dias"}`,
+            descricao: `Perícia de ${pericia.nome} está prevista para ${format(new Date(pericia.data_pericia + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}${pericia.horario_pericia ? ` às ${pericia.horario_pericia}` : ""}`,
+            data: pericia.data_pericia,
+            horario: pericia.horario_pericia,
+            diasRestantes,
+            cliente: pericia.nome,
+            cpf: pericia.cpf,
+            prioridade:
+              diasRestantes <= 1
+                ? "alta"
+                : diasRestantes <= 15
+                  ? "media"
+                  : "baixa",
+            pericia: pericia,
+          });
+        }
       }
     });
 
@@ -197,6 +207,13 @@ export default function Alertas() {
             {alertas.length === 1 ? "Alerta Ativo" : "Alertas Ativos"}
           </Badge>
         </div>
+
+        {/* BUG #5 fix: feedback de erro ao marcar como visto */}
+        {marcarErro && (
+          <Alert className="bg-red-50 border-red-300">
+            <AlertDescription className="text-red-800">{marcarErro}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Resumo de Alertas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

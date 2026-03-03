@@ -41,7 +41,8 @@ export default function Calendario() {
       // Adiciona DCB ao calendário
       if (pericia.dcb) {
         eventos.push({
-          data: new Date(pericia.dcb),
+          // BUG #6 fix: T00:00:00 prevents off-by-one day in UTC-3 (Brazil)
+          data: new Date(pericia.dcb + "T00:00:00"),
           tipo: "dcb",
           titulo: `DCB - ${pericia.nome}`,
           cliente: pericia.nome,
@@ -54,7 +55,8 @@ export default function Calendario() {
       // Adiciona data da perícia ao calendário
       if (pericia.data_pericia && pericia.status === "Perícia Agendada") {
         eventos.push({
-          data: new Date(pericia.data_pericia),
+          // BUG #6 fix: T00:00:00 prevents off-by-one day in UTC-3 (Brazil)
+          data: new Date(pericia.data_pericia + "T00:00:00"),
           tipo: "pericia",
           titulo: `Perícia - ${pericia.nome}`,
           cliente: pericia.nome,
@@ -67,7 +69,8 @@ export default function Calendario() {
       // Adiciona DIB ao calendário
       if (pericia.dib) {
         eventos.push({
-          data: new Date(pericia.dib),
+          // BUG #6 fix: T00:00:00 prevents off-by-one day in UTC-3 (Brazil)
+          data: new Date(pericia.dib + "T00:00:00"),
           tipo: "dib",
           titulo: `DIB - ${pericia.nome}`,
           cliente: pericia.nome,
@@ -140,12 +143,15 @@ END:VEVENT
     const blob = new Blob([icsContent], {
       type: "text/calendar;charset=utf-8",
     });
+    // BUG #7 fix: capture the URL so it can be revoked after download to prevent memory leak
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
+    link.href = url;
     link.download = `pericias-${format(currentDate, "yyyy-MM")}.ics`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const eventosNoDiaSelecionado = selectedDate

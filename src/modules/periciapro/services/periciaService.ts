@@ -95,8 +95,13 @@ export const periciaService = {
   },
 
   async upsertPagamentos(periciaId: string, pagamentos: Partial<PericiaPagamento>[]): Promise<void> {
-    // Delete existing and re-insert (atomic for form submissions)
-    await supabase.from('pericia_pagamentos').delete().eq('pericia_id', periciaId);
+    // BUG #14 fix: check delete error — if delete fails and we continue,
+    // the subsequent insert creates duplicate payment records.
+    const { error: deleteError } = await supabase
+      .from('pericia_pagamentos')
+      .delete()
+      .eq('pericia_id', periciaId);
+    if (deleteError) throw deleteError;
 
     if (pagamentos.length > 0) {
       const rows = pagamentos.map((p) => ({ ...p, pericia_id: periciaId }));

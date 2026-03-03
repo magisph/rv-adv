@@ -43,25 +43,38 @@ export default function NotificationBell({ userEmail }) {
 
   // Subscribe to Realtime notifications on mount
   useEffect(() => {
-    let unsubscribe = null;
+    // BUG #16 fix: use a ref-like variable inside the effect so that the cleanup
+    // function correctly calls unsubscribe even when setupRealtime is still async
+    // (the closure captures the same variable that setupRealtime sets).
+    let unsubscribeFn = null;
+    let cancelled = false; // guard against setting channel after unmount
 
     const setupRealtime = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
 
-      unsubscribe = notificationServiceSupabase.subscribeToUserNotifications(
+      const cleanup = notificationServiceSupabase.subscribeToUserNotifications(
         user.id,
-        (newNotification) => {
+        () => {
           // Invalidate the query cache so react-query refetches
           queryClient.invalidateQueries({ queryKey: ["notifications"] });
         }
       );
+
+      if (cancelled) {
+        // Component unmounted while we were awaiting — clean up immediately
+        cleanup();
+        return;
+      }
+
+      unsubscribeFn = cleanup;
     };
 
     setupRealtime();
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      cancelled = true;
+      if (unsubscribeFn) unsubscribeFn();
     };
   }, [queryClient]);
 

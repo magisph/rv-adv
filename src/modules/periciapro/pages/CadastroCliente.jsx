@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { periciaService } from "@/modules/periciapro/services/periciaService";
 import { activityLogService } from "@/modules/periciapro/services/activityLogService";
@@ -36,6 +36,27 @@ import {
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
+// BUG #12 fix: CPF format and check-digit validation
+const isValidCPF = (cpf) => {
+  const numbers = cpf.replace(/\D/g, "");
+  if (numbers.length !== 11) return false;
+  // Reject all-same-digit CPFs (e.g., 111.111.111-11)
+  if (/^(\d)\1{10}$/.test(numbers)) return false;
+  // First check digit
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(numbers[i]) * (10 - i);
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(numbers[9])) return false;
+  // Second check digit
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(numbers[i]) * (11 - i);
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(numbers[10])) return false;
+  return true;
+};
+
 export default function CadastroCliente() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -62,6 +83,15 @@ export default function CadastroCliente() {
   const [errors, setErrors] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPagamentos, setShowPagamentos] = useState(false);
+  // BUG #13 fix: ref to track the redirect timeout for cleanup on unmount
+  const timeoutRef = useRef(null);
+
+  // BUG #13 fix: cleanup redirect timeout when component unmounts
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   const { toast } = useToast();
 
@@ -73,17 +103,33 @@ export default function CadastroCliente() {
       // 1. Insert the pericia record (without pagamentos)
       const nova = await periciaService.create(periciaData);
 
-      // 2. Insert pagamentos into separate table if any
-      if (pagamentos && pagamentos.length > 0) {
-        await periciaService.upsertPagamentos(nova.id, pagamentos);
+      // BUG #11 fix: if pagamentos insert fails, rollback the pericia to avoid orphan records
+      try {
+        // 2. Insert pagamentos into separate table if any
+        if (pagamentos && pagamentos.length > 0) {
+          await periciaService.upsertPagamentos(nova.id, pagamentos);
+        }
+      } catch (pagamentosError) {
+        // Rollback: delete the pericia we just created
+        try {
+          await periciaService.delete(nova.id);
+        } catch (rollbackError) {
+          console.error("[CadastroCliente] Rollback falhou — registro órfão criado:", rollbackError);
+        }
+        throw pagamentosError;
       }
 
-      // 3. Log the creation
-      await activityLogService.create({
-        pericia_id: nova.id,
-        type: "creation",
-        description: `Cliente cadastrado: ${nova.nome}`,
-      });
+      // 3. Log the creation (non-critical — don't rollback for log failure)
+      try {
+        await activityLogService.create({
+          pericia_id: nova.id,
+          type: "creation",
+          description: `Cliente cadastrado: ${nova.nome}`,
+        });
+      } catch (logError) {
+        console.warn("[CadastroCliente] Log de atividade falhou (não crítico):", logError);
+      }
+
       return nova;
     },
     onSuccess: () => {
@@ -94,8 +140,8 @@ export default function CadastroCliente() {
         description: "Cliente cadastrado com sucesso!",
       });
 
-      // Limpa o formulário após 2 segundos e redireciona
-      setTimeout(() => {
+      // BUG #13 fix: store timer in ref so cleanup useEffect can cancel it on unmount
+      timeoutRef.current = setTimeout(() => {
         setFormData({
           nome: "",
           cpf: "",
@@ -215,6 +261,9 @@ export default function CadastroCliente() {
 
     if (!formData.cpf.trim()) {
       newErrors.cpf = "CPF é obrigatório";
+    } else if (!isValidCPF(formData.cpf)) {
+      // BUG #12 fix: validate CPF format (11 digits) and check digits
+      newErrors.cpf = "CPF inválido. Verifique o número digitado.";
     }
 
     if (

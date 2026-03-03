@@ -31,12 +31,15 @@ import AlertDaysInput from "../components/notifications/AlertDaysInput";
 export default function NotificationSettings() {
   const { user } = useAuth();
   const [showSuccess, setShowSuccess] = useState(false);
+  // BUG #10 fix: state for save error feedback
+  const [showError, setShowError] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: preferences, isLoading } = useQuery({
     queryKey: ["notification-preferences", user?.id],
     queryFn: async () => {
-      return await notificationPreferencesService.getByUser(user.id);
+      // BUG #8 fix: optional chaining guards against null user on expired session
+      return await notificationPreferencesService.getByUser(user?.id);
     },
     enabled: !!user?.id,
   });
@@ -79,12 +82,20 @@ export default function NotificationSettings() {
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {
-      return await notificationPreferencesService.upsert(user.id, data);
+      // BUG #9 fix: optional chaining guards against null user on expired session
+      return await notificationPreferencesService.upsert(user?.id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notification-preferences"] });
+      setShowError(false);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
+    },
+    // BUG #10 fix: inform user when save fails instead of silently dropping the error
+    onError: (error) => {
+      console.error("[NotificationSettings] Falha ao salvar configurações:", error);
+      setShowError(true);
+      setTimeout(() => setShowError(false), 4000);
     },
   });
 
@@ -137,6 +148,16 @@ export default function NotificationSettings() {
             <CheckCircle className="w-5 h-5 text-green-600" />
             <AlertDescription className="text-green-800 font-medium">
               Configurações salvas com sucesso!
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* BUG #10 fix: Error Alert */}
+        {showError && (
+          <Alert className="bg-red-50 border-red-300 animate-in fade-in slide-in-from-top-5">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <AlertDescription className="text-red-800 font-medium">
+              Erro ao salvar configurações. Verifique sua conexão e tente novamente.
             </AlertDescription>
           </Alert>
         )}

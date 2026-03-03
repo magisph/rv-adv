@@ -62,13 +62,18 @@ export default function DetalhesCliente() {
       queryClient.invalidateQueries({ queryKey: ["pericia", id] });
       queryClient.invalidateQueries({ queryKey: ["pericias"] }); // Atualiza dashboard também
 
-      // Registrar log de atualização
-      await activityLogService.create({
-        pericia_id: id,
-        type: "update",
-        description: "Dados da perícia atualizados",
-      });
-      queryClient.invalidateQueries({ queryKey: ["logs", id] });
+      // BUG #3 fix: wrap log in try/catch — log failure must not block modal close,
+      // and exceptions in onSuccess are silently swallowed by TanStack Query.
+      try {
+        await activityLogService.create({
+          pericia_id: id,
+          type: "update",
+          description: "Dados da perícia atualizados",
+        });
+        queryClient.invalidateQueries({ queryKey: ["logs", id] });
+      } catch (logError) {
+        console.warn("[DetalhesCliente] Log de atividade falhou (não crítico):", logError);
+      }
 
       setIsEditModalOpen(false);
     },

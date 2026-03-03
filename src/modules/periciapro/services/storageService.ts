@@ -73,8 +73,12 @@ export const storageService = {
    * Delete a document from storage and database.
    */
   async deleteDocumento(documentoId: string, storagePath: string): Promise<void> {
-    // Remove from storage
-    await supabase.storage.from('periciapro-documentos').remove([storagePath]);
+    // BUG #15 fix: check storage remove error — if ignored, the DB record is deleted
+    // while the file still exists in storage (orphan file, irrecoverable reference).
+    const { error: storageError } = await supabase.storage
+      .from('periciapro-documentos')
+      .remove([storagePath]);
+    if (storageError) throw storageError;
 
     // Remove from database
     const { error } = await supabase

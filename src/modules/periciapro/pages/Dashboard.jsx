@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { periciaService } from "@/modules/periciapro/services/periciaService";
 import { activityLogService } from "@/modules/periciapro/services/activityLogService";
 import { calendarService } from "@/modules/periciapro/services/calendarService";
@@ -38,11 +38,16 @@ export default function Dashboard() {
   const createMutation = useMutation({
     mutationFn: async (data) => {
       const novaPericia = await periciaService.create(data);
-      await activityLogService.create({
-        pericia_id: novaPericia.id,
-        type: "creation",
-        description: `Perícia criada: ${novaPericia.nome}`,
-      });
+      // BUG #1 fix: log failure must not mask the successful pericia creation
+      try {
+        await activityLogService.create({
+          pericia_id: novaPericia.id,
+          type: "creation",
+          description: `Perícia criada: ${novaPericia.nome}`,
+        });
+      } catch (logError) {
+        console.warn("[Dashboard] Log de criação falhou (não crítico):", logError);
+      }
 
       // Sincronizar com Google Calendar automaticamente
       if (
@@ -68,11 +73,16 @@ export default function Dashboard() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const atualizada = await periciaService.update(id, data);
-      await activityLogService.create({
-        pericia_id: id,
-        type: "update",
-        description: "Dados da perícia atualizados via dashboard",
-      });
+      // BUG #1 fix: log failure must not mask the successful pericia update
+      try {
+        await activityLogService.create({
+          pericia_id: id,
+          type: "update",
+          description: "Dados da perícia atualizados via dashboard",
+        });
+      } catch (logError) {
+        console.warn("[Dashboard] Log de atualização falhou (não crítico):", logError);
+      }
 
       // Sincronizar com Google Calendar automaticamente
       if (atualizada.data_pericia && atualizada.status === "Perícia Agendada") {
@@ -190,8 +200,8 @@ export default function Dashboard() {
     setIsModalOpen(true);
   };
 
-  // Função para verificar se uma perícia tem alertas ativos
-  const hasAlert = (pericia) => {
+  // BUG #2 fix: useCallback so hasAlert is stable and can be safely added to useMemo deps
+  const hasAlert = useCallback((pericia) => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
@@ -220,7 +230,7 @@ export default function Dashboard() {
     }
 
     return false;
-  };
+  }, []);
 
   const filteredPericias = useMemo(() => {
     let filtered = pericias.filter((pericia) => {
@@ -247,7 +257,8 @@ export default function Dashboard() {
     });
 
     return filtered;
-  }, [pericias, searchTerm, statusFilter, esferaFilter]);
+  // BUG #2 fix: hasAlert added to deps so sort is always based on latest function closure
+  }, [pericias, searchTerm, statusFilter, esferaFilter, hasAlert]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-4 md:p-8">

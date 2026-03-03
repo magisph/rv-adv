@@ -1,11 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(node:*)",
+      "Bash(npx tsc:*)"
     ]
   },
-  "outputStyle": "Coding Vibes",
   "enabledPlugins": {
     "comprehensive-review@claude-code-workflows": true
-  }
+  },
+  "outputStyle": "Coding Vibes"
 }
