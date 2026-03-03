@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, lazy, Suspense } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "./utils";
 import { authService } from "@/services/authService";
@@ -17,7 +17,12 @@ import {
   X,
   Scale,
   ChevronDown,
+  ChevronRight,
   CheckSquare,
+  Stethoscope,
+  UserPlus,
+  CalendarDays,
+  BellRing,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +41,9 @@ import IOSInstallPrompt from "@/components/pwa/IOSInstallPrompt";
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [periciasOpen, setPericiasOpen] = useState(
+    currentPageName?.startsWith("pericias-") ?? false
+  );
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -204,6 +212,63 @@ export default function Layout({ children, currentPageName }) {
                     </Link>
                   );
                 })}
+
+                {/* Separator */}
+                <div className="my-3 mx-2 border-t border-white/10" />
+
+                {/* PericiaPro Module — Collapsible Group */}
+                <button
+                  onClick={() => setPericiasOpen(!periciasOpen)}
+                  className={`
+                    w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
+                    ${currentPageName?.startsWith("pericias-")
+                      ? "bg-white/10 text-white"
+                      : "text-slate-300 hover:bg-white/10 hover:text-white"
+                    }
+                  `}
+                >
+                  <Stethoscope
+                    className={`w-5 h-5 ${currentPageName?.startsWith("pericias-") ? "text-[#c9a227]" : ""}`}
+                  />
+                  <span className="font-medium flex-1 text-left">Perícias</span>
+                  {periciasOpen ? (
+                    <ChevronDown className="w-4 h-4" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4" />
+                  )}
+                </button>
+
+                {periciasOpen && (
+                  <div className="ml-4 space-y-1">
+                    {[
+                      { name: "Painel", icon: LayoutDashboard, path: "/pericias/painel", key: "pericias-painel" },
+                      { name: "Cadastro", icon: UserPlus, path: "/pericias/cadastro", key: "pericias-cadastro" },
+                      { name: "Calendário", icon: CalendarDays, path: "/pericias/calendario", key: "pericias-calendario" },
+                      { name: "Alertas", icon: BellRing, path: "/pericias/alertas", key: "pericias-alertas" },
+                    ].map((item) => {
+                      const isActive = currentPageName === item.key;
+                      return (
+                        <Link
+                          key={item.key}
+                          to={item.path}
+                          onClick={() => setSidebarOpen(false)}
+                          className={`
+                            flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm
+                            ${isActive
+                              ? "bg-white/15 text-white shadow-lg"
+                              : "text-slate-300 hover:bg-white/10 hover:text-white"
+                            }
+                          `}
+                        >
+                          <item.icon
+                            className={`w-4 h-4 ${isActive ? "text-[#c9a227]" : ""}`}
+                          />
+                          <span>{item.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </nav>
             </ScrollArea>
 

@@ -1,18 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error(
-    '[PericiaPro] Variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são obrigatórias.'
-  );
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-  },
-});
+/**
+ * Supabase client singleton — re-exports from src/lib/supabase.js
+ * Ensures the entire application uses exactly one Supabase connection.
+ *
+ * Previously: created a duplicate createClient() here.
+ * Now: single import point for the periciapro module.
+ */
+export { supabase } from '@/lib/supabase';

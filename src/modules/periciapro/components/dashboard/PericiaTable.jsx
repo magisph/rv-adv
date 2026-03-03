@@ -122,7 +122,7 @@ export default function PericiaTable({
       return;
     }
     // Redireciona para página de detalhes
-    navigate(createPageUrl("DetalhesCliente") + `?id=${pericia.id}`);
+    navigate(`/pericias/detalhes/${pericia.id}`);
   };
 
   return (
@@ -312,8 +312,7 @@ export default function PericiaTable({
                             onClick={(e) => {
                               e.stopPropagation();
                               navigate(
-                                createPageUrl("DetalhesCliente") +
-                                  `?id=${pericia.id}`,
+                                `/pericias/detalhes/${pericia.id}`,
                               );
                             }}
                             className="hover:bg-green-100 hover:text-green-700"

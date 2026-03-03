@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 import { periciaService } from "@/modules/periciapro/services/periciaService";
 import { activityLogService } from "@/modules/periciapro/services/activityLogService";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -62,9 +63,22 @@ export default function CadastroCliente() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPagamentos, setShowPagamentos] = useState(false);
 
+  const { toast } = useToast();
+
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      const nova = await periciaService.create(data);
+      // Separate pagamentos from pericia data — they go to different tables
+      const { pagamentos, ...periciaData } = data;
+
+      // 1. Insert the pericia record (without pagamentos)
+      const nova = await periciaService.create(periciaData);
+
+      // 2. Insert pagamentos into separate table if any
+      if (pagamentos && pagamentos.length > 0) {
+        await periciaService.upsertPagamentos(nova.id, pagamentos);
+      }
+
+      // 3. Log the creation
       await activityLogService.create({
         pericia_id: nova.id,
         type: "creation",
@@ -75,6 +89,10 @@ export default function CadastroCliente() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pericias"] });
       setShowSuccess(true);
+      toast({
+        title: "✅ Cadastro realizado",
+        description: "Cliente cadastrado com sucesso!",
+      });
 
       // Limpa o formulário após 2 segundos e redireciona
       setTimeout(() => {
@@ -96,8 +114,16 @@ export default function CadastroCliente() {
           pagamentos: [],
         });
         setShowSuccess(false);
-        navigate(createPageUrl("Dashboard"));
+        navigate("/pericias/painel");
       }, 2000);
+    },
+    onError: (error) => {
+      console.error("[CadastroCliente] Erro ao cadastrar:", error);
+      toast({
+        title: "❌ Erro ao cadastrar",
+        description: error?.message || "Ocorreu um erro. Tente novamente.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -238,7 +264,7 @@ export default function CadastroCliente() {
   };
 
   const handleCancel = () => {
-    navigate(createPageUrl("Dashboard"));
+    navigate("/pericias/painel");
   };
 
   return (

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { notificationService } from "@/modules/periciapro/services/notificationServiceSupabase";
+import React, { useState, useEffect } from "react";
+import { notificationService, notificationServiceSupabase } from "@/modules/periciapro/services/notificationServiceSupabase";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/lib/supabase";
 
 const priorityColors = {
   low: "bg-blue-50 border-blue-200 text-blue-900",
@@ -39,6 +40,30 @@ const priorityIcons = {
 export default function NotificationBell({ userEmail }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  // Subscribe to Realtime notifications on mount
+  useEffect(() => {
+    let unsubscribe = null;
+
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      unsubscribe = notificationServiceSupabase.subscribeToUserNotifications(
+        user.id,
+        (newNotification) => {
+          // Invalidate the query cache so react-query refetches
+          queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        }
+      );
+    };
+
+    setupRealtime();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [queryClient]);
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications", userEmail],

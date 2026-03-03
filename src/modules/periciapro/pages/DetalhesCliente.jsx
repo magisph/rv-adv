@@ -15,7 +15,7 @@ import {
   Bell,
   Pencil,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import ActivityLogTab from "../components/cliente/ActivityLogTab";
 import DocumentsTab from "../components/cliente/DocumentsTab";
 import RemindersTab from "../components/cliente/RemindersTab";
@@ -25,9 +25,8 @@ import GoogleCalendarSync from "../components/calendar/GoogleCalendarSync";
 
 export default function DetalhesCliente() {
   const navigate = useNavigate();
+  const { id } = useParams();
   const queryClient = useQueryClient();
-  const urlParams = new URLSearchParams(window.location.search);
-  const id = urlParams.get("id");
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 

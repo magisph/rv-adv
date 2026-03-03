@@ -1,86 +1,98 @@
 // src/services/calendarService.js
-// Serviço de integração com Google Calendar via Supabase Edge Function
+// Serviço de integração com Google Calendar via Supabase Edge Functions
+// Refatorado: remove proxy 'calendar-auth', usa supabase.functions.invoke
 
 import { supabase } from '@/lib/supabase'
 
-// URL da Edge Function (configurada no Supabase Dashboard)
-const CALENDAR_AUTH_URL = import.meta.env.VITE_SUPABASE_URL 
-  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calendar-auth`
-  : 'http://localhost:54321/functions/v1/calendar-auth'
-
 export const calendarService = {
   /**
-   * Obter URL de autorização do Google
-   * Abre a página de login do Google para permitir acesso ao calendário
+   * Sincronizar perícia com Google Calendar.
+   * Invoca a Edge Function 'sync-google-calendar'.
    */
-  async getAuthorizationUrl() {
+  async syncToGoogleCalendar(periciaId) {
     try {
-      const response = await fetch(`${CALENDAR_AUTH_URL}/authorize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const { data, error } = await supabase.functions.invoke('sync-google-calendar', {
+        body: { pericia_id: periciaId },
       })
-      
-      if (!response.ok) {
-        throw new Error('Failed to get authorization URL')
+
+      if (error) {
+        console.error('[Calendar] Sync failed:', error)
+        throw new Error(error.message || 'Failed to sync with Google Calendar')
       }
-      
-      const data = await response.json()
-      return data.url
+
+      return data
     } catch (error) {
-      console.error('Error getting authorization URL:', error)
+      console.error('[Calendar] Sync error:', error)
       throw error
     }
   },
 
   /**
-   * Tratar o callback do OAuth
-   * Após o usuário fazer login no Google, troca o código por tokens
+   * Remover evento do Google Calendar.
+   * Invoca a Edge Function 'delete-google-calendar'.
    */
-  async handleCallback(code) {
+  async deleteFromGoogleCalendar(eventId) {
     try {
-      const response = await fetch(
-        `${CALENDAR_AUTH_URL}/callback?code=${code}`,
-        {
-          method: 'POST'
-        }
-      )
-      
-      if (!response.ok) {
-        throw new Error('OAuth callback failed')
+      const { data, error } = await supabase.functions.invoke('delete-google-calendar', {
+        body: { event_id: eventId },
+      })
+
+      if (error) {
+        console.error('[Calendar] Delete failed:', error)
+        throw new Error(error.message || 'Failed to delete calendar event')
       }
-      
-      return await response.json()
+
+      return data
     } catch (error) {
-      console.error('Error handling OAuth callback:', error)
+      console.error('[Calendar] Delete error:', error)
       throw error
     }
   },
 
   /**
-   * Listar eventos do calendário
-   * Retorna todos os eventos em um período específico
+   * Criar evento no Google Calendar a partir de dados genéricos.
+   * Cria um registro temporário na perícia e sincroniza.
+   */
+  async createEvent(eventData) {
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-google-calendar', {
+        body: eventData,
+      })
+
+      if (error) throw new Error(error.message || 'Failed to create calendar event')
+      return data
+    } catch (error) {
+      console.error('[Calendar] Create event error:', error)
+      throw error
+    }
+  },
+
+  /**
+   * Listar eventos — delegado ao Google Calendar via Edge Function.
+   * Nota: requer que a Edge Function suporte listagem (futuro).
    */
   async listEvents(timeMin, timeMax) {
     try {
-      // Obter token de acesso do usuário logado via Supabase
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       if (!session?.provider_token) {
-        throw new Error('Google calendar not connected. Please authorize first.')
+        throw new Error('Google Calendar not connected. Please authorize first.')
       }
 
-      const params = new URLSearchParams()
-      if (timeMin) params.set('timeMin', timeMin)
-      if (timeMax) params.set('timeMax', timeMax)
+      // Direct Google Calendar API call using provider token
+      const params = new URLSearchParams({
+        timeMin: timeMin || new Date().toISOString(),
+        timeMax: timeMax || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        singleEvents: 'true',
+        orderBy: 'startTime',
+      })
 
       const response = await fetch(
-        `${CALENDAR_AUTH_URL}/events?${params.toString()}`,
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`,
         {
           headers: {
-            Authorization: `Bearer ${session.provider_token}`
-          }
+            Authorization: `Bearer ${session.provider_token}`,
+          },
         }
       )
 
@@ -90,58 +102,22 @@ export const calendarService = {
 
       return await response.json()
     } catch (error) {
-      console.error('Error listing events:', error)
+      console.error('[Calendar] List events error:', error)
       throw error
     }
   },
 
   /**
-   * Criar novo evento no calendário
-   * Adiciona um novo evento na agenda do Google Calendar
-   */
-  async createEvent(eventData) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.provider_token) {
-        throw new Error('Google calendar not connected')
-      }
-
-      const response = await fetch(
-        `${CALENDAR_AUTH_URL}/create-event`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.provider_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(eventData)
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error('Failed to create calendar event')
-      }
-
-      return await response.json()
-    } catch (error) {
-      console.error('Error creating event:', error)
-      throw error
-    }
-  },
-
-  /**
-   * Verificar se o calendário está conectado
-   * Tenta listar eventos para verificar se tem acesso
+   * Verificar se o calendário está conectado.
    */
   async checkConnection() {
     try {
-      await this.listEvents()
-      return true
+      const { data: { session } } = await supabase.auth.getSession()
+      return !!session?.provider_token
     } catch {
       return false
     }
-  }
+  },
 }
 
 export default calendarService

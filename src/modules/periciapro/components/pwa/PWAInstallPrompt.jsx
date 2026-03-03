@@ -565,7 +565,7 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
                   <div className="bg-white rounded-t-2xl border-2 border-slate-300 p-3 shadow-lg">
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-xs text-slate-500 truncate flex-1">
-                        pericias.base44.app
+                        {typeof window !== 'undefined' ? window.location.hostname : 'app'}
                       </div>
                       <Share className="w-5 h-5 text-blue-600 animate-bounce" />
                     </div>

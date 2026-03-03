@@ -8,6 +8,13 @@ import PageNotFound from "./lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 
+// PericiaPro module pages (prefixed /pericias/*)
+import PericiasDashboard from "@/modules/periciapro/pages/Dashboard";
+import PericiasCadastro from "@/modules/periciapro/pages/CadastroCliente";
+import PericiasCalendario from "@/modules/periciapro/pages/Calendario";
+import PericiasAlertas from "@/modules/periciapro/pages/Alertas";
+import PericiasDetalhes from "@/modules/periciapro/pages/DetalhesCliente";
+
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
@@ -65,6 +72,49 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
+
+      {/* PericiaPro Module Routes */}
+      <Route
+        path="/pericias/painel"
+        element={
+          <LayoutWrapper currentPageName="pericias-painel">
+            <PericiasDashboard />
+          </LayoutWrapper>
+        }
+      />
+      <Route
+        path="/pericias/cadastro"
+        element={
+          <LayoutWrapper currentPageName="pericias-cadastro">
+            <PericiasCadastro />
+          </LayoutWrapper>
+        }
+      />
+      <Route
+        path="/pericias/calendario"
+        element={
+          <LayoutWrapper currentPageName="pericias-calendario">
+            <PericiasCalendario />
+          </LayoutWrapper>
+        }
+      />
+      <Route
+        path="/pericias/alertas"
+        element={
+          <LayoutWrapper currentPageName="pericias-alertas">
+            <PericiasAlertas />
+          </LayoutWrapper>
+        }
+      />
+      <Route
+        path="/pericias/detalhes/:id"
+        element={
+          <LayoutWrapper currentPageName="pericias-detalhes">
+            <PericiasDetalhes />
+          </LayoutWrapper>
+        }
+      />
+
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
@@ -74,7 +124,7 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <NavigationTracker />
           <AuthenticatedApp />
         </Router>
