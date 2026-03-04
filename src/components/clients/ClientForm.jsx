@@ -106,7 +106,37 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Saneamento de dados antes do save (prevenir 400 Bad Request)
+    const payload = { ...formData };
+    
+    // Remover campos de controle/leitura ou inexistentes no schema
+    delete payload.id;
+    delete payload.created_date; // Campo legado
+    delete payload.created_at;
+    delete payload.updated_at;
+    delete payload.created_by; // DB preenche com auth.uid()
+    
+    // Garantir status padrão se vazio
+    if (!payload.status) payload.status = "ativo";
+
+    // Tratar strings vazias para colunas de data ou com constraints (CHECK)
+    const fieldsToNull = [
+      "data_nascimento",
+      "data_emissao_rg",
+      "estado_civil",
+      "grau_escolaridade",
+      "area",
+      "benefit_type"
+    ];
+    
+    fieldsToNull.forEach(field => {
+      if (payload[field] === "") {
+        payload[field] = null;
+      }
+    });
+
+    onSave(payload);
   };
 
   const calcularIdade = () => {
