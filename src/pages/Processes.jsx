@@ -50,6 +50,8 @@ import ProcessForm from "@/components/processes/ProcessForm";
 import ProcessesChart from "@/components/dashboard/ProcessesChart";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 
+const MotionTableRow = motion.create(TableRow);
+
 const STATUS_COLORS = {
   ativo: "bg-green-100 text-green-700 border-green-200",
   arquivado: "bg-slate-100 text-slate-700 border-slate-200",
@@ -248,7 +250,7 @@ export default function Processes() {
               ) : (
                 <AnimatePresence>
                   {filteredProcesses.map((process) => (
-                    <motion.tr
+                    <MotionTableRow
                       key={process.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -328,7 +330,7 @@ export default function Processes() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
-                    </motion.tr>
+                    </MotionTableRow>
                   ))}
                 </AnimatePresence>
               )}

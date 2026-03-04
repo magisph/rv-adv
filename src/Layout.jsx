@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { createPageUrl } from "./utils";
+import { createPageUrl } from "@/utils";
 import { authService } from "@/services/authService";
 import { clientService, processService, notificationService } from "@/services";
 import { useQuery, useQueryClient } from "@tanstack/react-query";

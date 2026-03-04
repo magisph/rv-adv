@@ -42,6 +42,8 @@ import ClientForm from "@/components/clients/ClientForm";
 import ClientsChart from "@/components/dashboard/ClientsChart";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 
+const MotionTableRow = motion.create(TableRow);
+
 const STATUS_COLORS = {
   ativo: "bg-green-100 text-green-700 border-green-200",
   inativo: "bg-slate-100 text-slate-700 border-slate-200",
@@ -198,13 +200,13 @@ export default function Clients() {
               ) : (
                 <AnimatePresence>
                   {filteredClients.map((client) => (
-                    <React.Fragment key={client.id}>
-                      <motion.tr
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="hover:bg-slate-50 transition-colors"
-                      >
+                    <MotionTableRow
+                      key={client.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="hover:bg-slate-50 transition-colors"
+                    >
                         <TableCell>
                           <Link
                             to={createPageUrl(`ClientDetail?id=${client.id}`)}
@@ -277,8 +279,7 @@ export default function Clients() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
-                      </motion.tr>
-                    </React.Fragment>
+                    </MotionTableRow>
                   ))}
                 </AnimatePresence>
               )}

@@ -34,7 +34,12 @@ export const authService = {
     if (email) updatePayload.email = email;
     if (phone) updatePayload.phone = phone;
     if (Object.keys(metadata).length > 0) {
-      updatePayload.data = metadata;
+      // IMP-05: Converte strings vazias em null para que o merge
+      // do user_metadata no Supabase remova campos limpos.
+      const sanitized = Object.fromEntries(
+        Object.entries(metadata).map(([k, v]) => [k, v === "" ? null : v])
+      );
+      updatePayload.data = sanitized;
     }
     
     const { data, error } = await supabase.auth.updateUser(updatePayload);

@@ -44,7 +44,7 @@ export const periciaService = {
   async create(payload: Partial<Pericia>): Promise<Pericia> {
     const { data, error } = await supabase
       .from('pericias')
-      .insert(payload)
+      .insert({ ...payload, updated_at: new Date().toISOString() })
       .select()
       .single();
 

@@ -26,15 +26,15 @@ export default function Home() {
 
   // Dashboard: carregar apenas últimos 10 de cada para performance
   const { data: clients = [], isLoading: loadingClients } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientService.list("-created_date", 10),
+    queryKey: ["clients", { status: "ativo" }],
+    queryFn: () => clientService.filter({ status: "ativo" }, "-created_date", 10),
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
 
   const { data: processes = [], isLoading: loadingProcesses } = useQuery({
-    queryKey: ["processes"],
-    queryFn: () => processService.list("-created_date", 10),
+    queryKey: ["processes", { status: "ativo" }],
+    queryFn: () => processService.filter({ status: "ativo" }, "-created_date", 10),
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
@@ -47,8 +47,8 @@ export default function Home() {
     gcTime: 5 * 60 * 1000,
   });
 
-  const activeProcesses = processes.filter((p) => p.status === "ativo").length;
-  const activeClients = clients.filter((c) => c.status === "ativo").length;
+  const activeProcesses = processes.length;
+  const activeClients = clients.length;
   const pendingDeadlines = deadlines.filter(
     (d) => d.status === "pendente",
   ).length;
