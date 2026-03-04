@@ -177,6 +177,7 @@ export default function ClientDetail() {
 
     if (data.alerts_enabled && data.alert_days && data.alert_days.length > 0) {
       const user = await authService.getCurrentUser();
+      if (!user) return;
       const appointmentDate = new Date(data.date);
 
       for (const daysBefore of data.alert_days) {
@@ -190,7 +191,7 @@ export default function ClientDetail() {
               : `Lembrete: Compromisso em ${daysBefore} dia(s)`,
           message: `${data.title} - ${data.client_name}`,
           type: "compromisso",
-          user_email: user.email,
+          user_email: user?.email,
           related_id: savedAppointment.id || editingAppointment?.id,
           scheduled_date: notificationDate.toISOString(),
         });

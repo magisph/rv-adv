@@ -149,6 +149,7 @@ export default function ProcessDetail() {
 
       // Create notification for each move
       const user = await authService.getCurrentUser();
+      if (!user) return;
       for (const mov of response.movimentacoes) {
         const priority =
           mov.tipo === "sentenca"

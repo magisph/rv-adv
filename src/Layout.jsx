@@ -387,7 +387,7 @@ function NotificationBell({ user }) {
     queryKey: ["notifications-header", user?.email],
     queryFn: () =>
       notificationService.filter({
-        user_email: user.email,
+        user_email: user?.email,
         read: false,
       }),
     enabled: !!user?.email,
