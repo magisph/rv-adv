@@ -20,7 +20,7 @@ export default function Home() {
     queryKey: ["current-user"],
     queryFn: () => authService.getCurrentUser(),
     staleTime: 5 * 60 * 1000,
-    cacheTime: 30 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     retry: false,
   });
 
@@ -29,14 +29,14 @@ export default function Home() {
     queryKey: ["clients"],
     queryFn: () => clientService.list("-created_date", 10),
     staleTime: 2 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const { data: processes = [], isLoading: loadingProcesses } = useQuery({
     queryKey: ["processes"],
     queryFn: () => processService.list("-created_date", 10),
     staleTime: 2 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const { data: deadlines = [], isLoading: loadingDeadlines } = useQuery({
@@ -44,7 +44,7 @@ export default function Home() {
     queryFn: () =>
       deadlineService.filter({ status: "pendente" }, "-due_date", 20),
     staleTime: 1 * 60 * 1000,
-    cacheTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const activeProcesses = processes.filter((p) => p.status === "ativo").length;

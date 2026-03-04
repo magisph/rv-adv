@@ -96,7 +96,7 @@ export default function ClientDetail() {
     select: (data) => data[0],
     enabled: !!clientId,
     staleTime: 3 * 60 * 1000, // 3 minutos
-    cacheTime: 15 * 60 * 1000, // 15 minutos
+    gcTime: 15 * 60 * 1000, // 15 minutos
   });
 
   const { data: processes = [] } = useQuery({
@@ -104,7 +104,7 @@ export default function ClientDetail() {
     queryFn: () => processService.filter({ client_id: clientId }),
     enabled: !!clientId,
     staleTime: 3 * 60 * 1000,
-    cacheTime: 15 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 
   const { data: appointments = [] } = useQuery({
@@ -112,7 +112,7 @@ export default function ClientDetail() {
     queryFn: () => appointmentService.filter({ client_id: clientId }),
     enabled: !!clientId,
     staleTime: 2 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const { data: beneficios = [] } = useQuery({
@@ -120,7 +120,7 @@ export default function ClientDetail() {
     queryFn: () => beneficioService.filter({ client_id: clientId }),
     enabled: !!clientId,
     staleTime: 3 * 60 * 1000,
-    cacheTime: 15 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 
   const { data: clientDocuments = [] } = useQuery({
@@ -132,7 +132,7 @@ export default function ClientDetail() {
       }),
     enabled: !!clientId,
     staleTime: 2 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const updateMutation = useMutation({

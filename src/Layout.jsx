@@ -51,7 +51,7 @@ export default function Layout({ children, currentPageName }) {
     queryKey: ["current-user"],
     queryFn: () => authService.getCurrentUser(),
     staleTime: 5 * 60 * 1000, // 5 minutos
-    cacheTime: 30 * 60 * 1000, // 30 minutos
+    gcTime: 30 * 60 * 1000, // 30 minutos
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnMount: false,

@@ -836,7 +836,7 @@ export default function ClientDocumentsSection({
       }),
     enabled: !!clientId,
     staleTime: 2 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const { data: client } = useQuery({
@@ -845,7 +845,7 @@ export default function ClientDocumentsSection({
     select: (data) => data[0],
     enabled: !!clientId,
     staleTime: 3 * 60 * 1000,
-    cacheTime: 15 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 
   const handleRefresh = () => {

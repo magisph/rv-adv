@@ -1,6 +1,6 @@
 ﻿import React, { useState } from "react";
 import { processService } from "@/services";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
@@ -85,8 +85,8 @@ export default function Processes() {
     queryKey: ["processes"],
     queryFn: () => processService.list("-created_date"),
     staleTime: 2 * 60 * 1000, // 2 minutos
-    cacheTime: 10 * 60 * 1000, // 10 minutos
-    keepPreviousData: true,
+    gcTime: 10 * 60 * 1000, // 10 minutos
+    placeholderData: keepPreviousData,
   });
 
   const createMutation = useMutation({

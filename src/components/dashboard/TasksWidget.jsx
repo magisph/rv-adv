@@ -185,6 +185,7 @@ export default function TasksWidget() {
   } = useQuery({
     queryKey: ["kanban-tasks", user?.email, user?.role, viewMode],
     queryFn: async () => {
+      if (!user) return [];
       const isAdmin = user.role === "admin";
 
       if (isAdmin && viewMode === "all") {
@@ -192,7 +193,7 @@ export default function TasksWidget() {
         return taskService.list();
       } else {
         // User comum ou admin no modo "minhas"
-        return taskService.filter({ assigned_to: user.email });
+        return taskService.filter({ assigned_to: user?.email });
       }
     },
     enabled: !!user?.email,
@@ -272,7 +273,7 @@ export default function TasksWidget() {
       setShowQuickCreate(false);
       setQuickTaskTitle("");
 
-      if (task.assigned_to && user && task.assigned_to !== user.email) {
+      if (task.assigned_to && user && task.assigned_to !== user?.email) {
         await notificationService.create({
           title: "Nova Tarefa Atribuída",
           message: `${task.title}${task.client_name ? ` - Cliente: ${task.client_name}` : ""}`,
@@ -327,7 +328,7 @@ export default function TasksWidget() {
       if (admin) {
         await notificationService.create({
           title: "Tarefa Concluída",
-          message: `${user.full_name} concluiu: "${task.title}"`,
+          message: `${user?.full_name} concluiu: "${task.title}"`,
           type: "tarefa",
           user_email: admin.email,
           link: "/tasks",
@@ -351,14 +352,14 @@ export default function TasksWidget() {
   };
 
   const handleQuickCreate = () => {
-    if (!quickTaskTitle.trim()) return;
+    if (!quickTaskTitle.trim() || !user) return;
 
-    const isAdmin = user.role === "admin";
+    const isAdmin = user?.role === "admin";
     const column = KANBAN_COLUMNS[quickTaskColumn];
 
     // Determinar responsável
-    let assignedEmail = user.email;
-    let assignedName = user.full_name;
+    let assignedEmail = user?.email;
+    let assignedName = user?.full_name;
 
     if (isAdmin && isCollaborativeMode && quickAssignedUser) {
       const selectedUser = allUsers.find((u) => u.email === quickAssignedUser);
@@ -386,7 +387,7 @@ export default function TasksWidget() {
 
   const handleChangePriority = async (task, newPriority) => {
     // Apenas admin pode mudar prioridade
-    if (user.role !== "admin") return;
+    if (user?.role !== "admin") return;
 
     await updateMutation.mutateAsync({
       id: task.id,
@@ -531,7 +532,7 @@ export default function TasksWidget() {
   };
 
   const handleBulkPriority = async (priority) => {
-    if (user.role !== "admin") return;
+    if (user?.role !== "admin") return;
 
     const tasks = allTasks.filter((t) => selectedTasks.has(t.id));
     for (const task of tasks) {
@@ -545,7 +546,7 @@ export default function TasksWidget() {
   };
 
   const handleBulkAssign = async (userEmail) => {
-    if (user.role !== "admin") return;
+    if (user?.role !== "admin") return;
 
     const selectedUser = allUsers.find((u) => u.email === userEmail);
     if (!selectedUser) return;
@@ -591,7 +592,7 @@ export default function TasksWidget() {
     });
 
     // Notificar novo responsável
-    if (newUser.email !== user.email) {
+    if (newUser.email !== user?.email) {
       await notificationService.create({
         title: "Tarefa Atribuída",
         message: `"${task.title}" foi atribuída a você`,
@@ -1622,7 +1623,7 @@ export default function TasksWidget() {
                   <SelectContent>
                     <SelectItem value={null}>Atribuir a mim mesmo</SelectItem>
                     {allUsers
-                      .filter((u) => u.email !== user.email)
+                      .filter((u) => u.email !== user?.email)
                       .map((u) => (
                         <SelectItem key={u.email} value={u.email}>
                           {u.full_name || u.email}
