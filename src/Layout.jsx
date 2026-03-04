@@ -63,12 +63,12 @@ export default function Layout({ children, currentPageName }) {
       // Prefetch apenas dados essenciais do dashboard
       queryClient.prefetchQuery({
         queryKey: ["clients"],
-        queryFn: () => clientService.list("-created_date", 10),
+        queryFn: () => clientService.list("-created_at", 10),
         staleTime: 2 * 60 * 1000,
       });
       queryClient.prefetchQuery({
         queryKey: ["processes"],
-        queryFn: () => processService.list("-created_date", 10),
+        queryFn: () => processService.list("-created_at", 10),
         staleTime: 2 * 60 * 1000,
       });
     }
@@ -107,13 +107,13 @@ export default function Layout({ children, currentPageName }) {
       if (pageName === "Clients") {
         queryClient.prefetchQuery({
           queryKey: ["clients"],
-          queryFn: () => clientService.list("-created_date"),
+          queryFn: () => clientService.list("-created_at"),
           staleTime: 2 * 60 * 1000,
         });
       } else if (pageName === "Processes") {
         queryClient.prefetchQuery({
           queryKey: ["processes"],
-          queryFn: () => processService.list("-created_date"),
+          queryFn: () => processService.list("-created_at"),
           staleTime: 2 * 60 * 1000,
         });
       }

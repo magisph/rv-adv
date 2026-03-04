@@ -88,7 +88,7 @@ export default function Processes() {
 
   const { data: processes = [], isLoading } = useQuery({
     queryKey: ["processes"],
-    queryFn: () => processService.list("-created_date"),
+    queryFn: () => processService.list("-created_at"),
     staleTime: 2 * 60 * 1000, // 2 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
     placeholderData: keepPreviousData,

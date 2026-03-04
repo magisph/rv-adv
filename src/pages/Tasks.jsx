@@ -66,7 +66,7 @@ export default function Tasks() {
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks"],
-    queryFn: () => taskService.list("-created_date"),
+    queryFn: () => taskService.list("-created_at"),
   });
 
   const createMutation = useMutation({

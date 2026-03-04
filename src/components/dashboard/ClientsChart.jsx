@@ -28,7 +28,7 @@ export default function ClientsChart({ clients = [], isLoading }) {
       const end = endOfMonth(date);
 
       const count = clients.filter((client) => {
-        const created = parseISO(client.created_date);
+        const created = parseISO(client.created_at);
         return isWithinInterval(created, { start, end });
       }).length;
 

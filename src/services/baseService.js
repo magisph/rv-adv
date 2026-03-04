@@ -5,7 +5,7 @@ export class BaseService {
     this.table = tableName;
   }
 
-  async list(orderBy = "created_date", limit = 100) {
+  async list(orderBy = "created_at", limit = 100) {
     let ascending = true;
     let column = orderBy;
     
@@ -73,7 +73,7 @@ export class BaseService {
   }
   
   // Custom filter method
-  async filter(filters, orderBy = "created_date", limit = 100) {
+  async filter(filters, orderBy = "created_at", limit = 100) {
       let query = supabase.from(this.table).select("*");
       
       // Apply filters

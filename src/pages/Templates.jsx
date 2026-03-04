@@ -61,7 +61,7 @@ export default function Templates() {
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["templates"],
-    queryFn: () => templateService.list("-created_date"),
+    queryFn: () => templateService.list("-created_at"),
   });
 
   const createMutation = useMutation({

@@ -222,7 +222,7 @@ export const cleanOldNotifications = async (daysOld = 30) => {
   const oldNotifications = await notificationService.filter({
     user_email: user?.email,
     read: true,
-    created_date: { $lt: cutoffDate.toISOString() },
+    created_at: { $lt: cutoffDate.toISOString() },
   });
 
   for (const notification of oldNotifications) {

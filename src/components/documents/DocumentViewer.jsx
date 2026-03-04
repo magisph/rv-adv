@@ -156,7 +156,7 @@ export default function DocumentViewer({ document, onClose }) {
           <span>•</span>
           <span>
             Enviado em:{" "}
-            {format(new Date(document.created_date), "dd/MM/yyyy HH:mm")}
+            {format(new Date(document.created_at), "dd/MM/yyyy HH:mm")}
           </span>
           {document.description && (
             <>

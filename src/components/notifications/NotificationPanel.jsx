@@ -155,7 +155,7 @@ export default function NotificationPanel({ user, onClose }) {
 
       if (aPriority !== bPriority) return aPriority - bPriority;
 
-      return new Date(b.created_date) - new Date(a.created_date);
+      return new Date(b.created_at) - new Date(a.created_at);
     });
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -235,7 +235,7 @@ export default function NotificationPanel({ user, onClose }) {
               </p>
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-xs text-slate-400">
-                  {formatDistanceToNow(new Date(notification.created_date), {
+                  {formatDistanceToNow(new Date(notification.created_at), {
                     addSuffix: true,
                     locale: ptBR,
                   })}

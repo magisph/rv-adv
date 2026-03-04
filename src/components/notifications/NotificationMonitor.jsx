@@ -56,7 +56,7 @@ export default function NotificationMonitor({ user }) {
         );
 
         const hasNotificationToday = existingNotifications.some((n) =>
-          isToday(new Date(n.created_date)),
+          isToday(new Date(n.created_at)),
         );
 
         if (hasNotificationToday) continue;
@@ -121,7 +121,7 @@ export default function NotificationMonitor({ user }) {
         );
 
         const hasRecentNotification = existingNotifications.some((n) => {
-          const notifDate = new Date(n.created_date);
+          const notifDate = new Date(n.created_at);
           return now - notifDate < 6 * 60 * 60 * 1000; // Últimas 6 horas
         });
 
@@ -192,7 +192,7 @@ export default function NotificationMonitor({ user }) {
         );
 
         const hasRecentNotification = existingNotifications.some((n) => {
-          const notifDate = new Date(n.created_date);
+          const notifDate = new Date(n.created_at);
           return now - notifDate < 30 * 60 * 1000; // Últimos 30 minutos
         });
 

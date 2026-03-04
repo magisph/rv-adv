@@ -70,7 +70,7 @@ export default function Clients() {
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients"],
-    queryFn: () => clientService.list("-created_date"),
+    queryFn: () => clientService.list("-created_at"),
     staleTime: 2 * 60 * 1000, // 2 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
     placeholderData: keepPreviousData,

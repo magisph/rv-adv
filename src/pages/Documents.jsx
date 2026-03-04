@@ -40,7 +40,7 @@ export default function Documents() {
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["all-documents"],
-    queryFn: () => documentService.list("-created_date"),
+    queryFn: () => documentService.list("-created_at"),
   });
 
   const { data: folders = [] } = useQuery({
@@ -189,7 +189,7 @@ export default function Documents() {
                       </p>
                     )}
                     <p className="text-xs text-slate-400 mt-2">
-                      {format(new Date(doc.created_date), "dd/MM/yyyy")}
+                      {format(new Date(doc.created_at), "dd/MM/yyyy")}
                     </p>
                   </div>
                   <DropdownMenu>

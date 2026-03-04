@@ -295,7 +295,7 @@ export default function DocumentListModal({
                                   <span className="flex items-center gap-1">
                                     <Calendar className="w-3 h-3" />
                                     {format(
-                                      new Date(doc.created_date),
+                                      new Date(doc.created_at),
                                       "dd/MM/yyyy",
                                     )}
                                   </span>

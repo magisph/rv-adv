@@ -100,7 +100,7 @@ export default function DocumentStatusCard({
     return {
       ...doc,
       status: uploaded ? "complete" : "pending",
-      date: uploaded?.created_date,
+      date: uploaded?.created_at,
     };
   });
 

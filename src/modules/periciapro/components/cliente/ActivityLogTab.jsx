@@ -61,7 +61,7 @@ export default function ActivityLogTab({ logs }) {
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-slate-500">
                 {(() => {
-                  const date = new Date(log.created_date);
+                  const date = new Date(log.created_at);
                   const optionsDate = {
                     timeZone: "America/Fortaleza",
                     day: "2-digit",

@@ -27,14 +27,14 @@ export default function Home() {
   // Dashboard: carregar apenas últimos 10 de cada para performance
   const { data: clients = [], isLoading: loadingClients } = useQuery({
     queryKey: ["clients", { status: "ativo" }],
-    queryFn: () => clientService.filter({ status: "ativo" }, "-created_date", 10),
+    queryFn: () => clientService.filter({ status: "ativo" }, "-created_at", 10),
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
 
   const { data: processes = [], isLoading: loadingProcesses } = useQuery({
     queryKey: ["processes", { status: "ativo" }],
-    queryFn: () => processService.filter({ status: "ativo" }, "-created_date", 10),
+    queryFn: () => processService.filter({ status: "ativo" }, "-created_at", 10),
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });

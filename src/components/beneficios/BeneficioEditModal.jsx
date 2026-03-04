@@ -339,8 +339,8 @@ export default function BeneficioEditModal({
                 <Label className="text-xs text-slate-500">Cadastrado em</Label>
                 <Input
                   value={(() => {
-                    if (!beneficio.created_date) return "-";
-                    const d = new Date(beneficio.created_date);
+                    if (!beneficio.created_at) return "-";
+                    const d = new Date(beneficio.created_at);
                     return isNaN(d.getTime()) ? "-" : format(d, "dd/MM/yyyy");
                   })()}
                   disabled

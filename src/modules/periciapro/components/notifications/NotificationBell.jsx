@@ -223,7 +223,7 @@ export default function NotificationBell({ userEmail }) {
                         )}
                         <span className="ml-auto">
                           {format(
-                            new Date(notification.created_date),
+                            new Date(notification.created_at),
                             "dd/MM HH:mm",
                             { locale: ptBR },
                           )}

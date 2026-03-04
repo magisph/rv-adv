@@ -94,7 +94,7 @@ export default function DocumentEditModal({ document, onSuccess, onCancel }) {
           <div>
             <p className="font-medium">{document.name}</p>
             <p className="text-sm text-slate-500">
-              Enviado em {format(new Date(document.created_date), "dd/MM/yyyy")}{" "}
+              Enviado em {format(new Date(document.created_at), "dd/MM/yyyy")}{" "}
               •
               {document.file_size
                 ? ` ${(document.file_size / 1024 / 1024).toFixed(2)} MB`

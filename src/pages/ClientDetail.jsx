@@ -756,11 +756,11 @@ export default function ClientDetail() {
                                   )}
                                 </span>
                               )}
-                              {beneficio.created_date && (
+                              {beneficio.created_at && (
                                 <span>
                                   Cadastrado:{" "}
                                   {format(
-                                    new Date(beneficio.created_date),
+                                    new Date(beneficio.created_at),
                                     "dd/MM/yyyy",
                                   )}
                                 </span>
