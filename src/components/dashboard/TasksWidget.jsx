@@ -274,15 +274,18 @@ export default function TasksWidget() {
       setQuickTaskTitle("");
 
       if (task.assigned_to && user && task.assigned_to !== user?.email) {
-        await notificationService.create({
-          title: "Nova Tarefa Atribuída",
-          message: `${task.title}${task.client_name ? ` - Cliente: ${task.client_name}` : ""}`,
-          type: "tarefa",
-          priority: task.priority === "urgente" ? "urgente" : "importante",
-          user_email: task.assigned_to,
-          link: "/tasks",
-          related_id: task.id,
-        });
+        const assignedUserId = await authService.getUserIdByEmail(task.assigned_to);
+        if (assignedUserId) {
+          await notificationService.create({
+            title: "Nova Tarefa Atribuída",
+            message: `${task.title}${task.client_name ? ` - Cliente: ${task.client_name}` : ""}`,
+            type: "tarefa",
+            priority: task.priority === "urgente" ? "urgente" : "importante",
+            user_id: assignedUserId,
+            link: "/tasks",
+            related_id: task.id,
+          });
+        }
       }
     },
   });
@@ -326,14 +329,17 @@ export default function TasksWidget() {
     if (!isAdmin && destination.droppableId === "done") {
       const admin = allUsers.find((u) => u.role === "admin");
       if (admin) {
-        await notificationService.create({
-          title: "Tarefa Concluída",
-          message: `${user?.full_name} concluiu: "${task.title}"`,
-          type: "tarefa",
-          user_email: admin.email,
-          link: "/tasks",
-          related_id: task.id,
-        });
+        const adminId = await authService.getUserIdByEmail(admin.email);
+        if (adminId) {
+          await notificationService.create({
+            title: "Tarefa Concluída",
+            message: `${user?.full_name} concluiu: "${task.title}"`,
+            type: "tarefa",
+            user_id: adminId,
+            link: "/tasks",
+            related_id: task.id,
+          });
+        }
       }
     }
   };
@@ -593,14 +599,17 @@ export default function TasksWidget() {
 
     // Notificar novo responsável
     if (newUser.email !== user?.email) {
-      await notificationService.create({
-        title: "Tarefa Atribuída",
-        message: `"${task.title}" foi atribuída a você`,
-        type: "tarefa",
-        user_email: newUser.email,
-        link: "/tasks",
-        related_id: task.id,
-      });
+      const newUserId = await authService.getUserIdByEmail(newUser.email);
+      if (newUserId) {
+        await notificationService.create({
+          title: "Tarefa Atribuída",
+          message: `"${task.title}" foi atribuída a você`,
+          type: "tarefa",
+          user_id: newUserId,
+          link: "/tasks",
+          related_id: task.id,
+        });
+      }
     }
 
     setLongPressTask(null);

@@ -165,7 +165,7 @@ export default function ProcessDetail() {
           message: `${mov.descricao.substring(0, 100)}...`,
           type: "movimentacao",
           priority: priority,
-          user_email: user?.email,
+          user_id: user?.id,
           link: `/process-detail?id=${processId}`,
           related_id: processId,
         });

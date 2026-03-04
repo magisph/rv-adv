@@ -199,7 +199,7 @@ export default function ClientDetail() {
                 : `Lembrete: Compromisso em ${daysBefore} dia(s)`,
             message: `${data.title} - ${data.client_name}`,
             type: "compromisso",
-            user_email: user?.email,
+            user_id: user?.id,
             related_id: savedAppointment.id || editingAppointment?.id,
             scheduled_date: notificationDate.toISOString(),
           });

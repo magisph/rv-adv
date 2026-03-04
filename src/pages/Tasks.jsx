@@ -77,18 +77,19 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ["monitor-tasks"] });
       setShowForm(false);
 
-      // Create notification for assigned user
       if (task.assigned_to) {
-        const currentUser = await authService.getCurrentUser();
-        await notificationService.create({
-          title: "Nova Tarefa Atribuída",
-          message: `${task.title}${task.client_name ? ` - Cliente: ${task.client_name}` : ""}`,
-          type: "tarefa",
-          priority: task.priority === "urgente" ? "urgente" : "importante",
-          user_email: task.assigned_to,
-          link: "/tasks",
-          related_id: task.id,
-        });
+        const assignedUserId = await authService.getUserIdByEmail(task.assigned_to);
+        if (assignedUserId) {
+          await notificationService.create({
+            title: "Nova Tarefa Atribuída",
+            message: `${task.title}${task.client_name ? ` - Cliente: ${task.client_name}` : ""}`,
+            type: "tarefa",
+            priority: task.priority === "urgente" ? "urgente" : "importante",
+            user_id: assignedUserId,
+            link: "/tasks",
+            related_id: task.id,
+          });
+        }
       }
     },
     onError: (error) => toast.error(error.message || "Erro ao criar tarefa"),

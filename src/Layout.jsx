@@ -375,13 +375,13 @@ function NotificationBell({ user }) {
   const [showPanel, setShowPanel] = useState(false);
 
   const { data: notifications = [] } = useQuery({
-    queryKey: ["notifications-header", user?.email],
+    queryKey: ["notifications-header", user?.id],
     queryFn: () =>
       notificationService.filter({
-        user_email: user?.email,
-        read: false,
+        user_id: user?.id,
+        is_read: false,
       }),
-    enabled: !!user?.email,
+    enabled: !!user?.id,
     refetchInterval: 10000,
     refetchOnWindowFocus: false,
   });
