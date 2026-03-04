@@ -26,6 +26,16 @@ export const authService = {
       return this.getCurrentUser();
   },
 
+  async getUserIdByEmail(email) {
+    if (!email) return null;
+    const { data } = await supabase
+      .from("users")
+      .select("auth_id")
+      .eq("email", email)
+      .single();
+    return data?.auth_id;
+  },
+
   async updateMe(userData) {
     // Separate user_metadata from top-level auth fields
     const updatePayload = {};

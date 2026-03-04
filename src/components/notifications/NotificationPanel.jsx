@@ -75,24 +75,24 @@ export default function NotificationPanel({ user, onClose }) {
   const queryClient = useQueryClient();
 
   const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ["notifications", user?.email],
+    queryKey: ["notifications", user?.id],
     queryFn: () =>
-      notificationService.filter({ user_email: user.email }),
-    enabled: !!user?.email,
+      notificationService.filter({ user_id: user.id }),
+    enabled: !!user?.id,
     refetchInterval: 10000, // Atualiza a cada 10 segundos
   });
 
   const markAsReadMutation = useMutation({
-    mutationFn: (id) => notificationService.update(id, { read: true }),
+    mutationFn: (id) => notificationService.update(id, { is_read: true }),
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });
 
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      const unread = notifications.filter((n) => !n.read);
+      const unread = notifications.filter((n) => !n.is_read);
       await Promise.all(
         unread.map((n) =>
-          notificationService.update(n.id, { read: true }),
+          notificationService.update(n.id, { is_read: true }),
         ),
       );
     },
@@ -106,7 +106,7 @@ export default function NotificationPanel({ user, onClose }) {
 
   const clearReadMutation = useMutation({
     mutationFn: async () => {
-      const read = notifications.filter((n) => n.read);
+      const read = notifications.filter((n) => n.is_read);
       await Promise.all(
         read.map((n) => notificationService.delete(n.id)),
       );
@@ -132,7 +132,7 @@ export default function NotificationPanel({ user, onClose }) {
 
       const matchesFilter =
         activeFilter === "all" ||
-        (activeFilter === "unread" && !n.read) ||
+        (activeFilter === "unread" && !n.is_read) ||
         (activeFilter === "prazo" && n.type === "prazo") ||
         (activeFilter === "tarefa" && n.type === "tarefa") ||
         (activeFilter === "agendamento" && n.type === "compromisso") ||
@@ -142,7 +142,7 @@ export default function NotificationPanel({ user, onClose }) {
     })
     .sort((a, b) => {
       // Ordenar por: não lidas primeiro, depois por prioridade, depois por data
-      if (a.read !== b.read) return a.read ? 1 : -1;
+      if (a.is_read !== b.is_read) return a.is_read ? 1 : -1;
 
       const priorityOrder = {
         urgente: 0,
@@ -158,7 +158,7 @@ export default function NotificationPanel({ user, onClose }) {
       return new Date(b.created_at) - new Date(a.created_at);
     });
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const NotificationItem = ({ notification }) => {
     const priorityConfig =
@@ -171,7 +171,7 @@ export default function NotificationPanel({ user, onClose }) {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, x: -10 }}
         className={`p-3 border-b last:border-b-0 hover:bg-slate-50 transition-colors ${
-          !notification.read ? "bg-blue-50/50" : ""
+          !notification.is_read ? "bg-blue-50/50" : ""
         }`}
       >
         <div className="flex items-start gap-3">
@@ -191,7 +191,7 @@ export default function NotificationPanel({ user, onClose }) {
                 >
                   {priorityConfig.label}
                 </Badge>
-                {!notification.read && (
+                {!notification.is_read && (
                   <div className="w-2 h-2 bg-blue-600 rounded-full" />
                 )}
               </div>
@@ -202,7 +202,7 @@ export default function NotificationPanel({ user, onClose }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {!notification.read && (
+                  {!notification.is_read && (
                     <DropdownMenuItem
                       onClick={() => markAsReadMutation.mutate(notification.id)}
                     >
@@ -226,7 +226,7 @@ export default function NotificationPanel({ user, onClose }) {
               className="text-left w-full"
             >
               <h4
-                className={`font-semibold text-sm ${!notification.read ? "text-slate-900" : "text-slate-700"}`}
+                className={`font-semibold text-sm ${!notification.is_read ? "text-slate-900" : "text-slate-700"}`}
               >
                 {notification.title}
               </h4>

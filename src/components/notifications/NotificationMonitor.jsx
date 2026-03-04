@@ -1,4 +1,5 @@
 ﻿import { useEffect } from "react";
+import { authService } from "@/services/authService";
 import { deadlineService, taskService, appointmentService, notificationService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { differenceInDays, isToday, isPast, addHours } from "date-fns";
@@ -46,10 +47,15 @@ export default function NotificationMonitor({ user }) {
         const today = new Date();
         const daysUntil = differenceInDays(dueDate, today);
 
+        const targetEmail = deadline.responsible_email || user?.email;
+        if (!targetEmail) continue;
+        const targetUserId = await authService.getUserIdByEmail(targetEmail);
+        if (!targetUserId) continue;
+
         // Verificar se já existe notificação para este prazo hoje
         const existingNotifications = await notificationService.filter(
           {
-            user_email: deadline.responsible_email || user?.email,
+            user_id: targetUserId,
             related_id: deadline.id,
             type: "prazo",
           },
@@ -80,7 +86,7 @@ export default function NotificationMonitor({ user }) {
                   : "informativa";
 
           await notificationService.create({
-            user_email: deadline.responsible_email || user?.email,
+            user_id: targetUserId,
             type: "prazo",
             priority: priority,
             title:
@@ -111,10 +117,15 @@ export default function NotificationMonitor({ user }) {
         const hoursUntil = Math.floor((dueDate - now) / (1000 * 60 * 60));
         const daysUntil = differenceInDays(dueDate, now);
 
+        const taskEmail = task.assigned_to;
+        if (!taskEmail) continue;
+        const targetUserId = await authService.getUserIdByEmail(taskEmail);
+        if (!targetUserId) continue;
+
         // Verificar se já existe notificação
         const existingNotifications = await notificationService.filter(
           {
-            user_email: task.assigned_to,
+            user_id: targetUserId,
             related_id: task.id,
             type: "tarefa",
           },
@@ -151,7 +162,7 @@ export default function NotificationMonitor({ user }) {
                 : "Tarefa vence em 1 dia";
 
           await notificationService.create({
-            user_email: task.assigned_to,
+            user_id: targetUserId,
             type: "tarefa",
             priority: priority,
             title: title,
@@ -182,10 +193,12 @@ export default function NotificationMonitor({ user }) {
         const minutesUntil = Math.floor((appointmentDate - now) / (1000 * 60));
         const daysUntil = differenceInDays(appointmentDate, now);
 
+        if (!user?.id) continue;
+
         // Verificar se já existe notificação recente
         const existingNotifications = await notificationService.filter(
           {
-            user_email: user?.email,
+            user_id: user.id,
             related_id: appointment.id,
             type: "compromisso",
           },
@@ -215,7 +228,7 @@ export default function NotificationMonitor({ user }) {
                 : "Agendamento amanhã";
 
           await notificationService.create({
-            user_email: user?.email,
+            user_id: user.id,
             type: "compromisso",
             priority: priority,
             title: title,

@@ -19,12 +19,12 @@ import { createPageUrl } from "@/utils";
 export default function CalendarWidget({ user }) {
   const { data: tasks = [] } = useQuery({
     queryKey: ["calendar-tasks", user?.email],
-    queryFn: () =>
-      taskService.filter({
-        assigned_to: user?.email,
-        status: { $ne: "done" },
-        due_date: { $ne: null },
-      }),
+    queryFn: async () => {
+      const allTasks = await taskService.filter({
+        assigned_to: user?.email
+      });
+      return allTasks.filter(t => t.status !== "done" && t.due_date);
+    },
     enabled: !!user?.email,
   });
 

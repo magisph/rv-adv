@@ -12,9 +12,13 @@ export const createDeadlineNotification = async (deadline, daysUntil) => {
     daysUntil <= 2 ? "urgente" : daysUntil <= 7 ? "importante" : "informativa";
 
   const currentUser = await authService.getCurrentUser();
-  if (!currentUser && !deadline.responsible_email) return;
+  const targetEmail = deadline.responsible_email || currentUser?.email;
+  if (!targetEmail) return;
+  const targetUserId = await authService.getUserIdByEmail(targetEmail);
+  if (!targetUserId) return;
+
   await notificationService.create({
-    user_email: deadline.responsible_email || currentUser?.email,
+    user_id: targetUserId,
     type: "prazo",
     priority: priority,
     title:
@@ -32,9 +36,11 @@ export const createDeadlineNotification = async (deadline, daysUntil) => {
  */
 export const createTaskAssignedNotification = async (task) => {
   if (!task.assigned_to) return;
+  const targetUserId = await authService.getUserIdByEmail(task.assigned_to);
+  if (!targetUserId) return;
 
   await notificationService.create({
-    user_email: task.assigned_to,
+    user_id: targetUserId,
     type: "tarefa",
     priority: task.priority === "urgente" ? "urgente" : "importante",
     title: "Nova Tarefa Atribuída",
@@ -49,12 +55,14 @@ export const createTaskAssignedNotification = async (task) => {
  */
 export const createTaskDueNotification = async (task, daysUntil) => {
   if (!task.assigned_to || !task.due_date) return;
+  const targetUserId = await authService.getUserIdByEmail(task.assigned_to);
+  if (!targetUserId) return;
 
   const priority =
     daysUntil <= 0 ? "urgente" : daysUntil === 0 ? "importante" : "informativa";
 
   await notificationService.create({
-    user_email: task.assigned_to,
+    user_id: targetUserId,
     type: "tarefa",
     priority: priority,
     title:
@@ -74,11 +82,11 @@ export const createTaskDueNotification = async (task, daysUntil) => {
  */
 export const createAppointmentNotification = async (appointment, daysUntil) => {
   const user = await authService.getCurrentUser();
-  if (!user) return;
+  if (!user?.id) return;
   const priority = daysUntil === 0 ? "importante" : "informativa";
 
   await notificationService.create({
-    user_email: user?.email,
+    user_id: user.id,
     type: "compromisso",
     priority: priority,
     title:
@@ -96,7 +104,7 @@ export const createAppointmentNotification = async (appointment, daysUntil) => {
  */
 export const createProcessMoveNotification = async (move) => {
   const user = await authService.getCurrentUser();
-  if (!user) return;
+  if (!user?.id) return;
 
   const priority =
     move.move_type === "sentenca"
@@ -106,7 +114,7 @@ export const createProcessMoveNotification = async (move) => {
         : "informativa";
 
   await notificationService.create({
-    user_email: user?.email,
+    user_id: user.id,
     type: "movimentacao",
     priority: priority,
     title: `Nova Movimentação: ${move.move_type}`,
@@ -124,7 +132,7 @@ export const createDocumentNotification = async (
   actionType = "upload",
 ) => {
   const user = await authService.getCurrentUser();
-  if (!user) return;
+  if (!user?.id) return;
 
   const title =
     actionType === "upload"
@@ -143,7 +151,7 @@ export const createDocumentNotification = async (
         : "informativa";
 
   await notificationService.create({
-    user_email: user?.email,
+    user_id: user.id,
     type: "documento",
     priority: priority,
     title: title,
@@ -161,10 +169,10 @@ export const createDocumentNotification = async (
  */
 export const createNewClientNotification = async (client) => {
   const user = await authService.getCurrentUser();
-  if (!user) return;
+  if (!user?.id) return;
 
   await notificationService.create({
-    user_email: user?.email,
+    user_id: user.id,
     type: "sistema",
     priority: "informativa",
     title: "Novo Cliente Cadastrado",
@@ -179,7 +187,7 @@ export const createNewClientNotification = async (client) => {
  */
 export const createBeneficioNotification = async (beneficio, status) => {
   const user = await authService.getCurrentUser();
-  if (!user) return;
+  if (!user?.id) return;
 
   const priority =
     status === "deferido"
@@ -200,7 +208,7 @@ export const createBeneficioNotification = async (beneficio, status) => {
           : "Benefício Atualizado";
 
   await notificationService.create({
-    user_email: user?.email,
+    user_id: user.id,
     type: "sistema",
     priority: priority,
     title: title,
@@ -215,15 +223,17 @@ export const createBeneficioNotification = async (beneficio, status) => {
  */
 export const cleanOldNotifications = async (daysOld = 30) => {
   const user = await authService.getCurrentUser();
-  if (!user) return;
+  if (!user?.id) return;
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
-  const oldNotifications = await notificationService.filter({
-    user_email: user?.email,
-    read: true,
-    created_at: { $lt: cutoffDate.toISOString() },
+  // Instead of passing a complex object for created_at, fetch all and filter client-side
+  const allNotifications = await notificationService.filter({
+    user_id: user.id,
+    is_read: true,
   });
+  
+  const oldNotifications = allNotifications.filter(n => new Date(n.created_at) < cutoffDate);
 
   for (const notification of oldNotifications) {
     await notificationService.delete(notification.id);
