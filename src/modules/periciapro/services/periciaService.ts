@@ -95,19 +95,13 @@ export const periciaService = {
   },
 
   async upsertPagamentos(periciaId: string, pagamentos: Partial<PericiaPagamento>[]): Promise<void> {
-    // BUG #14 fix: check delete error — if delete fails and we continue,
-    // the subsequent insert creates duplicate payment records.
-    const { error: deleteError } = await supabase
-      .from('pericia_pagamentos')
-      .delete()
-      .eq('pericia_id', periciaId);
-    if (deleteError) throw deleteError;
-
-    if (pagamentos.length > 0) {
-      const rows = pagamentos.map((p) => ({ ...p, pericia_id: periciaId }));
-      const { error } = await supabase.from('pericia_pagamentos').insert(rows);
-      if (error) throw error;
-    }
+    // CRIT-02 fix: chamada RPC atômica — DELETE + INSERT executam dentro de uma
+    // única transação no PostgreSQL. Se qualquer etapa falhar, rollback automático.
+    const { error } = await supabase.rpc('rpc_upsert_pagamentos', {
+      p_pericia_id: periciaId,
+      p_pagamentos: JSON.stringify(pagamentos),
+    });
+    if (error) throw error;
   },
 
   // --- Documentos ---

@@ -104,69 +104,89 @@ export default function ProcessDetail() {
 
   const syncDatajud = async () => {
     setIsSyncing(true);
+    const createdMoveIds = []; // Rastreio para rollback manual
 
-    // Simulate DataJud API call
-    const response = await aiService.invokeLLM({
-      prompt: `Simule a resposta de uma API de consulta processual (DataJud) para o processo número ${process.process_number}.
-      Gere 3 movimentações processuais recentes com datas dos últimos 30 dias.
-      Cada movimentação deve ter: data, descrição detalhada, e tipo (escolha entre: despacho, sentenca, decisao, peticao, intimacao, citacao, audiencia, outros).
-      As movimentações devem ser realistas para um processo judicial brasileiro.`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          movimentacoes: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                data: {
-                  type: "string",
-                  description: "Data no formato YYYY-MM-DD",
+    try {
+      // Simulate DataJud API call
+      const response = await aiService.invokeLLM({
+        prompt: `Simule a resposta de uma API de consulta processual (DataJud) para o processo número ${process.process_number}.
+        Gere 3 movimentações processuais recentes com datas dos últimos 30 dias.
+        Cada movimentação deve ter: data, descrição detalhada, e tipo (escolha entre: despacho, sentenca, decisao, peticao, intimacao, citacao, audiencia, outros).
+        As movimentações devem ser realistas para um processo judicial brasileiro.`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            movimentacoes: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  data: {
+                    type: "string",
+                    description: "Data no formato YYYY-MM-DD",
+                  },
+                  descricao: { type: "string" },
+                  tipo: { type: "string" },
                 },
-                descricao: { type: "string" },
-                tipo: { type: "string" },
               },
             },
           },
         },
-      },
-    });
-
-    // Insert the simulated moves
-    for (const mov of response.movimentacoes) {
-      await processMoveService.create({
-        process_id: processId,
-        process_number: process.process_number,
-        date: mov.data,
-        description: mov.descricao,
-        move_type: mov.tipo,
-        source: "datajud",
       });
+
+      // Insert the simulated moves — rastreia IDs para rollback
+      for (const mov of response.movimentacoes) {
+        const created = await processMoveService.create({
+          process_id: processId,
+          process_number: process.process_number,
+          date: mov.data,
+          description: mov.descricao,
+          move_type: mov.tipo,
+          source: "datajud",
+        });
+        if (created?.id) createdMoveIds.push(created.id);
+      }
+
+      // Create notification for each move
+      const user = await authService.getCurrentUser();
+      for (const mov of response.movimentacoes) {
+        const priority =
+          mov.tipo === "sentenca"
+            ? "urgente"
+            : mov.tipo === "intimacao"
+              ? "importante"
+              : "informativa";
+
+        await notificationService.create({
+          title: `Nova Movimentação: ${mov.tipo}`,
+          message: `${mov.descricao.substring(0, 100)}...`,
+          type: "movimentacao",
+          priority: priority,
+          user_email: user?.email,
+          link: `/process-detail?id=${processId}`,
+          related_id: processId,
+        });
+      }
+
+      queryClient.invalidateQueries(["process-moves", processId]);
+    } catch (error) {
+      console.error("[syncDatajud] Erro na sincronização:", error);
+
+      // Rollback manual: remove movimentações parcialmente criadas
+      if (createdMoveIds.length > 0) {
+        for (const moveId of createdMoveIds) {
+          try {
+            await processMoveService.delete(moveId);
+          } catch (rollbackErr) {
+            console.error("[syncDatajud] Falha no rollback da movimentação:", moveId, rollbackErr);
+          }
+        }
+      }
+
+      alert("Erro ao sincronizar com DataJud. Nenhuma movimentação foi salva. Tente novamente.");
+    } finally {
+      setIsSyncing(false);
     }
-
-    // Create notification for each move
-    const user = await authService.getCurrentUser();
-    for (const mov of response.movimentacoes) {
-      const priority =
-        mov.tipo === "sentenca"
-          ? "urgente"
-          : mov.tipo === "intimacao"
-            ? "importante"
-            : "informativa";
-
-      await notificationService.create({
-        title: `Nova Movimentação: ${mov.tipo}`,
-        message: `${mov.descricao.substring(0, 100)}...`,
-        type: "movimentacao",
-        priority: priority,
-        user_email: user.email,
-        link: `/process-detail?id=${processId}`,
-        related_id: processId,
-      });
-    }
-
-    queryClient.invalidateQueries(["process-moves", processId]);
-    setIsSyncing(false);
   };
 
   const sortedMoves = [...moves].sort(
