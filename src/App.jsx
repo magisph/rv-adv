@@ -3,10 +3,11 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
 import NavigationTracker from "@/lib/NavigationTracker";
 import { pagesConfig } from "./pages.config";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import PageNotFound from "./lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
+import AuthPage from "./pages/AuthPage";
 
 // PericiaPro module pages (prefixed /pericias/*)
 import PericiasDashboard from "@/modules/periciapro/pages/Dashboard";
@@ -25,6 +26,17 @@ const LayoutWrapper = ({ children, currentPageName }) =>
   ) : (
     <>{children}</>
   );
+
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } =
@@ -53,12 +65,16 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
+      <Route path="/login" element={<AuthPage />} />
+      <Route path="/auth" element={<Navigate to="/login" replace />} />
       <Route
         path="/"
         element={
-          <LayoutWrapper currentPageName={mainPageKey}>
-            <MainPage />
-          </LayoutWrapper>
+          <ProtectedRoute>
+            <LayoutWrapper currentPageName={mainPageKey}>
+              <MainPage />
+            </LayoutWrapper>
+          </ProtectedRoute>
         }
       />
       {Object.entries(Pages).map(([path, Page]) => (
@@ -66,9 +82,11 @@ const AuthenticatedApp = () => {
           key={path}
           path={`/${path}`}
           element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
+            <ProtectedRoute>
+              <LayoutWrapper currentPageName={path}>
+                <Page />
+              </LayoutWrapper>
+            </ProtectedRoute>
           }
         />
       ))}
@@ -77,41 +95,51 @@ const AuthenticatedApp = () => {
       <Route
         path="/pericias/painel"
         element={
-          <LayoutWrapper currentPageName="pericias-painel">
-            <PericiasDashboard />
-          </LayoutWrapper>
+          <ProtectedRoute>
+            <LayoutWrapper currentPageName="pericias-painel">
+              <PericiasDashboard />
+            </LayoutWrapper>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/pericias/cadastro"
         element={
-          <LayoutWrapper currentPageName="pericias-cadastro">
-            <PericiasCadastro />
-          </LayoutWrapper>
+          <ProtectedRoute>
+            <LayoutWrapper currentPageName="pericias-cadastro">
+              <PericiasCadastro />
+            </LayoutWrapper>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/pericias/calendario"
         element={
-          <LayoutWrapper currentPageName="pericias-calendario">
-            <PericiasCalendario />
-          </LayoutWrapper>
+          <ProtectedRoute>
+            <LayoutWrapper currentPageName="pericias-calendario">
+              <PericiasCalendario />
+            </LayoutWrapper>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/pericias/alertas"
         element={
-          <LayoutWrapper currentPageName="pericias-alertas">
-            <PericiasAlertas />
-          </LayoutWrapper>
+          <ProtectedRoute>
+            <LayoutWrapper currentPageName="pericias-alertas">
+              <PericiasAlertas />
+            </LayoutWrapper>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/pericias/detalhes/:id"
         element={
-          <LayoutWrapper currentPageName="pericias-detalhes">
-            <PericiasDetalhes />
-          </LayoutWrapper>
+          <ProtectedRoute>
+            <LayoutWrapper currentPageName="pericias-detalhes">
+              <PericiasDetalhes />
+            </LayoutWrapper>
+          </ProtectedRoute>
         }
       />
 
