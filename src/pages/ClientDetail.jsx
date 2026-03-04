@@ -1,4 +1,5 @@
 ﻿import React, { useState } from "react";
+import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { clientService, processService, appointmentService, beneficioService, documentService, notificationService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -141,6 +142,7 @@ export default function ClientDetail() {
       queryClient.invalidateQueries(["client", clientId]);
       setShowEditForm(false);
     },
+    onError: (error) => toast.error(error.message || "Erro ao atualizar cliente"),
   });
 
   const createAppointmentMutation = useMutation({
@@ -150,6 +152,7 @@ export default function ClientDetail() {
       setShowAppointmentForm(false);
       setEditingAppointment(null);
     },
+    onError: (error) => toast.error(error.message || "Erro ao criar compromisso"),
   });
 
   const updateAppointmentMutation = useMutation({
@@ -159,12 +162,14 @@ export default function ClientDetail() {
       setShowAppointmentForm(false);
       setEditingAppointment(null);
     },
+    onError: (error) => toast.error(error.message || "Erro ao atualizar compromisso"),
   });
 
   const deleteAppointmentMutation = useMutation({
     mutationFn: (id) => appointmentService.delete(id),
     onSuccess: () =>
       queryClient.invalidateQueries(["client-appointments", clientId]),
+    onError: (error) => toast.error(error.message || "Erro ao excluir compromisso"),
   });
 
   const handleAppointmentSave = async (data) => {
@@ -176,25 +181,30 @@ export default function ClientDetail() {
       : await createAppointmentMutation.mutateAsync(data);
 
     if (data.alerts_enabled && data.alert_days && data.alert_days.length > 0) {
-      const user = await authService.getCurrentUser();
-      if (!user) return;
-      const appointmentDate = new Date(data.date);
+      try {
+        const user = await authService.getCurrentUser();
+        if (!user) return;
+        const appointmentDate = new Date(data.date);
 
-      for (const daysBefore of data.alert_days) {
-        const notificationDate = new Date(appointmentDate);
-        notificationDate.setDate(notificationDate.getDate() - daysBefore);
+        for (const daysBefore of data.alert_days) {
+          const notificationDate = new Date(appointmentDate);
+          notificationDate.setDate(notificationDate.getDate() - daysBefore);
 
-        await notificationService.create({
-          title:
-            daysBefore === 0
-              ? "Compromisso hoje"
-              : `Lembrete: Compromisso em ${daysBefore} dia(s)`,
-          message: `${data.title} - ${data.client_name}`,
-          type: "compromisso",
-          user_email: user?.email,
-          related_id: savedAppointment.id || editingAppointment?.id,
-          scheduled_date: notificationDate.toISOString(),
-        });
+          await notificationService.create({
+            title:
+              daysBefore === 0
+                ? "Compromisso hoje"
+                : `Lembrete: Compromisso em ${daysBefore} dia(s)`,
+            message: `${data.title} - ${data.client_name}`,
+            type: "compromisso",
+            user_email: user?.email,
+            related_id: savedAppointment.id || editingAppointment?.id,
+            scheduled_date: notificationDate.toISOString(),
+          });
+        }
+      } catch (error) {
+        console.error("Falha ao criar alertas de notificação:", error);
+        toast.warning("Compromisso salvo, mas alguns alertas falharam");
       }
     }
   };

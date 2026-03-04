@@ -1,4 +1,5 @@
 ﻿import React, { useState } from "react";
+import { toast } from "sonner";
 import { financialService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,6 +82,7 @@ export default function Financial() {
       queryClient.invalidateQueries(["financial"]);
       setShowForm(false);
     },
+    onError: (error) => toast.error(error.message || "Erro ao criar transação"),
   });
 
   const updateMutation = useMutation({
@@ -90,11 +92,13 @@ export default function Financial() {
       setShowForm(false);
       setEditingTransaction(null);
     },
+    onError: (error) => toast.error(error.message || "Erro ao atualizar transação"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => financialService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["financial"]),
+    onError: (error) => toast.error(error.message || "Erro ao excluir transação"),
   });
 
   const handleSave = (data) => {

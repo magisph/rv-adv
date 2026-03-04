@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState } from "react";
+import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { deadlineService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -66,17 +67,15 @@ export default function Deadlines() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [showForm, setShowForm] = useState(!!preselectedProcessId);
   const [editingDeadline, setEditingDeadline] = useState(null);
-  const [user, setUser] = useState(null);
 
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const loadUser = async () => {
-      const u = await authService.getCurrentUser();
-      setUser(u);
-    };
-    loadUser();
-  }, []);
+  const { data: user } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: () => authService.getCurrentUser(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
 
   const { data: deadlines = [], isLoading } = useQuery({
     queryKey: ["deadlines"],
@@ -89,6 +88,7 @@ export default function Deadlines() {
       queryClient.invalidateQueries(["deadlines"]);
       setShowForm(false);
     },
+    onError: (error) => toast.error(error.message || "Erro ao criar prazo"),
   });
 
   const updateMutation = useMutation({
@@ -98,11 +98,13 @@ export default function Deadlines() {
       setShowForm(false);
       setEditingDeadline(null);
     },
+    onError: (error) => toast.error(error.message || "Erro ao atualizar prazo"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => deadlineService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["deadlines"]),
+    onError: (error) => toast.error(error.message || "Erro ao excluir prazo"),
   });
 
   const handleSave = (data) => {

@@ -1,4 +1,5 @@
 ﻿import React, { useState } from "react";
+import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { processService, processMoveService, documentService, deadlineService, notificationService } from "@/services";
 import { aiService } from "@/services/aiService";
@@ -100,6 +101,7 @@ export default function ProcessDetail() {
       queryClient.invalidateQueries(["process", processId]);
       setShowEditForm(false);
     },
+    onError: (error) => toast.error(error.message || "Erro ao atualizar processo"),
   });
 
   const syncDatajud = async () => {

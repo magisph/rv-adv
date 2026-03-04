@@ -1,4 +1,5 @@
 ﻿import React, { useState } from "react";
+import { toast } from "sonner";
 import { clientService } from "@/services";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -77,6 +78,7 @@ export default function Clients() {
       queryClient.invalidateQueries(["clients"]);
       setShowForm(false);
     },
+    onError: (error) => toast.error(error.message || "Erro ao criar cliente"),
   });
 
   const updateMutation = useMutation({
@@ -86,11 +88,13 @@ export default function Clients() {
       setShowForm(false);
       setEditingClient(null);
     },
+    onError: (error) => toast.error(error.message || "Erro ao atualizar cliente"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => clientService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["clients"]),
+    onError: (error) => toast.error(error.message || "Erro ao excluir cliente"),
   });
 
   const handleSave = (data) => {

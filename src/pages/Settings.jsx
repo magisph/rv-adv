@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export default function Settings() {
   useEffect(() => {
     const loadUser = async () => {
       const userData = await authService.getCurrentUser();
+      if (!userData) return;
       setUser(userData);
       setFormData({
         full_name: userData.full_name || "",
@@ -57,7 +59,9 @@ export default function Settings() {
     onSuccess: async () => {
       const userData = await authService.getCurrentUser();
       setUser(userData);
+      toast.success("Configurações salvas com sucesso");
     },
+    onError: (error) => toast.error(error.message || "Erro ao salvar configurações"),
   });
 
   const handleSaveProfile = () => {

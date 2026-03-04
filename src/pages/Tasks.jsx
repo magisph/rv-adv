@@ -1,4 +1,5 @@
 ﻿import React, { useState } from "react";
+import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { taskService, notificationService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -88,6 +89,7 @@ export default function Tasks() {
         });
       }
     },
+    onError: (error) => toast.error(error.message || "Erro ao criar tarefa"),
   });
 
   const updateMutation = useMutation({
@@ -99,11 +101,13 @@ export default function Tasks() {
       setShowForm(false);
       setEditingTask(null);
     },
+    onError: (error) => toast.error(error.message || "Erro ao atualizar tarefa"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => taskService.delete(id),
     onSuccess: () => queryClient.invalidateQueries(["tasks"]),
+    onError: (error) => toast.error(error.message || "Erro ao excluir tarefa"),
   });
 
   const handleSave = (data) => {
