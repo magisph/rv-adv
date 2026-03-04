@@ -67,7 +67,7 @@ export default function Templates() {
   const createMutation = useMutation({
     mutationFn: (data) => templateService.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["templates"]);
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
       setShowForm(false);
     },
   });
@@ -75,7 +75,7 @@ export default function Templates() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => templateService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["templates"]);
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
       setShowForm(false);
       setShowEditor(false);
       setEditingTemplate(null);
@@ -84,7 +84,7 @@ export default function Templates() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => templateService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(["templates"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["templates"] }),
   });
 
   const handleSave = (data) => {

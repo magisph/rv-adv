@@ -21,7 +21,7 @@ export default function CalendarWidget({ user }) {
     queryKey: ["calendar-tasks", user?.email],
     queryFn: () =>
       taskService.filter({
-        assigned_to: user.email,
+        assigned_to: user?.email,
         status: { $ne: "done" },
         due_date: { $ne: null },
       }),

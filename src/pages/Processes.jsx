@@ -48,6 +48,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import ProcessForm from "@/components/processes/ProcessForm";
 import ProcessesChart from "@/components/dashboard/ProcessesChart";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const STATUS_COLORS = {
   ativo: "bg-green-100 text-green-700 border-green-200",
@@ -79,6 +80,7 @@ export default function Processes() {
   const [areaFilter, setAreaFilter] = useState("all");
   const [showForm, setShowForm] = useState(!!preselectedClientId);
   const [editingProcess, setEditingProcess] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -93,7 +95,7 @@ export default function Processes() {
   const createMutation = useMutation({
     mutationFn: (data) => processService.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["processes"]);
+      queryClient.invalidateQueries({ queryKey: ["processes"] });
       setShowForm(false);
     },
     onError: (error) => toast.error(error.message || "Erro ao criar processo"),
@@ -102,7 +104,7 @@ export default function Processes() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => processService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["processes"]);
+      queryClient.invalidateQueries({ queryKey: ["processes"] });
       setShowForm(false);
       setEditingProcess(null);
     },
@@ -111,7 +113,7 @@ export default function Processes() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => processService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(["processes"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["processes"] }),
     onError: (error) => toast.error(error.message || "Erro ao excluir processo"),
   });
 
@@ -128,14 +130,8 @@ export default function Processes() {
     setShowForm(true);
   };
 
-  const handleDelete = async (process) => {
-    if (
-      confirm(
-        `Deseja realmente excluir o processo "${process.process_number}"?`,
-      )
-    ) {
-      deleteMutation.mutate(process.id);
-    }
+  const handleDelete = (process) => {
+    setDeleteConfirm(process);
   };
 
   const filteredProcesses = processes.filter((process) => {
@@ -364,6 +360,17 @@ export default function Processes() {
           />
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Excluir processo"
+        description={`Deseja realmente excluir o processo "${deleteConfirm?.process_number}"? Esta ação não pode ser desfeita.`}
+        onConfirm={() => {
+          deleteMutation.mutate(deleteConfirm.id);
+          setDeleteConfirm(null);
+        }}
+      />
     </div>
   );
 }

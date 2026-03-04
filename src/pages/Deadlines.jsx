@@ -44,6 +44,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { format, differenceInDays, parseISO } from "date-fns";
 import DeadlineForm from "@/components/deadlines/DeadlineForm";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const PRIORITY_COLORS = {
   baixa: "bg-slate-100 text-slate-700 border-slate-200",
@@ -67,6 +68,7 @@ export default function Deadlines() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [showForm, setShowForm] = useState(!!preselectedProcessId);
   const [editingDeadline, setEditingDeadline] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -85,7 +87,7 @@ export default function Deadlines() {
   const createMutation = useMutation({
     mutationFn: (data) => deadlineService.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["deadlines"]);
+      queryClient.invalidateQueries({ queryKey: ["deadlines"] });
       setShowForm(false);
     },
     onError: (error) => toast.error(error.message || "Erro ao criar prazo"),
@@ -94,7 +96,7 @@ export default function Deadlines() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => deadlineService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["deadlines"]);
+      queryClient.invalidateQueries({ queryKey: ["deadlines"] });
       setShowForm(false);
       setEditingDeadline(null);
     },
@@ -103,7 +105,7 @@ export default function Deadlines() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => deadlineService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(["deadlines"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deadlines"] }),
     onError: (error) => toast.error(error.message || "Erro ao excluir prazo"),
   });
 
@@ -129,10 +131,8 @@ export default function Deadlines() {
     setShowForm(true);
   };
 
-  const handleDelete = async (deadline) => {
-    if (confirm(`Deseja excluir o prazo "${deadline.description}"?`)) {
-      deleteMutation.mutate(deadline.id);
-    }
+  const handleDelete = (deadline) => {
+    setDeleteConfirm(deadline);
   };
 
   const getDeadlineStatus = (dueDate) => {
@@ -387,6 +387,17 @@ export default function Deadlines() {
           />
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Excluir prazo"
+        description={`Deseja excluir o prazo "${deleteConfirm?.description}"? Esta ação não pode ser desfeita.`}
+        onConfirm={() => {
+          deleteMutation.mutate(deleteConfirm.id);
+          setDeleteConfirm(null);
+        }}
+      />
     </div>
   );
 }

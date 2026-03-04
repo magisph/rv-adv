@@ -176,7 +176,7 @@ export default function NotificationSettings() {
     },
     onSuccess: () => {
       toast.success("Configurações salvas com sucesso!");
-      queryClient.invalidateQueries(["notifications"]);
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 

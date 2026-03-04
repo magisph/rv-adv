@@ -43,6 +43,7 @@ import {
 } from "recharts";
 import FinancialForm from "@/components/financial/FinancialForm";
 import FinancialList from "@/components/financial/FinancialList";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const CATEGORY_LABELS = {
   honorarios: "Honorários",
@@ -68,6 +69,7 @@ export default function Financial() {
   const [showForm, setShowForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -79,7 +81,7 @@ export default function Financial() {
   const createMutation = useMutation({
     mutationFn: (data) => financialService.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["financial"]);
+      queryClient.invalidateQueries({ queryKey: ["financial"] });
       setShowForm(false);
     },
     onError: (error) => toast.error(error.message || "Erro ao criar transação"),
@@ -88,7 +90,7 @@ export default function Financial() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => financialService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["financial"]);
+      queryClient.invalidateQueries({ queryKey: ["financial"] });
       setShowForm(false);
       setEditingTransaction(null);
     },
@@ -97,7 +99,7 @@ export default function Financial() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => financialService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(["financial"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["financial"] }),
     onError: (error) => toast.error(error.message || "Erro ao excluir transação"),
   });
 
@@ -115,9 +117,7 @@ export default function Financial() {
   };
 
   const handleDelete = (transaction) => {
-    if (confirm(`Deseja excluir a transação "${transaction.description}"?`)) {
-      deleteMutation.mutate(transaction.id);
-    }
+    setDeleteConfirm(transaction);
   };
 
   // Calculate totals
@@ -527,6 +527,17 @@ export default function Financial() {
           />
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Excluir transação"
+        description={`Deseja excluir a transação "${deleteConfirm?.description}"? Esta ação não pode ser desfeita.`}
+        onConfirm={() => {
+          deleteMutation.mutate(deleteConfirm.id);
+          setDeleteConfirm(null);
+        }}
+      />
     </div>
   );
 }

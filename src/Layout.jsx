@@ -125,15 +125,6 @@ export default function Layout({ children, currentPageName }) {
   return (
     <>
       <div className="min-h-screen bg-slate-50">
-        <style>{`
-          :root {
-            --legal-blue: #1e3a5f;
-            --legal-blue-light: #2d5a87;
-            --legal-gold: #c9a227;
-            --legal-gray: #64748b;
-          }
-        `}</style>
-
         {/* Mobile Header */}
         <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#1e3a5f] text-white h-16 flex items-center justify-between px-4 shadow-lg">
           <Button
@@ -392,6 +383,7 @@ function NotificationBell({ user }) {
       }),
     enabled: !!user?.email,
     refetchInterval: 10000,
+    refetchOnWindowFocus: false,
   });
 
   const unreadCount = notifications.length;

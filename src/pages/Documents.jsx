@@ -50,7 +50,7 @@ export default function Documents() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => documentService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(["all-documents"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["all-documents"] }),
   });
 
   const handleDelete = (doc) => {
@@ -243,7 +243,7 @@ export default function Documents() {
             parentType="client"
             parentId=""
             onSuccess={() => {
-              queryClient.invalidateQueries(["all-documents"]);
+              queryClient.invalidateQueries({ queryKey: ["all-documents"] });
               setShowUpload(false);
             }}
             onCancel={() => setShowUpload(false)}

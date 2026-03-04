@@ -34,6 +34,7 @@ import {
 import { format, isPast, isToday } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import TaskForm from "@/components/tasks/TaskForm";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const STATUS_COLORS = {
   todo: "bg-slate-100 text-slate-700",
@@ -59,6 +60,7 @@ export default function Tasks() {
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -70,9 +72,9 @@ export default function Tasks() {
   const createMutation = useMutation({
     mutationFn: (data) => taskService.create(data),
     onSuccess: async (task) => {
-      queryClient.invalidateQueries(["tasks"]);
-      queryClient.invalidateQueries(["my-tasks"]);
-      queryClient.invalidateQueries(["monitor-tasks"]);
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["monitor-tasks"] });
       setShowForm(false);
 
       // Create notification for assigned user
@@ -95,9 +97,9 @@ export default function Tasks() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => taskService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["tasks"]);
-      queryClient.invalidateQueries(["my-tasks"]);
-      queryClient.invalidateQueries(["monitor-tasks"]);
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["monitor-tasks"] });
       setShowForm(false);
       setEditingTask(null);
     },
@@ -106,7 +108,7 @@ export default function Tasks() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => taskService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(["tasks"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
     onError: (error) => toast.error(error.message || "Erro ao excluir tarefa"),
   });
 
@@ -124,9 +126,7 @@ export default function Tasks() {
   };
 
   const handleDelete = (task) => {
-    if (confirm(`Deseja excluir a tarefa "${task.title}"?`)) {
-      deleteMutation.mutate(task.id);
-    }
+    setDeleteConfirm(task);
   };
 
   const handleStatusChange = (task, newStatus) => {
@@ -407,6 +407,17 @@ export default function Tasks() {
           />
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Excluir tarefa"
+        description={`Deseja excluir a tarefa "${deleteConfirm?.title}"? Esta ação não pode ser desfeita.`}
+        onConfirm={() => {
+          deleteMutation.mutate(deleteConfirm.id);
+          setDeleteConfirm(null);
+        }}
+      />
     </div>
   );
 }

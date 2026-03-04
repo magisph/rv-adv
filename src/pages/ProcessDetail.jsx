@@ -98,7 +98,7 @@ export default function ProcessDetail() {
   const updateMutation = useMutation({
     mutationFn: (data) => processService.update(processId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["process", processId]);
+      queryClient.invalidateQueries({ queryKey: ["process", processId] });
       setShowEditForm(false);
     },
     onError: (error) => toast.error(error.message || "Erro ao atualizar processo"),
@@ -171,7 +171,7 @@ export default function ProcessDetail() {
         });
       }
 
-      queryClient.invalidateQueries(["process-moves", processId]);
+      queryClient.invalidateQueries({ queryKey: ["process-moves", processId] });
     } catch (error) {
       console.error("[syncDatajud] Erro na sincronização:", error);
 
@@ -508,7 +508,7 @@ export default function ProcessDetail() {
             processId={processId}
             processNumber={process.process_number}
             onSuccess={() => {
-              queryClient.invalidateQueries(["process-moves", processId]);
+              queryClient.invalidateQueries({ queryKey: ["process-moves", processId] });
               setShowMoveForm(false);
             }}
             onCancel={() => setShowMoveForm(false)}
@@ -525,7 +525,7 @@ export default function ProcessDetail() {
             parentType="process"
             parentId={processId}
             onSuccess={() => {
-              queryClient.invalidateQueries(["process-documents", processId]);
+              queryClient.invalidateQueries({ queryKey: ["process-documents", processId] });
               setShowUpload(false);
             }}
             onCancel={() => setShowUpload(false)}

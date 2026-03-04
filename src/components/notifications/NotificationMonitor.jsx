@@ -49,7 +49,7 @@ export default function NotificationMonitor({ user }) {
         // Verificar se já existe notificação para este prazo hoje
         const existingNotifications = await notificationService.filter(
           {
-            user_email: deadline.responsible_email || user.email,
+            user_email: deadline.responsible_email || user?.email,
             related_id: deadline.id,
             type: "prazo",
           },
@@ -80,7 +80,7 @@ export default function NotificationMonitor({ user }) {
                   : "informativa";
 
           await notificationService.create({
-            user_email: deadline.responsible_email || user.email,
+            user_email: deadline.responsible_email || user?.email,
             type: "prazo",
             priority: priority,
             title:
@@ -185,7 +185,7 @@ export default function NotificationMonitor({ user }) {
         // Verificar se já existe notificação recente
         const existingNotifications = await notificationService.filter(
           {
-            user_email: user.email,
+            user_email: user?.email,
             related_id: appointment.id,
             type: "compromisso",
           },
@@ -215,7 +215,7 @@ export default function NotificationMonitor({ user }) {
                 : "Agendamento amanhã";
 
           await notificationService.create({
-            user_email: user.email,
+            user_email: user?.email,
             type: "compromisso",
             priority: priority,
             title: title,

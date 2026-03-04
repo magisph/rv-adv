@@ -40,6 +40,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import ClientForm from "@/components/clients/ClientForm";
 import ClientsChart from "@/components/dashboard/ClientsChart";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const STATUS_COLORS = {
   ativo: "bg-green-100 text-green-700 border-green-200",
@@ -61,6 +62,7 @@ export default function Clients() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -75,7 +77,7 @@ export default function Clients() {
   const createMutation = useMutation({
     mutationFn: (data) => clientService.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["clients"]);
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
       setShowForm(false);
     },
     onError: (error) => toast.error(error.message || "Erro ao criar cliente"),
@@ -84,7 +86,7 @@ export default function Clients() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => clientService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["clients"]);
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
       setShowForm(false);
       setEditingClient(null);
     },
@@ -93,7 +95,7 @@ export default function Clients() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => clientService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(["clients"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clients"] }),
     onError: (error) => toast.error(error.message || "Erro ao excluir cliente"),
   });
 
@@ -110,10 +112,8 @@ export default function Clients() {
     setShowForm(true);
   };
 
-  const handleDelete = async (client) => {
-    if (confirm(`Deseja realmente excluir o cliente "${client.full_name}"?`)) {
-      deleteMutation.mutate(client.id);
-    }
+  const handleDelete = (client) => {
+    setDeleteConfirm(client);
   };
 
   const filteredClients = clients.filter(
@@ -309,6 +309,17 @@ export default function Clients() {
           />
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Excluir cliente"
+        description={`Deseja realmente excluir o cliente "${deleteConfirm?.full_name}"? Esta ação não pode ser desfeita.`}
+        onConfirm={() => {
+          deleteMutation.mutate(deleteConfirm.id);
+          setDeleteConfirm(null);
+        }}
+      />
     </div>
   );
 }

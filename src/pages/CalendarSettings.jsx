@@ -180,7 +180,7 @@ export default function CalendarSettings() {
     },
     onSuccess: () => {
       toast.success("Configurações salvas!");
-      queryClient.invalidateQueries(["calendar-events"]);
+      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
     },
   });
 

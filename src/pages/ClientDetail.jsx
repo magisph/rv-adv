@@ -34,6 +34,7 @@ import ClientDocumentsSection from "@/components/documents/ClientDocumentsSectio
 import BeneficioModal from "@/components/beneficios/BeneficioModal";
 import BeneficioEditModal from "@/components/beneficios/BeneficioEditModal";
 import DocumentStatusCard from "@/components/clients/DocumentStatusCard";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const BENEFIT_LABELS = {
   aposentadoria_idade_rural: "Aposentadoria por Idade Rural",
@@ -88,6 +89,7 @@ export default function ClientDetail() {
   const [showBeneficioEditModal, setShowBeneficioEditModal] = useState(false);
   const [editingBeneficio, setEditingBeneficio] = useState(null);
   const [activeTab, setActiveTab] = useState("info");
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -139,7 +141,7 @@ export default function ClientDetail() {
   const updateMutation = useMutation({
     mutationFn: (data) => clientService.update(clientId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["client", clientId]);
+      queryClient.invalidateQueries({ queryKey: ["client", clientId] });
       setShowEditForm(false);
     },
     onError: (error) => toast.error(error.message || "Erro ao atualizar cliente"),
@@ -148,7 +150,7 @@ export default function ClientDetail() {
   const createAppointmentMutation = useMutation({
     mutationFn: (data) => appointmentService.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["client-appointments", clientId]);
+      queryClient.invalidateQueries({ queryKey: ["client-appointments", clientId] });
       setShowAppointmentForm(false);
       setEditingAppointment(null);
     },
@@ -158,7 +160,7 @@ export default function ClientDetail() {
   const updateAppointmentMutation = useMutation({
     mutationFn: ({ id, data }) => appointmentService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["client-appointments", clientId]);
+      queryClient.invalidateQueries({ queryKey: ["client-appointments", clientId] });
       setShowAppointmentForm(false);
       setEditingAppointment(null);
     },
@@ -168,7 +170,7 @@ export default function ClientDetail() {
   const deleteAppointmentMutation = useMutation({
     mutationFn: (id) => appointmentService.delete(id),
     onSuccess: () =>
-      queryClient.invalidateQueries(["client-appointments", clientId]),
+      queryClient.invalidateQueries({ queryKey: ["client-appointments", clientId] }),
     onError: (error) => toast.error(error.message || "Erro ao excluir compromisso"),
   });
 
@@ -214,20 +216,18 @@ export default function ClientDetail() {
     setShowAppointmentForm(true);
   };
 
-  const handleDeleteAppointment = async (appointment) => {
-    if (
-      confirm(
-        `Deseja realmente excluir este registro do histórico? Esta ação não pode ser desfeita.`,
-      )
-    ) {
-      deleteAppointmentMutation.mutate(appointment.id);
+  const handleDeleteAppointment = (appointment) => {
+    setDeleteConfirm(appointment);
+  };
 
-      const notifications = await notificationService.filter({
-        related_id: appointment.id,
-      });
-      for (const notification of notifications) {
-        await notificationService.delete(notification.id);
-      }
+  const confirmDeleteAppointment = async (appointment) => {
+    deleteAppointmentMutation.mutate(appointment.id);
+
+    const notifications = await notificationService.filter({
+      related_id: appointment.id,
+    });
+    for (const notification of notifications) {
+      await notificationService.delete(notification.id);
     }
   };
 
@@ -910,6 +910,17 @@ export default function ClientDetail() {
         beneficio={editingBeneficio}
         clientId={clientId}
         clientName={client?.full_name}
+      />
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Excluir registro"
+        description="Deseja realmente excluir este registro do histórico? Esta ação não pode ser desfeita."
+        onConfirm={() => {
+          confirmDeleteAppointment(deleteConfirm);
+          setDeleteConfirm(null);
+        }}
       />
     </div>
   );
