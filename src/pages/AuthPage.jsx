@@ -179,7 +179,7 @@ export default function AuthPage() {
       </Card>
       
       <p className="text-sm text-slate-400 mt-8">
-        &copy; {new Date().getFullYear()} RV-Advogados. Todos os direitos reservados.
+        &copy; {new Date().getFullYear()} RV-Advocacia. Todos os direitos reservados.
       </p>
     </div>
   );
