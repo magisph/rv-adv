@@ -11,7 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Save, X, Plus } from "lucide-react";
+import { Save, X, Plus, UploadCloud } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const CATEGORIES = {
   peticao_inicial: "Petição Inicial",
@@ -39,12 +40,14 @@ export default function TemplateForm({ template, onSave, onCancel, isSaving }) {
     name: "",
     description: "",
     category: "outros",
-    content: "",
+    file_url: "",
     variables: [],
     ...template,
   });
 
   const [newVariable, setNewVariable] = useState("");
+  const [file, setFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (template) {
@@ -54,6 +57,12 @@ export default function TemplateForm({ template, onSave, onCancel, isSaving }) {
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setFile(e.target.files[0]);
+    }
   };
 
   const addVariable = (variable) => {
@@ -73,9 +82,42 @@ export default function TemplateForm({ template, onSave, onCancel, isSaving }) {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
+    let finalFormData = { ...formData };
+    
+    if (file) {
+      setIsUploading(true);
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('document-templates')
+          .upload(filePath, file);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('document-templates')
+          .getPublicUrl(filePath);
+          
+        finalFormData.file_url = publicUrlData.publicUrl;
+      } catch (error) {
+        console.error("Upload error", error);
+        alert("Erro no upload do arquivo.");
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
+    } else if (!finalFormData.file_url) {
+      alert("Selecione um arquivo .docx para o molde.");
+      return;
+    }
+    
+    delete finalFormData.content; // Garantir limpeza se vier do legado
+    onSave(finalFormData);
   };
 
   return (
@@ -180,29 +222,38 @@ export default function TemplateForm({ template, onSave, onCancel, isSaving }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="content">Conteúdo Inicial (opcional)</Label>
-        <Textarea
-          id="content"
-          value={formData.content}
-          onChange={(e) => handleChange("content", e.target.value)}
-          placeholder="Digite o conteúdo inicial do template ou deixe em branco para editar depois"
-          rows={6}
-          className="font-mono text-sm"
-        />
+        <Label htmlFor="file_url">Arquivo do Molde (.docx) *</Label>
+        <div className="flex items-center gap-4">
+          <Input
+            id="file_url"
+            type="file"
+            accept=".docx"
+            onChange={handleFileChange}
+            className="flex-1"
+          />
+          {formData.file_url && !file && (
+            <span className="text-sm text-green-600 truncate max-w-[200px]">
+              Arquivo já anexado
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-slate-500">
+          Faça upload de um arquivo Word (.docx) contendo as variáveis desejadas.
+        </p>
       </div>
 
       <div className="flex items-center justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving || isUploading}>
           <X className="w-4 h-4 mr-2" />
           Cancelar
         </Button>
         <Button
           type="submit"
-          disabled={isSaving}
+          disabled={isSaving || isUploading}
           className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
         >
-          <Save className="w-4 h-4 mr-2" />
-          {isSaving ? "Salvando..." : "Salvar"}
+          {isUploading ? <UploadCloud className="w-4 h-4 mr-2 animate-bounce" /> : <Save className="w-4 h-4 mr-2" />}
+          {isSaving || isUploading ? "Salvando..." : "Salvar"}
         </Button>
       </div>
     </form>

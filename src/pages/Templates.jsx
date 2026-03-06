@@ -1,5 +1,5 @@
 ﻿import React, { useState } from "react";
-import { templateService } from "@/services";
+import { documentTemplateService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,12 +60,11 @@ export default function Templates() {
   const queryClient = useQueryClient();
 
   const { data: templates = [], isLoading } = useQuery({
-    queryKey: ["templates"],
-    queryFn: () => templateService.list("-created_at"),
+    queryFn: () => documentTemplateService.list("-created_at"),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => templateService.create(data),
+    mutationFn: (data) => documentTemplateService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["templates"] });
       setShowForm(false);
@@ -73,7 +72,7 @@ export default function Templates() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => templateService.update(id, data),
+    mutationFn: ({ id, data }) => documentTemplateService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["templates"] });
       setShowForm(false);
@@ -83,7 +82,7 @@ export default function Templates() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => templateService.delete(id),
+    mutationFn: (id) => documentTemplateService.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["templates"] }),
   });
 
@@ -114,16 +113,13 @@ export default function Templates() {
   const handleDuplicate = async (template) => {
     createMutation.mutate({
       name: `${template.name} (Cópia)`,
-      content: template.content,
-      category: template.category,
-      variables: template.variables,
+      file_url: template.file_url,
       description: template.description,
     });
   };
 
   const filteredTemplates = templates.filter(
     (template) =>
-      template.name?.toLowerCase().includes(search.toLowerCase()) ||
       template.description?.toLowerCase().includes(search.toLowerCase()),
   );
 
