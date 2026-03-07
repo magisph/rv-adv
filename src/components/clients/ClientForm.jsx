@@ -117,11 +117,11 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
     if (!cleanName) return "";
 
     const parts = cleanName.split(/\s+/);
-    if (parts.length === 1) return `${parts[0]}@rvadvocacia.adv.br`;
+    if (parts.length === 1) return `${parts[0]}@rafaelavasconcelos.adv.br`;
 
     const first = parts[0];
     const rest = parts.slice(1).map(p => p.charAt(0)).join("");
-    return `${first}${rest}@rvadvocacia.adv.br`;
+    return `${first}${rest}@rafaelavasconcelos.adv.br`;
   };
 
   const handleFullNameBlur = () => {
@@ -387,7 +387,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                     type="email"
                     value={formData.email_inss || ""}
                     onChange={(e) => handleChange("email_inss", e.target.value)}
-                    placeholder="ex: pedrohdm@rvadvocacia.adv.br"
+                    placeholder="ex: pedrohdm@rafaelavasconcelos.adv.br"
                   />
                   <p className="text-xs text-slate-500">
                     Gerado automaticamente a partir do nome se deixado em branco.
