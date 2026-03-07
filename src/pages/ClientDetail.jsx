@@ -26,8 +26,11 @@ import {
   Edit,
   Plus,
   Pencil,
+  Mail,
+  Calendar,
 } from "lucide-react";
 import { format } from "date-fns";
+import { supabase } from "@/lib/supabase";
 import ClientForm from "@/components/clients/ClientForm";
 import AppointmentForm from "@/components/appointments/AppointmentForm";
 import ClientDocumentsSection from "@/components/documents/ClientDocumentsSection";
@@ -133,6 +136,23 @@ export default function ClientDetail() {
         parent_type: "client",
         parent_id: clientId,
       }),
+    enabled: !!clientId,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  const { data: clientEmails = [], isLoading: isLoadingEmails } = useQuery({
+    queryKey: ["client-emails", clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_inss_emails")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
     enabled: !!clientId,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -296,6 +316,10 @@ export default function ClientDetail() {
           <TabsTrigger value="processes" className="flex items-center gap-2">
             <FolderOpen className="w-4 h-4" />
             Processos
+          </TabsTrigger>
+          <TabsTrigger value="emails" className="flex items-center gap-2">
+            <Mail className="w-4 h-4" />
+            E-mails INSS
           </TabsTrigger>
         </TabsList>
 
@@ -843,6 +867,92 @@ export default function ClientDetail() {
                         </CardContent>
                       </Card>
                     </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: E-mails INSS */}
+        <TabsContent value="emails">
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Mail className="w-5 h-5 text-[#1e3a5f]" />
+                E-mails do INSS
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingEmails ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+                </div>
+              ) : clientEmails.length === 0 ? (
+                <div className="text-center py-12 text-slate-500">
+                  <Mail className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                  <p>Nenhum e-mail recebido</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {clientEmails.map((email) => (
+                    <Card key={email.id} className="overflow-hidden border-slate-200">
+                      <div className="p-4 bg-white">
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-2">
+                          <div>
+                            <h3 className="font-semibold text-slate-800">{email.subject}</h3>
+                            <p className="text-sm text-slate-500">
+                              Recebido em: {format(new Date(email.created_at), "dd/MM/yyyy HH:mm")}
+                            </p>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={
+                              email.status === 'processado'
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : "bg-yellow-100 text-yellow-700 border-yellow-200"
+                            }
+                          >
+                            {email.status === 'processado' ? 'Processado pela IA' : 'Pendente'}
+                          </Badge>
+                        </div>
+
+                        {/* Extração Destacada */}
+                        {(email.extracted_date || email.extracted_location) && (
+                          <div className="my-4 p-4 bg-blue-50 border border-blue-100 rounded-lg flex flex-col sm:flex-row gap-4">
+                            {email.extracted_date && (
+                              <div className="flex items-start gap-3 flex-1">
+                                <div className="bg-blue-100 p-2.5 rounded text-blue-700 mt-1">
+                                  <Calendar className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-xs text-blue-600 font-medium uppercase tracking-wider mb-1">Data da Perícia</p>
+                                  <p className="font-bold text-slate-800 text-lg">{email.extracted_date}</p>
+                                </div>
+                              </div>
+                            )}
+                            {email.extracted_location && (
+                              <div className="flex items-start gap-3 flex-1">
+                                <div className="bg-blue-100 p-2.5 rounded text-blue-700 mt-1">
+                                  <MapPin className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-xs text-blue-600 font-medium uppercase tracking-wider mb-1">Local da Perícia</p>
+                                  <p className="font-bold text-slate-800 text-sm leading-snug">{email.extracted_location}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="mt-4 pt-4 border-t border-slate-100">
+                          <p className="text-xs text-slate-500 font-medium mb-2 uppercase tracking-wider">Corpo do E-mail</p>
+                          <div className="bg-slate-50 p-4 rounded text-sm text-slate-700 whitespace-pre-wrap font-mono min-h-[100px] border border-slate-100">
+                            {email.body_text || "Corpo do texto indisponível."}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
                   ))}
                 </div>
               )}

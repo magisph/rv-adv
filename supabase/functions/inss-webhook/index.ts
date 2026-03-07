@@ -45,35 +45,41 @@ serve(async (req) => {
       .eq('email_inss', to)
       .limit(1);
 
-    if (clientError || !clients || clients.length === 0) {
-      return new Response(JSON.stringify({ error: 'Client not found for this email' }), { 
-        status: 404, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
+    const clientId = clients?.[0]?.id || null;
+
+    // 2. Insert email log with "pendente" status (if client exists)
+    let emailId = null;
+    if (clientId) {
+      const { data: insertedEmail, error: insertError } = await supabase
+        .from('client_inss_emails')
+        .insert({
+          client_id: clientId,
+          sender_address: from,
+          subject: subject,
+          body_text: text,
+          status: 'pendente'
+        })
+        .select('id')
+        .single();
+
+      if (!insertError && insertedEmail) {
+        emailId = insertedEmail.id;
+      }
     }
-
-    const clientId = clients[0].id;
-
-    // 2. Insert email log with "pendente" status
-    const { data: insertedEmail, error: insertError } = await supabase
-      .from('client_inss_emails')
-      .insert({
-        client_id: clientId,
-        sender_address: from,
-        subject: subject,
-        body_text: text,
-        status: 'pendente'
-      })
-      .select('id')
-      .single();
-
-    if (insertError || !insertedEmail) {
-      throw new Error(`Failed to insert email record: ${insertError?.message}`);
-    }
-
-    const emailId = insertedEmail.id;
 
     // 3. Process with Gemini AI to extract date/time and location
+    let extractedData = null;
+    let debugInfo: any = { hasApiKey: !!geminiApiKey, hasText: !!text };
+    
+    if (geminiApiKey) {
+      try {
+        const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`);
+        debugInfo.availableModels = await modelsRes.json();
+      } catch (e) {
+        debugInfo.modelsFetchError = e.message;
+      }
+    }
+    
     if (text && geminiApiKey) {
       try {
         const prompt = `
@@ -92,7 +98,7 @@ serve(async (req) => {
           """
         `;
 
-        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -112,47 +118,68 @@ serve(async (req) => {
         if (geminiResponse.ok) {
           const geminiData = await geminiResponse.json();
           let extractedText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          debugInfo.rawText = extractedText;
           
           // Clean up potential markdown formatting from Gemini response
           extractedText = extractedText.replace(/```json/g, '').replace(/```/g, '').trim();
           
           try {
             const parsedData = JSON.parse(extractedText);
+            extractedData = parsedData;
             
             // 4. Update record with extracted data and mark as "processado"
-            await supabase
-              .from('client_inss_emails')
-              .update({
-                extracted_date: parsedData.data_hora,
-                extracted_location: parsedData.local,
-                status: 'processado'
-              })
-              .eq('id', emailId);
+            if (emailId) {
+              await supabase
+                .from('client_inss_emails')
+                .update({
+                  extracted_date: parsedData.data_hora,
+                  extracted_location: parsedData.local,
+                  status: 'processado'
+                })
+                .eq('id', emailId);
+            }
               
           } catch (parseError) {
             console.error("Failed to parse Gemini JSON:", extractedText);
+            debugInfo.parseError = parseError.message;
             // Updating status to mark a failure in extraction logic
-            await supabase
-              .from('client_inss_emails')
-              .update({ status: 'falha_extracao' })
-              .eq('id', emailId);
+            if (emailId) {
+              await supabase
+                .from('client_inss_emails')
+                .update({ status: 'falha_extracao' })
+                .eq('id', emailId);
+            }
           }
         } else {
+            const errStr = await geminiResponse.text();
+            console.error("Gemini failed", errStr);
+            debugInfo.apiError = errStr;
+            debugInfo.status = geminiResponse.status;
+            if (emailId) {
              await supabase
               .from('client_inss_emails')
               .update({ status: 'falha_extracao' })
               .eq('id', emailId);
+            }
         }
       } catch (geminiError) {
         console.error("Error communicating with Gemini:", geminiError);
+        debugInfo.networkError = geminiError.message;
+        if (emailId) {
          await supabase
           .from('client_inss_emails')
           .update({ status: 'falha_extracao' })
           .eq('id', emailId);
+        }
       }
     }
 
-    return new Response(JSON.stringify({ success: true, message: 'Email processed successfully' }), { 
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Email processed successfully',
+      debug: debugInfo,
+      geminiData: extractedData 
+    }), { 
       status: 200, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });

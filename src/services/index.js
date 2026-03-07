@@ -13,6 +13,7 @@ export const notificationService = new BaseService("notifications");
 export const templateService = new BaseService("templates");
 export const documentTemplateService = new BaseService("document_templates");
 export const userService = new BaseService("users");
+export const inssEmailService = new BaseService("client_inss_emails");
 
 // Specialized Entities
 export const beneficioService = new BaseService("beneficios");

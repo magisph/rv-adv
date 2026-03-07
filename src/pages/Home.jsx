@@ -11,6 +11,7 @@ import {
 import StatsCard from "@/components/dashboard/StatsCard";
 import DeadlinesWidget from "@/components/dashboard/DeadlinesWidget";
 import TasksWidget from "@/components/dashboard/TasksWidget";
+import InssEmailsWidget from "@/components/dashboard/InssEmailsWidget";
 import CalendarWidget from "@/components/calendar/CalendarWidget";
 import { motion } from "framer-motion";
 
@@ -118,6 +119,9 @@ export default function Home() {
 
       {/* Quadro de Tarefas - Layout completo */}
       <TasksWidget />
+
+      {/* E-mails INSS - Layout completo */}
+      <InssEmailsWidget />
 
       {/* Prazos da Semana */}
       <DeadlinesWidget deadlines={deadlines} isLoading={loadingDeadlines} />
