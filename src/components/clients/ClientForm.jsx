@@ -423,7 +423,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="senha_meu_inss">Senha do MEU INSS</Label>
                   <Input
@@ -436,7 +436,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                   />
                 </div>
 
-                <div className="space-y-4 border-t pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2 border-t pt-4">
                   <div className="space-y-3">
                     <Label>É inscrito no Cadastro Único? *</Label>
                     <RadioGroup
@@ -554,7 +554,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                     </RadioGroup>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-3 md:col-span-2">
                     <Label>
                       Já ingressou com algum pedido perante o INSS ou na via
                       judicial? *
@@ -590,7 +590,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                       </div>
                     </RadioGroup>
                     {formData.pedido_anterior_inss && (
-                      <div className="space-y-3 mt-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                         <div className="space-y-2">
                           <Label htmlFor="num_proc_admin">
                             Número do Processo Administrativo (NB)
@@ -625,7 +625,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                             placeholder="Ex: 0000000-00.0000.0.00.0000"
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2 md:col-span-2">
                           <Label htmlFor="obs_proc_ant">
                             Observações sobre processos anteriores
                           </Label>
@@ -657,7 +657,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
               <CardTitle className="text-base">Status e Observações</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="status">Status do Cliente</Label>
                   <Select
@@ -681,7 +681,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="observations">Observações</Label>
                   <Textarea
                     id="observations"

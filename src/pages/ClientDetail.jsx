@@ -719,19 +719,19 @@ export default function ClientDetail() {
                             <Badge
                               variant="outline"
                               className={`text-xs ${beneficio.status === "deferido"
-                                  ? "bg-green-100 text-green-700 border-green-200"
-                                  : beneficio.status === "indeferido"
-                                    ? "bg-red-100 text-red-700 border-red-200"
-                                    : beneficio.status === "protocolado"
-                                      ? "bg-indigo-100 text-indigo-700 border-indigo-200"
-                                      : beneficio.status === "aguardando_inss"
-                                        ? "bg-purple-100 text-purple-700 border-purple-200"
-                                        : beneficio.status ===
-                                          "documentacao_pendente"
-                                          ? "bg-orange-100 text-orange-700 border-orange-200"
-                                          : beneficio.status === "cancelado"
-                                            ? "bg-slate-100 text-slate-700 border-slate-200"
-                                            : "bg-amber-100 text-amber-700 border-amber-200"
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : beneficio.status === "indeferido"
+                                  ? "bg-red-100 text-red-700 border-red-200"
+                                  : beneficio.status === "protocolado"
+                                    ? "bg-indigo-100 text-indigo-700 border-indigo-200"
+                                    : beneficio.status === "aguardando_inss"
+                                      ? "bg-purple-100 text-purple-700 border-purple-200"
+                                      : beneficio.status ===
+                                        "documentacao_pendente"
+                                        ? "bg-orange-100 text-orange-700 border-orange-200"
+                                        : beneficio.status === "cancelado"
+                                          ? "bg-slate-100 text-slate-700 border-slate-200"
+                                          : "bg-amber-100 text-amber-700 border-amber-200"
                                 }`}
                             >
                               {STATUS_LABELS[beneficio.status] ||
@@ -853,7 +853,7 @@ export default function ClientDetail() {
 
       {/* Edit Dialog */}
       <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Cliente</DialogTitle>
           </DialogHeader>

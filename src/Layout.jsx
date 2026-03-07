@@ -141,7 +141,7 @@ export default function Layout({ children, currentPageName }) {
           </Button>
           <div className="flex items-center gap-2">
             <Scale className="w-6 h-6 text-[#c9a227]" />
-            <span className="font-semibold text-lg">LegalFlow</span>
+            <span className="font-semibold text-lg">RVAdvocacia</span>
           </div>
           <NotificationBell user={user} />
         </div>
@@ -163,7 +163,7 @@ export default function Layout({ children, currentPageName }) {
                 </div>
                 <div>
                   <h1 className="font-bold text-xl tracking-tight">
-                    LegalFlow
+                    RV Advocacia
                   </h1>
                   <p className="text-xs text-slate-300 -mt-1">
                     Gestão Jurídica

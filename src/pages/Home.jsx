@@ -70,7 +70,7 @@ export default function Home() {
       >
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-slate-800">
-            Bem-vindo ao LegalFlow
+            Sistema RV Advocacia
           </h1>
           <p className="text-slate-500 mt-1">Visão geral do seu escritório</p>
         </div>
