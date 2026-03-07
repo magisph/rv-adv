@@ -76,6 +76,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
     grau_escolaridade: "",
     profissao: "",
     email: "",
+    email_inss: "",
     phone: "",
     address: "",
     city: "",
@@ -102,6 +103,31 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const generateInssEmail = (fullName) => {
+    if (!fullName) return "";
+    const cleanName = fullName
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z\s]/g, "")
+      .toLowerCase()
+      .trim();
+
+    if (!cleanName) return "";
+
+    const parts = cleanName.split(/\s+/);
+    if (parts.length === 1) return `${parts[0]}@rvadvocacia.adv.br`;
+
+    const first = parts[0];
+    const rest = parts.slice(1).map(p => p.charAt(0)).join("");
+    return `${first}${rest}@rvadvocacia.adv.br`;
+  };
+
+  const handleFullNameBlur = () => {
+    if (!formData.email_inss && formData.full_name) {
+      handleChange("email_inss", generateInssEmail(formData.full_name));
+    }
   };
 
   const formatCPF = (value) => {
@@ -140,7 +166,8 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
       "estado_civil",
       "grau_escolaridade",
       "area",
-      "benefit_type"
+      "benefit_type",
+      "email_inss"
     ];
 
     fieldsToNull.forEach(field => {
@@ -201,6 +228,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                     id="full_name"
                     value={formData.full_name}
                     onChange={(e) => handleChange("full_name", e.target.value)}
+                    onBlur={handleFullNameBlur}
                     required
                     placeholder="Digite o nome completo"
                   />
@@ -351,6 +379,19 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                     onChange={(e) => handleChange("email", e.target.value)}
                     placeholder="email@exemplo.com"
                   />
+                </div>
+                <div className="space-y-2 md:col-span-2 border-t pt-4 mt-2">
+                  <Label htmlFor="email_inss">E-mail Exclusivo INSS</Label>
+                  <Input
+                    id="email_inss"
+                    type="email"
+                    value={formData.email_inss || ""}
+                    onChange={(e) => handleChange("email_inss", e.target.value)}
+                    placeholder="ex: pedrohdm@rvadvocacia.adv.br"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Gerado automaticamente a partir do nome se deixado em branco.
+                  </p>
                 </div>
               </div>
             </CardContent>
