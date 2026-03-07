@@ -60,6 +60,7 @@ export default function Templates() {
   const queryClient = useQueryClient();
 
   const { data: templates = [], isLoading } = useQuery({
+    queryKey: ["templates"],
     queryFn: () => documentTemplateService.list("-created_at"),
   });
 
