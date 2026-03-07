@@ -34,6 +34,8 @@ export async function generateClientDocument(templateUrl, clientData, templateNa
       doc = new Docxtemplater(zip, {
         paragraphLoop: true,
         linebreaks: true,
+        delimiters: { start: '{{', end: '}}' },
+        nullGetter: function() { return ""; }
       });
     } catch (error) {
       // Capturando eventuais erros de Zip/Inicialização antes do parse real
@@ -43,7 +45,20 @@ export async function generateClientDocument(templateUrl, clientData, templateNa
     // Processa a renderização fazendo a substituição das chaves {{nome_chave}}
     // pelo conteúdo nos dados do clientData fornecidos
     try {
-      doc.render(clientData);
+      const addressParts = [clientData.address, clientData.city, clientData.state].filter(Boolean).join(", ");
+      const cepPart = clientData.zip_code ? `CEP: ${clientData.zip_code}` : "";
+      
+      const templateData = {
+        FULL_NAME: clientData.full_name || "",
+        estado_civil: clientData.estado_civil || "",
+        profisssao: clientData.profissao || "",
+        cpf: clientData.cpf_cnpj || "",
+        RG: clientData.rg || "",
+        endereco_completo: [addressParts, cepPart].filter(Boolean).join(" - ") || "",
+        data: new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeZone: 'America/Sao_Paulo' }).format(new Date())
+      };
+
+      doc.render(templateData);
     } catch (error) {
       // Pega e trata os erros de formatação explícitos do Word/tags
       if (error.properties && error.properties.errors instanceof Array) {

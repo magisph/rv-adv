@@ -117,6 +117,10 @@ export default function TemplateForm({ template, onSave, onCancel, isSaving }) {
     }
     
     delete finalFormData.content; // Garantir limpeza se vier do legado
+    delete finalFormData.id;
+    delete finalFormData.created_at;
+    delete finalFormData.updated_at;
+
     onSave(finalFormData);
   };
 
