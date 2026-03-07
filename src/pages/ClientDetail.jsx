@@ -177,9 +177,9 @@ export default function ClientDetail() {
   const handleAppointmentSave = async (data) => {
     const savedAppointment = editingAppointment
       ? await updateAppointmentMutation.mutateAsync({
-          id: editingAppointment.id,
-          data,
-        })
+        id: editingAppointment.id,
+        data,
+      })
       : await createAppointmentMutation.mutateAsync(data);
 
     if (data.alerts_enabled && data.alert_days && data.alert_days.length > 0) {
@@ -356,19 +356,19 @@ export default function ClientDetail() {
                     {(client.rg ||
                       client.data_emissao_rg ||
                       client.orgao_expedidor) && (
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-slate-500 text-sm">
-                          RG | Data Emissão | Órgão
-                        </span>
-                        <span className="font-medium text-slate-800 text-right">
-                          {client.rg || "-"}
-                          {client.data_emissao_rg &&
-                            ` | ${format(new Date(client.data_emissao_rg), "dd/MM/yyyy")}`}
-                          {client.orgao_expedidor &&
-                            ` | ${client.orgao_expedidor}`}
-                        </span>
-                      </div>
-                    )}
+                        <div className="flex justify-between py-2 border-b">
+                          <span className="text-slate-500 text-sm">
+                            RG | Data Emissão | Órgão
+                          </span>
+                          <span className="font-medium text-slate-800 text-right">
+                            {client.rg || "-"}
+                            {client.data_emissao_rg &&
+                              ` | ${format(new Date(client.data_emissao_rg), "dd/MM/yyyy")}`}
+                            {client.orgao_expedidor &&
+                              ` | ${client.orgao_expedidor}`}
+                          </span>
+                        </div>
+                      )}
                     {client.estado_civil && (
                       <div className="flex justify-between py-2 border-b">
                         <span className="text-slate-500 text-sm">
@@ -718,8 +718,7 @@ export default function ClientDetail() {
 
                             <Badge
                               variant="outline"
-                              className={`text-xs ${
-                                beneficio.status === "deferido"
+                              className={`text-xs ${beneficio.status === "deferido"
                                   ? "bg-green-100 text-green-700 border-green-200"
                                   : beneficio.status === "indeferido"
                                     ? "bg-red-100 text-red-700 border-red-200"
@@ -728,12 +727,12 @@ export default function ClientDetail() {
                                       : beneficio.status === "aguardando_inss"
                                         ? "bg-purple-100 text-purple-700 border-purple-200"
                                         : beneficio.status ===
-                                            "documentacao_pendente"
+                                          "documentacao_pendente"
                                           ? "bg-orange-100 text-orange-700 border-orange-200"
                                           : beneficio.status === "cancelado"
                                             ? "bg-slate-100 text-slate-700 border-slate-200"
                                             : "bg-amber-100 text-amber-700 border-amber-200"
-                              }`}
+                                }`}
                             >
                               {STATUS_LABELS[beneficio.status] ||
                                 beneficio.status?.replace(/_/g, " ")}
@@ -854,7 +853,7 @@ export default function ClientDetail() {
 
       {/* Edit Dialog */}
       <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Cliente</DialogTitle>
           </DialogHeader>

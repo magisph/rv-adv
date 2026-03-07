@@ -207,78 +207,78 @@ export default function Clients() {
                       exit={{ opacity: 0 }}
                       className="hover:bg-slate-50 transition-colors"
                     >
-                        <TableCell>
-                          <Link
-                            to={createPageUrl(`ClientDetail?id=${client.id}`)}
-                            className="flex items-center gap-3"
-                          >
-                            <div className="w-10 h-10 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white font-medium">
-                              {client.full_name?.charAt(0)?.toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="font-medium text-slate-800">
-                                {client.full_name}
-                              </p>
-                              <p className="text-sm text-slate-500 md:hidden">
-                                {client.cpf_cnpj}
-                              </p>
-                            </div>
-                          </Link>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-slate-600">
-                          {client.cpf_cnpj}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          {client.senha_meu_inss ? (
-                            <span className="text-sm text-slate-600 font-mono">
-                              {client.senha_meu_inss}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-slate-400 italic">
-                              Não informada
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          {client.phone && (
-                            <div className="flex items-center gap-1 text-sm text-slate-600">
-                              <Phone className="w-3 h-3" />
-                              {client.phone}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={STATUS_COLORS[client.status]}
-                          >
-                            {STATUS_LABELS[client.status]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleEdit(client)}
-                              >
-                                <Edit className="w-4 h-4 mr-2" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(client)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                      <TableCell>
+                        <Link
+                          to={createPageUrl(`ClientDetail?id=${client.id}`)}
+                          className="flex items-center gap-3"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white font-medium">
+                            {client.full_name?.charAt(0)?.toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-800">
+                              {client.full_name}
+                            </p>
+                            <p className="text-sm text-slate-500 md:hidden">
+                              {client.cpf_cnpj}
+                            </p>
+                          </div>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-slate-600">
+                        {client.cpf_cnpj}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {client.senha_meu_inss ? (
+                          <span className="text-sm text-slate-600 font-mono">
+                            {client.senha_meu_inss}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-slate-400 italic">
+                            Não informada
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {client.phone && (
+                          <div className="flex items-center gap-1 text-sm text-slate-600">
+                            <Phone className="w-3 h-3" />
+                            {client.phone}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={STATUS_COLORS[client.status]}
+                        >
+                          {STATUS_LABELS[client.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(client)}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(client)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </MotionTableRow>
                   ))}
                 </AnimatePresence>
@@ -293,7 +293,7 @@ export default function Clients() {
 
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingClient ? "Editar Cliente" : "Novo Cliente"}

@@ -104,19 +104,32 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const formatCPF = (value) => {
+    let v = value.replace(/\D/g, "");
+    if (v.length > 11) v = v.slice(0, 11);
+    v = v.replace(/(\d{3})(\d)/, "$1.$2");
+    v = v.replace(/(\d{3})(\d)/, "$1.$2");
+    v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    return v;
+  };
+
+  const handleCPFChange = (e) => {
+    handleChange("cpf_cnpj", formatCPF(e.target.value));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Saneamento de dados antes do save (prevenir 400 Bad Request)
     const payload = { ...formData };
-    
+
     // Remover campos de controle/leitura ou inexistentes no schema
     delete payload.id;
     delete payload.created_date; // Campo legado
     delete payload.created_at;
     delete payload.updated_at;
     delete payload.created_by; // DB preenche com auth.uid()
-    
+
     // Garantir status padrão se vazio
     if (!payload.status) payload.status = "ativo";
 
@@ -129,7 +142,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
       "area",
       "benefit_type"
     ];
-    
+
     fieldsToNull.forEach(field => {
       if (payload[field] === "") {
         payload[field] = null;
@@ -197,8 +210,9 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                   <Input
                     id="cpf_cnpj"
                     value={formData.cpf_cnpj}
-                    onChange={(e) => handleChange("cpf_cnpj", e.target.value)}
+                    onChange={handleCPFChange}
                     required
+                    maxLength={14}
                     placeholder="000.000.000-00"
                   />
                 </div>
@@ -687,18 +701,58 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-3 pt-6 border-t">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          <X className="w-4 h-4 mr-2" />
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          disabled={isSaving}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
-        >
-          <Save className="w-4 h-4 mr-2" />
-          {isSaving ? "Salvando..." : "Salvar Cliente"}
-        </Button>
+        {activeTab === "pessoais" && (
+          <>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              <X className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+              onClick={() => setActiveTab("endereco")}
+            >
+              Avançar
+            </Button>
+          </>
+        )}
+        {activeTab === "endereco" && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setActiveTab("pessoais")}
+            >
+              Voltar
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+              onClick={() => setActiveTab("previdenciario")}
+            >
+              Avançar
+            </Button>
+          </>
+        )}
+        {activeTab === "previdenciario" && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setActiveTab("endereco")}
+            >
+              Voltar
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSaving}
+              className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {isSaving ? "Salvando..." : "Salvar Cliente"}
+            </Button>
+          </>
+        )}
       </div>
     </form>
   );
