@@ -934,7 +934,7 @@ export default function ClientDetail() {
                                 </div>
                                 <div className="flex-1">
                                   <p className="text-xs text-blue-600 font-medium uppercase tracking-wider mb-1">Data da Perícia</p>
-                                  <p className="font-bold text-slate-800 text-lg">{email.extracted_date}</p>
+                                  <p className="font-bold text-slate-800 text-lg">{format(new Date(email.extracted_date), "dd-MM-yyyy ' | ' HH:mm")}</p>
                                 </div>
                               </div>
                             )}

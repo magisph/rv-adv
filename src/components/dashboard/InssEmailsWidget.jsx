@@ -77,8 +77,11 @@ export default function InssEmailsWidget() {
                             <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-2">
                                 <div>
                                     <h3 className="font-semibold text-slate-800">{email.subject}</h3>
-                                    <p className="text-sm text-slate-500">
-                                        Cliente: {email.clients?.full_name || "N/A"} | Recebido em: {format(new Date(email.created_at), "dd/MM/yyyy HH:mm")}
+                                    <p className="text-sm text-slate-600 mb-1">
+                                        Cliente: <span className="font-medium text-slate-700">{email.clients?.full_name || "N/A"}</span>
+                                    </p>
+                                    <p className="text-xs text-slate-400">
+                                        Recebido em: {format(new Date(email.created_at), "dd/MM/yyyy HH:mm")}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -104,26 +107,26 @@ export default function InssEmailsWidget() {
 
                             {/* Extração Destacada */}
                             {(email.extracted_date || email.extracted_location) && (
-                                <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg flex flex-col sm:flex-row gap-6">
+                                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-4">
                                     {email.extracted_date && (
-                                        <div className="flex items-start gap-3">
-                                            <div className="bg-blue-100 p-2.5 rounded-md text-blue-700 mt-1">
+                                        <div className="flex items-start gap-3 flex-1">
+                                            <div className="bg-blue-100 p-2.5 rounded text-blue-700 mt-1 flex-shrink-0">
                                                 <Calendar className="w-5 h-5" />
                                             </div>
-                                            <div>
+                                            <div className="flex-1">
                                                 <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Data da Perícia</p>
-                                                <p className="font-bold text-slate-800 text-lg">{email.extracted_date}</p>
+                                                <p className="font-bold text-slate-800 text-lg">{format(new Date(email.extracted_date), "dd-MM-yyyy ' | ' HH:mm")}</p>
                                             </div>
                                         </div>
                                     )}
                                     {email.extracted_location && (
-                                        <div className="flex items-start gap-3">
-                                            <div className="bg-blue-100 p-2.5 rounded-md text-blue-700 mt-1">
+                                        <div className="flex items-start gap-3 flex-1">
+                                            <div className="bg-blue-100 p-2.5 rounded text-blue-700 mt-1 flex-shrink-0">
                                                 <MapPin className="w-5 h-5" />
                                             </div>
-                                            <div>
+                                            <div className="flex-1">
                                                 <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Local da Perícia</p>
-                                                <p className="font-bold text-slate-800 text-base leading-snug">{email.extracted_location}</p>
+                                                <p className="font-bold text-slate-800 text-sm leading-snug">{email.extracted_location}</p>
                                             </div>
                                         </div>
                                     )}
