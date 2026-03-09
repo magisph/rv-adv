@@ -45,6 +45,8 @@ serve(async (req) => {
       .eq('email_inss', to)
       .limit(1);
 
+    if (clientError) throw clientError;
+
     const clientId = clients?.[0]?.id || null;
 
     // 2. Insert email log with "pendente" status (if client exists)
@@ -62,7 +64,9 @@ serve(async (req) => {
         .select('id')
         .single();
 
-      if (!insertError && insertedEmail) {
+      if (insertError) throw insertError;
+
+      if (insertedEmail) {
         emailId = insertedEmail.id;
       }
     }
@@ -129,7 +133,7 @@ serve(async (req) => {
             
             // 4. Update record with extracted data and mark as "processado"
             if (emailId) {
-              await supabase
+              const { error: updateError } = await supabase
                 .from('client_inss_emails')
                 .update({
                   extracted_date: parsedData.data_hora,
@@ -137,6 +141,8 @@ serve(async (req) => {
                   status: 'processado'
                 })
                 .eq('id', emailId);
+                
+              if (updateError) throw updateError;
             }
               
           } catch (parseError) {
@@ -144,10 +150,12 @@ serve(async (req) => {
             debugInfo.parseError = parseError.message;
             // Updating status to mark a failure in extraction logic
             if (emailId) {
-              await supabase
+              const { error: updateError } = await supabase
                 .from('client_inss_emails')
                 .update({ status: 'falha_extracao' })
                 .eq('id', emailId);
+                
+              if (updateError) throw updateError;
             }
           }
         } else {
@@ -156,20 +164,24 @@ serve(async (req) => {
             debugInfo.apiError = errStr;
             debugInfo.status = geminiResponse.status;
             if (emailId) {
-             await supabase
+             const { error: updateError } = await supabase
               .from('client_inss_emails')
               .update({ status: 'falha_extracao' })
               .eq('id', emailId);
+              
+             if (updateError) throw updateError;
             }
         }
       } catch (geminiError) {
         console.error("Error communicating with Gemini:", geminiError);
         debugInfo.networkError = geminiError.message;
         if (emailId) {
-         await supabase
+         const { error: updateError } = await supabase
           .from('client_inss_emails')
           .update({ status: 'falha_extracao' })
           .eq('id', emailId);
+          
+         if (updateError) throw updateError;
         }
       }
     }
