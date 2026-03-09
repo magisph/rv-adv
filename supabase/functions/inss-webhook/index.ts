@@ -38,16 +38,29 @@ serve(async (req) => {
       });
     }
 
-    // 1. Find the client ID where email_inss matches the "to" address
+    const cleanTo = to.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/)?.[0] || to;
+
+    // 1. Find the client ID where email_inss matches the "cleanTo" address
     const { data: clients, error: clientError } = await supabase
       .from('clients')
       .select('id')
-      .eq('email_inss', to)
+      .eq('email_inss', cleanTo)
       .limit(1);
 
     if (clientError) throw clientError;
 
     const clientId = clients?.[0]?.id || null;
+
+    if (!clientId) {
+      console.warn(`Cliente não encontrado para o e-mail: ${cleanTo}`);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Email ignored: Client not found' 
+      }), { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
 
     // 2. Insert email log with "pendente" status (if client exists)
     let emailId = null;
@@ -88,12 +101,13 @@ serve(async (req) => {
       try {
         const prompt = `
           Você é um assistente especializado em ler comunicações do INSS.
-          Leia o texto do e-mail abaixo e extraia a Data/Hora da perícia/exigência e o Local.
+          Leia o texto do e-mail abaixo e extraia a Data/Hora da perícia/exigência, o Local, e o texto legível.
+          Extraia também o texto principal e legível do e-mail, ignorando completamente cabeçalhos técnicos, códigos MIME, base64, DKIM e tags HTML.
           
           Regras:
           1. Retorne APENAS um JSON válido.
-          2. O formato do JSON deve ser EXATAMENTE: { "data_hora": "YYYY-MM-DDTHH:mm:ssZ", "local": "Endereço extraído" }
-          3. Se não encontrar a data, use null para "data_hora". Se não encontrar o local, use null para "local".
+          2. O formato do JSON deve ser EXATAMENTE: { "data_hora": "YYYY-MM-DDTHH:mm:ssZ", "local": "Endereço extraído", "clean_text": "Texto limpo extraído" }
+          3. Se não encontrar a data, use null para "data_hora". Se não encontrar o local, use null para "local". Use null para clean_text se falhar.
           4. Não inclua blocos markdown (como \`\`\`json). Retorne apenas a string JSON.
           
           Texto do e-mail:
@@ -138,6 +152,7 @@ serve(async (req) => {
                 .update({
                   extracted_date: parsedData.data_hora,
                   extracted_location: parsedData.local,
+                  body_text: parsedData.clean_text,
                   status: 'processado'
                 })
                 .eq('id', emailId);

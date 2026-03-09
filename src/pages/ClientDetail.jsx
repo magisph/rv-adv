@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { clientService, processService, appointmentService, beneficioService, documentService, notificationService } from "@/services";
@@ -91,8 +91,15 @@ export default function ClientDetail() {
   const [showBeneficioModal, setShowBeneficioModal] = useState(false);
   const [showBeneficioEditModal, setShowBeneficioEditModal] = useState(false);
   const [editingBeneficio, setEditingBeneficio] = useState(null);
-  const [activeTab, setActiveTab] = useState("info");
+  const tabParam = urlParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabParam || "info");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   const queryClient = useQueryClient();
 

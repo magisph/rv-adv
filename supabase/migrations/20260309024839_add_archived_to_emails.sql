@@ -1,0 +1,1 @@
+ALTER TABLE client_inss_emails ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;

@@ -1,15 +1,29 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { inssEmailService } from "@/services";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Calendar, MapPin } from "lucide-react";
+import { Mail, Calendar, MapPin, Archive } from "lucide-react";
 import { format } from "date-fns";
+import { createPageUrl } from "@/utils";
 
 export default function InssEmailsWidget() {
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
+
     const { data: emails = [], isLoading } = useQuery({
         queryKey: ["latest-inss-emails"],
-        queryFn: () => inssEmailService.list("-created_at", 10),
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("client_inss_emails")
+                .select("*, clients(full_name)")
+                .eq("is_archived", false)
+                .order("created_at", { ascending: false })
+                .limit(10);
+            if (error) throw error;
+            return data;
+        },
         staleTime: 2 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
     });
@@ -32,6 +46,18 @@ export default function InssEmailsWidget() {
 
     if (emails.length === 0) return null;
 
+    const handleArchive = async (e, id) => {
+        e.stopPropagation();
+        const { error } = await supabase
+            .from("client_inss_emails")
+            .update({ is_archived: true })
+            .eq("id", id);
+
+        if (!error) {
+            queryClient.invalidateQueries(["latest-inss-emails"]);
+        }
+    };
+
     return (
         <Card className="border-0 shadow-sm mt-8">
             <CardHeader>
@@ -43,24 +69,37 @@ export default function InssEmailsWidget() {
             <CardContent>
                 <div className="space-y-4">
                     {emails.map((email) => (
-                        <div key={email.id} className="p-4 bg-white border border-slate-100 rounded-lg shadow-sm">
+                        <div
+                            key={email.id}
+                            className="p-4 bg-white border border-slate-100 rounded-lg shadow-sm cursor-pointer hover:bg-slate-50 border-transparent hover:border-slate-200 transition-colors"
+                            onClick={() => navigate(createPageUrl(`ClientDetail?id=${email.client_id}&tab=emails`))}
+                        >
                             <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-2">
                                 <div>
                                     <h3 className="font-semibold text-slate-800">{email.subject}</h3>
                                     <p className="text-sm text-slate-500">
-                                        Remetente: {email.sender || "N/A"} | Recebido em: {format(new Date(email.created_at), "dd/MM/yyyy HH:mm")}
+                                        Cliente: {email.clients?.full_name || "N/A"} | Recebido em: {format(new Date(email.created_at), "dd/MM/yyyy HH:mm")}
                                     </p>
                                 </div>
-                                <Badge
-                                    variant="outline"
-                                    className={
-                                        email.status === 'processado'
-                                            ? "bg-green-100 text-green-700 border-green-200 px-3 font-medium"
-                                            : "bg-yellow-100 text-yellow-700 border-yellow-200 px-3 font-medium"
-                                    }
-                                >
-                                    {email.status === 'processado' ? 'Processado pela IA' : 'Pendente'}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                    <Badge
+                                        variant="outline"
+                                        className={
+                                            email.status === 'processado'
+                                                ? "bg-green-100 text-green-700 border-green-200 px-3 font-medium"
+                                                : "bg-yellow-100 text-yellow-700 border-yellow-200 px-3 font-medium"
+                                        }
+                                    >
+                                        {email.status === 'processado' ? 'Processado pela IA' : 'Pendente'}
+                                    </Badge>
+                                    <button
+                                        onClick={(e) => handleArchive(e, email.id)}
+                                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+                                        title="Arquivar Notificação"
+                                    >
+                                        <Archive className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Extração Destacada */}
