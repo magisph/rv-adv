@@ -43,14 +43,20 @@ import {
   Edit,
   Trash2,
   Filter,
+  Settings,
+  RefreshCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import PjeConfigModal from "@/components/scraper/PjeConfigModal";
+import { sincronizarProcessos } from "@/services/scraperService";
 import { format } from "date-fns";
 import ProcessForm from "@/components/processes/ProcessForm";
 import ProcessesChart from "@/components/dashboard/ProcessesChart";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const MotionTableRow = motion.create(TableRow);
+
+const ADVOGADA = { nome: 'Ana Rafaela Vasconcelos Damasceno', oab: '036219', uf: 'CE' };
 
 const STATUS_COLORS = {
   ativo: "bg-green-100 text-green-700 border-green-200",
@@ -83,6 +89,8 @@ export default function Processes() {
   const [showForm, setShowForm] = useState(!!preselectedClientId);
   const [editingProcess, setEditingProcess] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [showPjeConfig, setShowPjeConfig] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -136,6 +144,19 @@ export default function Processes() {
     setDeleteConfirm(process);
   };
 
+  const handleSyncPje = async () => {
+    setSyncing(true);
+    toast.info('Iniciando robô invisível...', { duration: 4000 });
+    try {
+      const data = await sincronizarProcessos(ADVOGADA.oab, ADVOGADA.uf);
+      toast.success(data.message || 'Extração iniciada com sucesso!');
+    } catch (err) {
+      toast.error(err.message || 'Falha ao disparar sincronização.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const filteredProcesses = processes.filter((process) => {
     const matchesSearch =
       process.process_number?.toLowerCase().includes(search.toLowerCase()) ||
@@ -157,16 +178,33 @@ export default function Processes() {
             {processes.length} processos cadastrados
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingProcess(null);
-            setShowForm(true);
-          }}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Processo
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowPjeConfig(true)}
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Configurar PJe
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleSyncPje}
+            disabled={syncing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            Sincronizar PJe
+          </Button>
+          <Button
+            onClick={() => {
+              setEditingProcess(null);
+              setShowForm(true);
+            }}
+            className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Processo
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -373,6 +411,9 @@ export default function Processes() {
           setDeleteConfirm(null);
         }}
       />
+
+      {/* PJe Config Modal */}
+      <PjeConfigModal open={showPjeConfig} onOpenChange={setShowPjeConfig} />
     </div>
   );
 }
