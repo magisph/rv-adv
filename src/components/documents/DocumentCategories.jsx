@@ -11,6 +11,7 @@ import {
   Heart,
   Sprout,
   ChevronRight,
+  LineChart,
 } from "lucide-react";
 
 // Configuração das categorias com cores e subcategorias
@@ -115,6 +116,20 @@ export const DOCUMENT_CATEGORIES = {
       { id: "comprovante_venda", label: "Comprovante de venda de produção" },
       { id: "fotos_propriedade", label: "Fotos da propriedade rural" },
       { id: "outros_rurais", label: "Outros" },
+    ],
+  },
+  analises: {
+    name: "Análises",
+    color: "#9C27B0",
+    bgColor: "#F3E5F5",
+    borderColor: "#9C27B0",
+    icon: LineChart,
+    description: "Análise de Risco, Cálculo Previdenciário, Parecer Técnico",
+    subcategories: [
+      { id: "analise_risco", label: "Análise de Risco" },
+      { id: "calculo_previdenciario", label: "Cálculo Previdenciário" },
+      { id: "parecer_tecnico", label: "Parecer Técnico" },
+      { id: "outros_analises", label: "Outros" },
     ],
   },
 };

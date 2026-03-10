@@ -15,7 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 
 import {
   Upload,
@@ -29,6 +30,8 @@ import {
   Heart,
   Sprout,
   Plus,
+  LineChart,
+  Archive,
 } from "lucide-react";
 import { toast } from "sonner";
 import OCRExtractor from "./OCRExtractor";
@@ -321,6 +324,44 @@ const DOCUMENT_TYPES = {
       },
     ],
   },
+  analises: {
+    name: "Análises",
+    color: "#9C27B0",
+    bgColor: "#F3E5F5",
+    icon: LineChart,
+    types: [
+      {
+        id: "analise_risco",
+        label: "Análise de Risco",
+        allowMultiple: true,
+        fields: [
+          { name: "data_analise", label: "Data da análise", type: "date" },
+        ],
+      },
+      {
+        id: "calculo_previdenciario",
+        label: "Cálculo Previdenciário",
+        allowMultiple: true,
+        fields: [
+          { name: "competencia", label: "Competência", type: "text" },
+        ],
+      },
+      {
+        id: "parecer_tecnico",
+        label: "Parecer Técnico",
+        allowMultiple: true,
+        fields: [
+          { name: "numero_parecer", label: "Número do parecer", type: "text" },
+        ],
+      },
+      {
+        id: "outros_analises",
+        label: "Outros",
+        allowMultiple: true,
+        fields: [],
+      },
+    ],
+  },
 };
 
 function DocumentTypeCard({
@@ -343,6 +384,8 @@ function DocumentTypeCard({
   const [showOCR, setShowOCR] = useState(false);
   const [ocrFileUrl, setOcrFileUrl] = useState(null);
   const [ocrDocType, setOcrDocType] = useState(null);
+  const [selectedDocs, setSelectedDocs] = useState(new Set());
+  const [isBulkDownloading, setIsBulkDownloading] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -466,6 +509,57 @@ function DocumentTypeCard({
     return categoryDocs.filter((doc) => doc.subcategory === typeId);
   };
 
+  const toggleDocSelection = (docId) => {
+    setSelectedDocs((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      return next;
+    });
+  };
+
+  const allDocIds = categoryDocs.map((d) => d.id);
+  const allSelected =
+    allDocIds.length > 0 && allDocIds.every((id) => selectedDocs.has(id));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedDocs(new Set());
+    } else {
+      setSelectedDocs(new Set(allDocIds));
+    }
+  };
+
+  const handleBulkDownload = async () => {
+    const docsToDownload = categoryDocs.filter((d) => selectedDocs.has(d.id));
+    if (docsToDownload.length === 0) {
+      toast.warning("Selecione ao menos um documento.");
+      return;
+    }
+    setIsBulkDownloading(true);
+    toast.info(`Preparando ${docsToDownload.length} arquivo(s) para download...`);
+    try {
+      const zip = new JSZip();
+      await Promise.all(
+        docsToDownload.map(async (doc) => {
+          const response = await fetch(doc.file_url);
+          const blob = await response.blob();
+          zip.file(doc.name, blob);
+        })
+      );
+      const today = new Date().toISOString().split("T")[0];
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      saveAs(zipBlob, `Documentos_${category.name}_${today}.zip`);
+      toast.success("ZIP gerado com sucesso!");
+      setSelectedDocs(new Set());
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar o arquivo ZIP.");
+    } finally {
+      setIsBulkDownloading(false);
+    }
+  };
+
   const allTypes = [...category.types, ...customTypes];
   if (categoryKey === "rurais" && isMarried && category.conjugeTypes) {
     allTypes.push({ divider: true, label: "Documentos do Cônjuge" });
@@ -518,6 +612,32 @@ function DocumentTypeCard({
 
       {expanded && (
         <CardContent className="space-y-3">
+          {/* Barra de Seleção Múltipla */}
+          {categoryDocs.length > 0 && (
+            <div className="flex items-center justify-between py-2 px-3 bg-slate-50 border rounded-lg">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <span>Selecionar Todos ({categoryDocs.length})</span>
+              </label>
+              {selectedDocs.size > 0 && (
+                <Button
+                  size="sm"
+                  className="text-xs gap-1"
+                  style={{ backgroundColor: category.color }}
+                  onClick={handleBulkDownload}
+                  disabled={isBulkDownloading}
+                >
+                  <Archive className="w-3 h-3" />
+                  {isBulkDownloading
+                    ? "Gerando ZIP..."
+                    : `Baixar ${selectedDocs.size} selecionado(s)`}
+                </Button>
+              )}
+            </div>
+          )}
           {allTypes.map((type, idx) => {
             if (type.divider) {
               return (
@@ -566,7 +686,12 @@ function DocumentTypeCard({
                             key={doc.id}
                             className="flex items-center gap-2 text-xs"
                           >
-                            <span className="text-slate-600">
+                            <Checkbox
+                              checked={selectedDocs.has(doc.id)}
+                              onCheckedChange={() => toggleDocSelection(doc.id)}
+                              className="h-3.5 w-3.5"
+                            />
+                            <span className="text-slate-600 flex-1 truncate">
                               📎 {doc.name}
                             </span>
                             <span className="text-slate-400">
