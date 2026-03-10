@@ -53,3 +53,7 @@ build/
 .aiox-core/local/
 .claude/settings.local.json
 .aiox/install-log.txt
+
+# Local Scraper
+local-scraper/.env
+local-scraper/storage/
