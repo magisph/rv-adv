@@ -127,6 +127,16 @@ export async function iniciarExtracaoPje(
         }
       }
 
+      // 4.2 Pulo Direto para o Painel do Advogado (Evita pop-ups e menus confusos)
+      log.info(`[PJe] Redirecionando diretamente para o Painel do Advogado...`);
+      const urlPainelAdvogado = request.url.replace('login.seam', 'Painel/painel_usuario/advogado.seam');
+
+      // Tenta acessar o painel diretamente
+      await page.goto(urlPainelAdvogado, { waitUntil: 'domcontentloaded' });
+
+      // Aguarda o carregamento dos elementos pesados (tabelas e iframes)
+      await page.waitForTimeout(6000);
+
       // DEBUG: Screenshot do painel após login/2FA
       await page.screenshot({ path: `${tribunal}-painel.png`, fullPage: true });
       log.info(`[PJe] Screenshot salvo: ${tribunal}-painel.png`);
