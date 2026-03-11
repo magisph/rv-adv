@@ -1,15 +1,10 @@
 // ============================================================================
 // cnjService.js — Motor de Buscas do Governo (DataJud + DJEN)
-// Padrão Ouro: Consulta oficial via APIs públicas do CNJ
+// Padrão Ouro: Consulta via Proxy local (evita CORS)
 // ============================================================================
 
-// ─── DataJud Config ─────────────────────────────────────────────────────────
-const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br";
-const DATAJUD_API_KEY =
-  "APIKey cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==";
-
-// ─── DJEN Config ────────────────────────────────────────────────────────────
-const DJEN_BASE = "https://comunicaapi.pje.jus.br";
+// ─── Proxy Config (backend local em localhost:3001) ─────────────────────────
+const PROXY_BASE = "http://localhost:3001";
 
 // ─── Mapeamento J+TT → Sigla do Tribunal (Jurisdição do escritório: CE) ─────
 const TRIBUNAL_MAP = {
@@ -71,30 +66,17 @@ export function formatarNumeroCNJ(numeroCNJ) {
 // ============================================================================
 // datajudBuscaNumero(numero)
 //
-// POST para DataJud buscando capa + movimentos de um processo pelo número.
+// POST para o proxy local que repassa ao DataJud.
 // Retorna: { classeProcessual, assuntos, movimentos, orgaoJulgador, _raw }
 // ============================================================================
 export async function datajudBuscaNumero(numero) {
   const sigla = resolverTribunal(numero);
   const numeroFormatado = formatarNumeroCNJ(numero);
 
-  const endpoint = `${DATAJUD_BASE}/api_publica_${sigla}/_search`;
-
-  const body = {
-    query: {
-      match: {
-        numeroProcesso: numeroFormatado,
-      },
-    },
-  };
-
-  const response = await fetch(endpoint, {
+  const response = await fetch(`${PROXY_BASE}/api/cnj/datajud`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: DATAJUD_API_KEY,
-    },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sigla, numeroFormatado }),
   });
 
   if (!response.ok) {
@@ -142,7 +124,7 @@ export async function datajudBuscaNumero(numero) {
 // ============================================================================
 // djenBuscaPublica()
 //
-// GET para o Diário de Justiça Eletrônico Nacional — comunicações/intimações
+// GET para o proxy local que repassa ao DJEN — comunicações/intimações
 // da advogada Ana Rafaela Vasconcelos Damasceno (OAB/CE 36219).
 // Retorna: lista de comunicações públicas.
 // ============================================================================
@@ -153,14 +135,13 @@ export async function djenBuscaPublica() {
     nomeAdvogado: "Ana Rafaela Vasconcelos Damasceno",
   });
 
-  const url = `${DJEN_BASE}/api/v1/comunicacao?${params.toString()}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
-  });
+  const response = await fetch(
+    `${PROXY_BASE}/api/cnj/djen?${params.toString()}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");

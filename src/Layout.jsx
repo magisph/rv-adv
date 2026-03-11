@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { authService } from "@/services/authService";
@@ -15,6 +15,7 @@ import {
   LogOut,
   Menu,
   X,
+  Radar,
   Scale,
   ChevronDown,
   ChevronRight,
@@ -78,6 +79,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Dashboard", icon: LayoutDashboard, page: "Home" },
     { name: "Clientes", icon: Users, page: "Clients" },
     { name: "Processos", icon: FolderOpen, page: "Processes" },
+    { name: "Radar CNJ", icon: Radar, page: "RadarCNJ" },
     { name: "Tarefas", icon: CheckSquare, page: "Tasks" },
     { name: "Templates", icon: FileText, page: "Templates" },
     { name: "Prazos", icon: Calendar, page: "Deadlines" },

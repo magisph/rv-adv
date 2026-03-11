@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import NotificationSettings from "./pages/NotificationSettings";
 import ProcessDetail from "./pages/ProcessDetail";
 import Processes from "./pages/Processes";
+import RadarCNJ from "./pages/RadarCNJ";
 import Settings from "./pages/Settings";
 import Tasks from "./pages/Tasks";
 import Templates from "./pages/Templates";
@@ -24,6 +25,7 @@ export const PAGES = {
   NotificationSettings: NotificationSettings,
   ProcessDetail: ProcessDetail,
   Processes: Processes,
+  RadarCNJ: RadarCNJ,
   Settings: Settings,
   Tasks: Tasks,
   Templates: Templates,

@@ -15,6 +15,11 @@ const PORT = 3001;
 app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.json());
 
+// ─── CNJ APIs Config (DataJud + DJEN) ───────────────────────────────
+const DATAJUD_API_KEY = 'APIKey cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
+const DATAJUD_BASE = 'https://api-publica.datajud.cnj.jus.br';
+const DJEN_BASE = 'https://comunicaapi.pje.jus.br';
+
 // ─── Gerenciador de Sessões OTP (TTL 5 min) ────────────────────────
 interface OtpSession {
   cpf: string;
@@ -165,11 +170,63 @@ app.post('/advogado/processos', async (req: Request, res: Response) => {
   }
 });
 
+// ─── Proxy CNJ: DataJud ─────────────────────────────────────────────
+app.post('/api/cnj/datajud', async (req: Request, res: Response) => {
+  try {
+    const { sigla, numeroFormatado } = req.body;
+
+    if (!sigla || !numeroFormatado) {
+      res.status(400).json({ error: 'sigla e numeroFormatado são obrigatórios.' });
+      return;
+    }
+
+    const endpoint = `${DATAJUD_BASE}/api_publica_${sigla}/_search`;
+
+    const upstream = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: DATAJUD_API_KEY,
+      },
+      body: JSON.stringify({
+        query: { match: { numeroProcesso: numeroFormatado } },
+      }),
+    });
+
+    const data = await upstream.json();
+    res.status(upstream.status).json(data);
+  } catch (err: any) {
+    console.error('[/api/cnj/datajud] Erro:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Proxy CNJ: DJEN ────────────────────────────────────────────────
+app.get('/api/cnj/djen', async (req: Request, res: Response) => {
+  try {
+    const params = new URLSearchParams(req.query as Record<string, string>);
+    const url = `${DJEN_BASE}/api/v1/comunicacao?${params.toString()}`;
+
+    const upstream = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+
+    const data = await upstream.json();
+    res.status(upstream.status).json(data);
+  } catch (err: any) {
+    console.error('[/api/cnj/djen] Erro:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Ignição ────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀 Scraper Server rodando em http://localhost:${PORT}`);
   console.log(`   ├─ Healthcheck:  GET  /status`);
   console.log(`   ├─ Config MNI:   POST /configurar/mni`);
   console.log(`   ├─ Config OTP:   POST /configurar/mni/otp`);
-  console.log(`   └─ Extração:     POST /advogado/processos\n`);
+  console.log(`   ├─ Extração:     POST /advogado/processos`);
+  console.log(`   ├─ Proxy DataJud: POST /api/cnj/datajud`);
+  console.log(`   └─ Proxy DJEN:    GET  /api/cnj/djen\n`);
 });
