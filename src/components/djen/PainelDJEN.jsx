@@ -20,6 +20,7 @@ import {
   CalendarDays,
   User,
   Gavel,
+  CheckCircle2,
 } from "lucide-react";
 
 // ============================================================================
@@ -101,7 +102,7 @@ function LoadingSkeleton() {
 }
 
 // ─── Card de Comunicação — Layout de Gestão Processual ─────────────────────
-function ComunicacaoCard({ comunicacao }) {
+function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
   // ── Extração blindada de campos ────────────────────────────────────────
   const numeroRaw = getField(comunicacao, [
     "numeroprocesso", "numero_processo", "numero", "processo",
@@ -139,29 +140,48 @@ function ComunicacaoCard({ comunicacao }) {
   ]);
   const teorExibido = teor || JSON.stringify(comunicacao, null, 2);
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  // ── Estado de leitura ──────────────────────────────────────────────
+  const cardId = `${numeroFormatado}-${dataDispRaw || 'sem-data'}`;
+  const isLida = lidas.includes(cardId);
+
+  // ── Render ─────────────────────────────────────────────────────────
   return (
-    <Card className="border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
-      {/* ── Cabeçalho – faixa superior com metadados ─────────────────── */}
+    <Card className={`border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${isLida ? 'opacity-60 bg-slate-50' : ''}`}>
+      {/* ── Cabeçalho – faixa superior com metadados ───────────────── */}
       <CardHeader className="bg-amber-50/80 border-b border-amber-100 py-3 px-5">
-        <p className="text-sm text-slate-700 leading-relaxed">
-          {dataDisp && (
-            <span className="font-medium">
-              Disponibilizada em {dataDisp}
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-slate-700 leading-relaxed flex-1">
+            {dataDisp && (
+              <span className="font-medium">
+                Disponibilizada em {dataDisp}
+              </span>
+            )}
+            {tribunal && (
+              <span className="text-slate-400"> · <span className="font-semibold text-[#1e3a5f]">{tribunal}</span></span>
+            )}
+            <span className="text-slate-400"> · </span>
+            <span className="font-mono text-xs bg-white/60 px-1.5 py-0.5 rounded border border-amber-200">
+              {numeroFormatado}
             </span>
-          )}
-          {tribunal && (
-            <span className="text-slate-400"> · <span className="font-semibold text-[#1e3a5f]">{tribunal}</span></span>
-          )}
-          <span className="text-slate-400"> · </span>
-          <span className="font-mono text-xs bg-white/60 px-1.5 py-0.5 rounded border border-amber-200">
-            {numeroFormatado}
-          </span>
-          <span className="text-slate-400"> · </span>
-          <Badge className="bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs hover:bg-[#1e3a5f]/15 font-medium">
-            {tipoAto}
-          </Badge>
-        </p>
+            <span className="text-slate-400"> · </span>
+            <Badge className="bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs hover:bg-[#1e3a5f]/15 font-medium">
+              {tipoAto}
+            </Badge>
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleLida(cardId)}
+            className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
+              isLida
+                ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <CheckCircle2 className={`w-4 h-4 ${isLida ? 'fill-emerald-100' : ''}`} />
+            {isLida ? 'Lida' : 'Marcar como Lida'}
+          </Button>
+        </div>
       </CardHeader>
 
       {/* ── Corpo da Comunicação ─────────────────────────────────────── */}
@@ -252,6 +272,20 @@ function ComunicacaoCard({ comunicacao }) {
 
 // ─── Painel Principal ──────────────────────────────────────────────────────
 export default function PainelDJEN() {
+  // Estado persistido de comunicações lidas
+  const [lidas, setLidas] = React.useState(() =>
+    JSON.parse(localStorage.getItem('djen_lidas') || '[]')
+  );
+
+  const toggleLida = (id) => {
+    setLidas((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((i) => i !== id)
+        : [...prev, id];
+      localStorage.setItem('djen_lidas', JSON.stringify(next));
+      return next;
+    });
+  };
   const {
     data,
     isLoading,
@@ -389,7 +423,7 @@ export default function PainelDJEN() {
       ) : (
         <div className="space-y-4">
           {comunicacoes.map((com, idx) => (
-            <ComunicacaoCard key={idx} comunicacao={com} />
+            <ComunicacaoCard key={idx} comunicacao={com} lidas={lidas} toggleLida={toggleLida} />
           ))}
         </div>
       )}

@@ -133,6 +133,7 @@ export async function djenBuscaPublica() {
     numeroOab: "36219",
     ufOab: "CE",
     nomeAdvogado: "Ana Rafaela Vasconcelos Damasceno",
+    dataDisponibilizacaoInicio: "2026-01-01",
   });
 
   const response = await fetch(

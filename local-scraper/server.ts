@@ -288,6 +288,7 @@ async function vigiarDJEN(): Promise<void> {
       numeroOab: '36219',
       ufOab: 'CE',
       nomeAdvogado: 'Ana Rafaela Vasconcelos Damasceno',
+      dataDisponibilizacaoInicio: '2026-01-01',
     });
 
     const url = `${DJEN_BASE}/api/v1/comunicacao?${params.toString()}`;
@@ -348,19 +349,27 @@ async function vigiarDJEN(): Promise<void> {
         const tipo = getField(n, ['tipocomunicacao', 'tipo_comunicacao', 'tipo']) ?? 'Publicação';
         console.log(`   └─ ${proc} — ${tipo}`);
 
-        // Insert diretamente no Supabase
-        const { error } = await supabase.from('notifications').insert({
-          user_id: process.env.SUPABASE_USER_ID,
-          type: 'djen',
-          priority: 'urgente',
-          title: 'Nova Publicação DJEN',
-          message: `Processo: ${proc} - ${tipo}`,
-          link: '/IntimacoesDJEN',
-          is_read: false,
-        });
+        // Data de corte: só notifica comunicações a partir de 12/03/2026
+        const dataDispRaw = getField(n, ['datadisponibilizacao', 'data_disponibilizacao']);
+        const dataDisp = new Date(dataDispRaw);
+        const dataCorte = new Date('2026-03-12T00:00:00-03:00');
 
-        if (error) {
-          console.error(`[Vigia DJEN] Erro ao inserir notificação no Supabase:`, error.message);
+        if (dataDisp >= dataCorte) {
+          const { error } = await supabase.from('notifications').insert({
+            user_id: process.env.SUPABASE_USER_ID,
+            type: 'djen',
+            priority: 'urgente',
+            title: 'Nova Publicação DJEN',
+            message: `Processo: ${proc} - ${tipo}`,
+            link: '/IntimacoesDJEN',
+            is_read: false,
+          });
+
+          if (error) {
+            console.error(`[Vigia DJEN] Erro ao inserir notificação no Supabase:`, error.message);
+          }
+        } else {
+          console.log(`   └─ Silenciado (Anterior a 12/03): ${proc}`);
         }
       }
     } else {
