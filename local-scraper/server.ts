@@ -111,6 +111,9 @@ app.post('/configurar/mni/otp', (req: Request, res: Response) => {
       return;
     }
 
+    // Salva OTP na memória do servidor para repasse ao crawler
+    process.env.PJE_OTP = otp;
+
     res.json({ message: 'Código 2FA recebido. Login sendo finalizado.' });
   } catch (err: any) {
     console.error('[/configurar/mni/otp] Erro:', err);
@@ -138,10 +141,14 @@ app.post('/advogado/processos', async (req: Request, res: Response) => {
       return;
     }
 
+    // Captura OTP antes do disparo e limpa imediatamente
+    const otpFinal = process.env.PJE_OTP || '';
+    process.env.PJE_OTP = '';
+
     // Dispara o crawler em background
     console.log(`[Extração] Iniciando PJe para OAB ${oab}/${uf}...`);
 
-    iniciarExtracaoPje(cpfFinal, senhaFinal, oab, uf)
+    iniciarExtracaoPje(cpfFinal, senhaFinal, oab, uf, otpFinal)
       .then((resultado) => {
         console.log(`[Extração] Concluída. ${resultado.processos.length} processos encontrados.`);
       })

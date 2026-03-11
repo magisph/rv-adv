@@ -25,7 +25,7 @@ config.set('persistStorage', false); // Não persiste storage em disco
 // ─── Constantes PJe ─────────────────────────────────────────────────
 const PJE_URLS: Record<string, string> = {
   'TJ-CE': 'https://pje.tjce.jus.br/pje/login.seam',
-  'TRF-5': 'https://pje.trf5.jus.br/pje/login.seam',
+  'TRF-5': 'https://pje1g.trf5.jus.br/pje/login.seam',
 };
 
 // ─── Função Principal de Extração ───────────────────────────────────
@@ -33,7 +33,8 @@ export async function iniciarExtracaoPje(
   cpf: string,
   senha: string,
   oab: string,
-  uf: string
+  uf: string,
+  otp?: string
 ): Promise<ResultadoExtracao> {
   const processos: ProcessoExtraido[] = [];
   const erros: string[] = [];
@@ -41,7 +42,7 @@ export async function iniciarExtracaoPje(
 
   const crawler = new PlaywrightCrawler({
     // ── Configurações de Stealth & Performance ──
-    headless: true,
+    headless: false, // DEBUG: desative após análise visual
     browserPoolOptions: {
       useFingerprints: true, // Rotaciona fingerprints para evitar detecção
     },
@@ -92,8 +93,31 @@ export async function iniciarExtracaoPje(
 
       log.info(`[PJe] Login submetido. Verificando painel...`);
 
-      // 4. Navega para o painel de processos do advogado
-      await page.waitForTimeout(3000); // Espera redirect pós-login
+      // 4. Aguarda redirect pós-login
+      await page.waitForTimeout(8000);
+
+      // 4.1 Detecta e preenche tela de 2FA (OTP)
+      const otpInput = page.locator('input[id*="codigo"], input[id*="token"], input[name*="codigo"]').first();
+      if (await otpInput.isVisible()) {
+        log.info(`[PJe] Tela de 2FA detectada. Inserindo código...`);
+
+        if (!otp) {
+          throw new Error('O tribunal exigiu 2FA, mas o código não foi fornecido. Refaça a Configuração do PJe.');
+        }
+
+        await otpInput.fill(otp);
+        const btnVerificar = page.locator('button[type="submit"], input[type="submit"], a:has-text("Verificar"), input[value*="Verificar"]').first();
+        if (await btnVerificar.isVisible()) {
+          await btnVerificar.click();
+        }
+        await page.waitForLoadState('networkidle');
+        await page.waitForTimeout(4000);
+        log.info(`[PJe] 2FA submetido com sucesso.`);
+      }
+
+      // DEBUG: Screenshot do painel após login/2FA
+      await page.screenshot({ path: `${tribunal}-painel.png`, fullPage: true });
+      log.info(`[PJe] Screenshot salvo: ${tribunal}-painel.png`);
 
       // 5. Coleta processos (seletor genérico — será refinado por tribunal)
       const linhasProcesso = page.locator('table[id*="processo"] tbody tr, .lista-processos .processo-item');
