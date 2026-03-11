@@ -350,6 +350,7 @@ async function vigiarDJEN(): Promise<void> {
 
         // Insert diretamente no Supabase
         const { error } = await supabase.from('notifications').insert({
+          user_id: process.env.SUPABASE_USER_ID,
           type: 'djen',
           priority: 'urgente',
           title: 'Nova Publicação DJEN',
