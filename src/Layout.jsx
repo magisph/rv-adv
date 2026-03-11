@@ -80,6 +80,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Clientes", icon: Users, page: "Clients" },
     { name: "Processos", icon: FolderOpen, page: "Processes" },
     { name: "Radar CNJ", icon: Radar, page: "RadarCNJ" },
+    { name: "DJEN Oficial", icon: BellRing, page: "IntimacoesDJEN" },
     { name: "Tarefas", icon: CheckSquare, page: "Tasks" },
     { name: "Templates", icon: FileText, page: "Templates" },
     { name: "Prazos", icon: Calendar, page: "Deadlines" },

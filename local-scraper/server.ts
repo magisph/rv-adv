@@ -180,7 +180,9 @@ app.post('/api/cnj/datajud', async (req: Request, res: Response) => {
       return;
     }
 
-    const endpoint = `${DATAJUD_BASE}/api_publica_${sigla}/_search`;
+    const endpoint = `${DATAJUD_BASE}/api_publica_${sigla.toLowerCase()}/_search`;
+
+    const numeroPuro = numeroFormatado.replace(/\D/g, '');
 
     const upstream = await fetch(endpoint, {
       method: 'POST',
@@ -189,7 +191,7 @@ app.post('/api/cnj/datajud', async (req: Request, res: Response) => {
         Authorization: DATAJUD_API_KEY,
       },
       body: JSON.stringify({
-        query: { match: { numeroProcesso: numeroFormatado } },
+        query: { match: { numeroProcesso: numeroPuro } },
       }),
     });
 
