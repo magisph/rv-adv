@@ -32,3 +32,6 @@ export { aiService } from './aiService';
 
 // Calendar Service - Google Calendar Integration
 export { calendarService } from './calendarService';
+
+// CNJ Service - DataJud + DJEN Government APIs
+export { cnjService } from './cnjService';
