@@ -96,23 +96,35 @@ export async function iniciarExtracaoPje(
       // 4. Aguarda redirect pós-login
       await page.waitForTimeout(8000);
 
-      // 4.1 Detecta e preenche tela de 2FA (OTP)
-      const otpInput = page.locator('input[id*="codigo"], input[id*="token"], input[name*="codigo"]').first();
-      if (await otpInput.isVisible()) {
-        log.info(`[PJe] Tela de 2FA detectada. Inserindo código...`);
+      // 4.1 Detecta tela de 2FA por contexto visual (como um humano faria)
+      const is2FAScreen = await page.getByText(/código de segurança|token|duas etapas|autenticação|verificação/i).first().isVisible().catch(() => false);
 
-        if (!otp) {
-          throw new Error('O tribunal exigiu 2FA, mas o código não foi fornecido. Refaça a Configuração do PJe.');
-        }
+      if (is2FAScreen) {
+        log.info(`[PJe] Tela de 2FA detectada visualmente. Inserindo código...`);
+        if (!otp) throw new Error('O tribunal exigiu 2FA, mas o código não foi fornecido. Refaça a Configuração do PJe.');
 
-        await otpInput.fill(otp);
-        const btnVerificar = page.locator('button[type="submit"], input[type="submit"], a:has-text("Verificar"), input[value*="Verificar"]').first();
-        if (await btnVerificar.isVisible()) {
-          await btnVerificar.click();
+        // Pega o primeiro campo de input de texto ou número visível na tela
+        const otpInput = page.locator('input[type="text"]:visible, input[type="number"]:visible, input[type="password"]:visible, input[name*="codigo"]:visible').first();
+
+        if (await otpInput.isVisible()) {
+          await otpInput.fill(otp);
+
+          // Procura botões com textos afirmativos
+          const btnVerificar = page.locator('button:visible, input[type="submit"]:visible, a:visible').filter({ hasText: /Verificar|Confirmar|Validar|Entrar|Acessar/i }).first();
+
+          if (await btnVerificar.isVisible()) {
+            await btnVerificar.click();
+          } else {
+            // Fallback Ninja: Aperta Enter direto no input
+            await otpInput.press('Enter');
+          }
+
+          await page.waitForLoadState('networkidle');
+          await page.waitForTimeout(4000);
+          log.info(`[PJe] 2FA submetido com sucesso.`);
+        } else {
+          throw new Error('Tela de 2FA detectada, mas o campo de digitação não foi encontrado.');
         }
-        await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(4000);
-        log.info(`[PJe] 2FA submetido com sucesso.`);
       }
 
       // DEBUG: Screenshot do painel após login/2FA
