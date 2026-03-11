@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import { createClient } from '@supabase/supabase-js';
 import { iniciarExtracaoPje } from './crawlers/pje-crawler.js';
 
 // ─── Config ────────────────────────────────────────────────────────
@@ -14,6 +15,12 @@ const PORT = 3001;
 
 app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.json());
+
+// ─── Supabase Client ───────────────────────────────────────────────
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_KEY!,
+);
 
 // ─── CNJ APIs Config (DataJud + DJEN) ───────────────────────────────
 const DATAJUD_API_KEY = 'APIKey cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
@@ -222,13 +229,161 @@ app.get('/api/cnj/djen', async (req: Request, res: Response) => {
   }
 });
 
+// ─── Vigia DJEN — Worker de Background ──────────────────────────────
+// Detecta novas publicações e insere notificações diretamente no Supabase.
+// ─────────────────────────────────────────────────────────────────────
+
+const DJEN_SEEN_PATH = path.resolve(import.meta.dirname, 'djen_seen.json');
+const VIGIA_INTERVAL_MS = 60 * 60 * 1000; // 1 hora
+
+/**
+ * getField — Extrator blindado contra inconsistência de case nas chaves.
+ * Varre todas as chaves de `obj` comparando em lowercase com o array `keys`.
+ */
+function getField(obj: Record<string, any>, keys: string[], fallback: any = null): any {
+  if (!obj || typeof obj !== 'object') return fallback;
+  const entries = Object.entries(obj);
+  const normalized = keys.map((k) => k.toLowerCase());
+  for (const nk of normalized) {
+    for (const [key, value] of entries) {
+      if (key.toLowerCase() === nk && value !== undefined && value !== null && value !== '') {
+        return value;
+      }
+    }
+  }
+  return fallback;
+}
+
+/**
+ * Lê o arquivo de memória persistente (IDs já vistos).
+ */
+function lerSeenIds(): { seen: string[]; lastCheck: string } {
+  try {
+    if (fs.existsSync(DJEN_SEEN_PATH)) {
+      const raw = fs.readFileSync(DJEN_SEEN_PATH, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (err) {
+    console.warn('[Vigia DJEN] Erro ao ler djen_seen.json, recriando...', (err as Error).message);
+  }
+  return { seen: [], lastCheck: '' };
+}
+
+/**
+ * Salva os IDs vistos no disco.
+ */
+function salvarSeenIds(data: { seen: string[]; lastCheck: string }): void {
+  fs.writeFileSync(DJEN_SEEN_PATH, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+/**
+ * Worker principal: consulta o DJEN, detecta comunicações inéditas,
+ * atualiza memória persistente e enfileira para consumo do frontend.
+ */
+async function vigiarDJEN(): Promise<void> {
+  console.log('\n[Vigia DJEN] Acordando...');
+
+  try {
+    const params = new URLSearchParams({
+      numeroOab: '36219',
+      ufOab: 'CE',
+      nomeAdvogado: 'Ana Rafaela Vasconcelos Damasceno',
+    });
+
+    const url = `${DJEN_BASE}/api/v1/comunicacao?${params.toString()}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      console.error(`[Vigia DJEN] Erro HTTP ${response.status}: ${response.statusText}`);
+      return;
+    }
+
+    const json = await response.json();
+
+    // Normaliza — a API pode retornar lista direta ou wrapper
+    const comunicacoes: any[] = Array.isArray(json)
+      ? json
+      : json?.comunicacoes ?? json?.items ?? json?.content ?? [];
+
+    if (comunicacoes.length === 0) {
+      console.log('[Vigia DJEN] Nenhuma comunicação retornada pela API.');
+      return;
+    }
+
+    // Carrega IDs já vistos
+    const memory = lerSeenIds();
+    const seenSet = new Set(memory.seen);
+
+    // Detecta inéditas
+    const novas: any[] = [];
+
+    for (const com of comunicacoes) {
+      // Extrai um ID único robusto (case-insensitive)
+      const id = String(
+        getField(com, ['numerocomunicacao', 'numero_comunicacao', 'id', 'idcomunicacao']) ??
+        getField(com, ['numeroprocesso', 'numero_processo', 'numero']) ??
+        JSON.stringify(com)
+      );
+
+      if (!seenSet.has(id)) {
+        seenSet.add(id);
+        novas.push(com);
+      }
+    }
+
+    // Atualiza memória persistente
+    memory.seen = Array.from(seenSet);
+    memory.lastCheck = new Date().toISOString();
+    salvarSeenIds(memory);
+
+    if (novas.length > 0) {
+      console.log(`[Vigia DJEN] 🔔 ${novas.length} nova(s) intimação(ões) encontrada(s)!`);
+
+      for (const n of novas) {
+        const proc = getField(n, ['numeroprocesso', 'numero_processo', 'numero']) ?? '?';
+        const tipo = getField(n, ['tipocomunicacao', 'tipo_comunicacao', 'tipo']) ?? 'Publicação';
+        console.log(`   └─ ${proc} — ${tipo}`);
+
+        // Insert diretamente no Supabase
+        const { error } = await supabase.from('notifications').insert({
+          type: 'djen',
+          priority: 'urgente',
+          title: 'Nova Publicação DJEN',
+          message: `Processo: ${proc} - ${tipo}`,
+          link: '/IntimacoesDJEN',
+          is_read: false,
+        });
+
+        if (error) {
+          console.error(`[Vigia DJEN] Erro ao inserir notificação no Supabase:`, error.message);
+        }
+      }
+    } else {
+      console.log('[Vigia DJEN] Nenhuma publicação inédita. Tudo em dia.');
+    }
+  } catch (err: any) {
+    console.error('[Vigia DJEN] Erro na consulta:', err.message);
+  }
+}
+
+
+
 // ─── Ignição ────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀 Scraper Server rodando em http://localhost:${PORT}`);
-  console.log(`   ├─ Healthcheck:  GET  /status`);
-  console.log(`   ├─ Config MNI:   POST /configurar/mni`);
-  console.log(`   ├─ Config OTP:   POST /configurar/mni/otp`);
-  console.log(`   ├─ Extração:     POST /advogado/processos`);
-  console.log(`   ├─ Proxy DataJud: POST /api/cnj/datajud`);
-  console.log(`   └─ Proxy DJEN:    GET  /api/cnj/djen\n`);
+  console.log(`   ├─ Healthcheck:     GET  /status`);
+  console.log(`   ├─ Config MNI:      POST /configurar/mni`);
+  console.log(`   ├─ Config OTP:      POST /configurar/mni/otp`);
+  console.log(`   ├─ Extração:        POST /advogado/processos`);
+  console.log(`   ├─ Proxy DataJud:   POST /api/cnj/datajud`);
+  console.log(`   ├─ Proxy DJEN:      GET  /api/cnj/djen`);
+  console.log(`   └─ Vigia DJEN:      ⏱️  a cada ${VIGIA_INTERVAL_MS / 60000} min (insert direto no Supabase)\n`);
+
+  // Executa imediatamente na ignição + agenda repetição
+  vigiarDJEN();
+  setInterval(vigiarDJEN, VIGIA_INTERVAL_MS);
 });

@@ -1,4 +1,4 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { authService } from "@/services/authService";
 import { deadlineService, taskService, appointmentService, notificationService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
@@ -242,6 +242,10 @@ export default function NotificationMonitor({ user }) {
 
     checkAppointments();
   }, [appointments, user]);
+
+  // ── DJEN: Notificações agora são inseridas diretamente no Supabase
+  // pelo worker vigiarDJEN() em local-scraper/server.ts.
+  // O NotificationBell já lê de notifications via Supabase (sem polling).
 
   return null; // Componente invisível
 }

@@ -57,3 +57,4 @@ build/
 # Local Scraper
 local-scraper/.env
 local-scraper/storage/
+local-scraper/djen_seen.json
