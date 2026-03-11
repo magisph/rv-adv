@@ -1,68 +1,57 @@
-# ⚖️ RV-Adv (com Módulo PeríciaPro)
+# ⚖️ RV-Adv (Sistema de Gestão Jurídica Inteligente)
 
 ## 🎯 Sobre o Projeto
+O **RV-Adv** é um sistema integrado de gestão de alto nível, projetado exclusivamente para a advocacia. Desenvolvido como uma *Single Page Application* (SPA) moderna, o sistema atua como o "Coração Digital" do escritório, centralizando clientes, processos, finanças, geração de documentos e captura automatizada de dados.
 
-**RV-Adv** é um sistema integrado de gestão inteligente voltado para escritórios de advocacia. Desenvolvido como uma moderna *Single Page Application* (SPA), o sistema centraliza o controlo de clientes, processos judiciais, finanças e agenda. 
-
-Recentemente, o sistema foi expandido com a incorporação nativa do módulo **PeríciaPro** (anteriormente um sistema legado isolado), trazendo capacidades avançadas de gestão de processos previdenciários e assistenciais (INSS e instâncias judiciais).
-
-O grande diferencial tecnológico do projeto é a **integração com Inteligência Artificial**, que atua na leitura automatizada (OCR) e classificação heurística de documentos jurídicos e laudos médicos.
+O projeto evoluiu de um sistema de gestão básico para um **Monólito Modular** alimentado por Inteligência Artificial e Automação de Processos Robóticos (RPA), absorvendo nativamente o sistema legado *PeríciaPro* e eliminando tarefas manuais através de integrações profundas com APIs governamentais e ferramentas de nuvem.
 
 ---
 
-## ✨ Funcionalidades Principais
+## ✨ Módulos e Funcionalidades Principais
 
-A arquitetura do sistema é dividida em domínios de negócio:
+### 👥 1. Gestão de Clientes e Processos
+*   **Fichas Consolidadas:** Cadastro completo de clientes com saneamento automático de dados (Data Sanitation) para evitar erros de banco de dados e higienização de CPFs/CNPJs.
+*   **Rotas Protegidas:** Sistema blindado por autenticação real (JWT), impedindo acessos de "visitantes" anônimos.
 
-* 👥 **Gestão de Clientes (`/clients`):** Cadastro completo, histórico e painel consolidado (*ClientDetail*).
-* 📂 **Controlo de Processos (`/processes`):** Acompanhamento de ações judiciais e movimentações.
-* 🏥 **Módulo PeríciaPro (`/modules/periciapro`):** Gestão rigorosa de perícias médicas (DIB, DCB, datas de agendamento), com motor de alertas proativo para evitar a perda de prazos.
-* 🧠 **GED & Inteligência Artificial (`/documents`):** Gerenciamento Eletrónico de Documentos com motor de extração de dados (OCR). Os laudos do PeríciaPro são processados automaticamente aqui logo após o upload.
-* 📅 **Prazos e Tarefas (`/deadlines` e `/tasks`):** Controlo de agenda com sincronização automatizada para o Google Calendar (via Edge Functions).
-* 💰 **Gestão Financeira (`/financial`):** Controlo de honorários, custas judiciais e pagamentos de clientes/perícias.
+### 🏭 2. Fábrica de Peças Jurídicas (Módulo de Templates)
+*   **Motor Frontend (Client-Side):** Utiliza as bibliotecas `pizzip` e `docxtemplater` para abrir e preencher arquivos do Microsoft Word (`.docx`) diretamente na memória RAM do navegador do advogado.
+*   **Formatação Preservada:** Substitui etiquetas (ex: `{{full_name}}`) pelos dados reais do banco, mantendo 100% o logotipo, margens e fontes originais do escritório.
+*   **Fluxo Assíncrono:** Ao gerar a peça, o sistema faz o download imediato para a máquina e, silenciosamente, envia uma cópia de segurança para o Gerenciador Eletrônico de Documentos (GED) na nuvem.
 
----
+### 📬 3. Agência de Correios Inteligente (Integração INSS)
+*   **E-mails Únicos:** O sistema gera automaticamente um e-mail com domínio próprio do escritório para cada cliente (ex: `joaodgf@rafaelavasconcelos.adv.br`).
+*   **Triagem Automatizada:** Integrado ao *Cloudflare Email Routing* e *Cloudflare Workers*, os e-mails recebidos do INSS são redirecionados em milissegundos para o nosso backend (Edge Functions) a custo zero.
+*   **Leitura por IA:** A Edge Function `inss-webhook` recebe a carta do INSS e aciona o **Gemini 2.5-flash** para ler o texto não-estruturado, extraindo a data, hora e local exatos da perícia médica.
+*   **Dashboard Central:** Os prazos extraídos piscam automaticamente em um "Quadro Geral de E-mails" na tela inicial do sistema, eliminando a perda de prazos.
 
-## 🛠 Stack Tecnológico
+### 🤖 4. Robô Jurídico (Scraper PJe TRF-5 e TJ-CE)
+*   **Servidor Local (Sidecar):** Um robô invisível em Node.js rodando paralelamente (na porta 3001) usando a infraestrutura avançada do `Crawlee` e `Playwright`.
+*   **Infiltração com 2FA:** Navegação com reconhecimento visual (semântico) que contorna bloqueios antibot, detecta a tela de Autenticação em Duas Etapas (OTP) e injeta o código do celular capturado diretamente no RV-Adv.
+*   **Navegação Direta:** Uso de atalhos (saltos de URL diretos para o *Painel do Advogado*) para extrair movimentações judiciais sem esbarrar em pop-ups dos tribunais.
 
-O projeto abandonou infraestruturas fechadas (BaaS legados) e opera numa stack moderna, segura e altamente escalável:
-
-**Frontend (Client-Side):**
-* **Framework:** React 18 (com JSX)
-* **Build Tool:** Vite
-* **Roteamento:** React Router DOM v6
-* **Gestão de Estado & Cache:** TanStack Query v5 (React Query)
-* **Estilização & UI:** Tailwind CSS + Radix UI (arquitetura `shadcn/ui`)
-* **Ícones:** Lucide React
-
-**Backend & Infraestrutura (Supabase):**
-* **Base de Dados:** PostgreSQL (com tipagem rígida e RLS - *Row Level Security* nativo)
-* **Autenticação:** Supabase Auth (Sessões via JWT)
-* **Storage:** Supabase Storage (Buckets para PDFs, imagens e laudos)
-* **Serverless:** Supabase Edge Functions (Deno/TypeScript) para rotinas como a sincronização do Google Calendar.
-* **Tarefas Assíncronas:** `pg_cron` a rodar no banco de dados, empurrando alertas de prazos para o frontend via *Supabase Realtime*.
+### 🧠 5. GED & Inteligência Artificial (AI Proxy)
+*   **Cofre de Chaves:** Todas as chaves de IA (Gemini, Groq, OpenRouter) vivem no `ai-proxy` (Supabase Vault), garantindo segurança militar contra vazamentos.
+*   **OCR e Classificação:** Documentos e laudos recebem leitura automatizada via IA para extração de dados e categorização inteligente.
 
 ---
 
-## 📁 Estrutura de Diretórios (Monólito Modular)
+## 🛠 Stack Tecnológico e Arquitetura
 
-```text
-📦 rv-adv
- ┣ 📂 src/
- ┃ ┣ 📂 components/     # Componentes UI reutilizáveis e de domínio (RV-Adv)
- ┃ ┣ 📂 hooks/          # Custom React hooks
- ┃ ┣ 📂 lib/            # Configurações globais (Supabase client, QueryClient, utils)
- ┃ ┣ 📂 pages/          # Telas principais de roteamento do sistema base
- ┃ ┣ 📂 services/       # Camada de comunicação com o Supabase
- ┃ ┗ 📂 modules/
- ┃    ┗ 📂 periciapro/  # 🚨 [NOVO] Módulo Integrado de Perícias Previdenciárias
- ┃       ┣ 📂 components/
- ┃       ┣ 📂 pages/
- ┃       ┣ 📂 services/
- ┃       ┗ 📂 types/
- ┣ 📂 supabase/         # ⚙️ Infraestrutura Backend
- ┃ ┣ 📂 functions/      # Edge Functions em TypeScript (Google Calendar Sync, etc.)
- ┃ ┗ 📂 migrations/     # Scripts SQL (Tabelas, RLS e pg_cron)
- ┣ 📜 App.jsx           # Roteamento e injeção de Providers
- ┣ 📜 package.json
- ┗ 📜 vite.config.js
+O projeto adota os padrões mais rigorosos de performance e segurança do mercado:
+
+**🖥️ Frontend (A "Vitrine"):**
+*   **Framework:** React 18 + Vite.
+*   **Estilização:** Tailwind CSS 4 + Radix UI (`shadcn/ui`).
+*   **Gerenciamento de Estado:** TanStack Query v5 (React Query).
+*   **Processamento de Documentos:** PizZip + docxtemplater + file-saver.
+
+**☁️ Backend (O "Cofre e a Casa de Máquinas"):**
+*   **Banco de Dados:** PostgreSQL hospedado no **Supabase**.
+*   **Segurança (RLS):** *Row Level Security* aplicado em todas as tabelas (17 tabelas principais) garantindo que as operações só ocorram com o crachá do usuário autenticado.
+*   **Serverless:** Supabase Edge Functions (Deno/TypeScript) para automações como o webhook do INSS e o Proxy de IA.
+*   **Storage:** Supabase Storage integrado ao GED.
+
+**🕷️ Automação Desktop (Scraper Local):**
+*   **Motor:** Express.js + Crawlee + Playwright (TypeScript).
+
+---
