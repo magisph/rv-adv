@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { useMutation } from "@tanstack/react-query";
@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Save, Loader2 } from "lucide-react";
+import { User, Bell, Save, Loader2, Calendar } from "lucide-react";
+import HolidayManager from "@/components/settings/HolidayManager";
 
 export default function Settings() {
   const [user, setUser] = useState(null);
@@ -91,6 +92,13 @@ export default function Settings() {
           >
             <Bell className="w-4 h-4" />
             Notificações
+          </TabsTrigger>
+          <TabsTrigger
+            value="holidays"
+            className="flex items-center gap-2"
+          >
+            <Calendar className="w-4 h-4" />
+            Feriados
           </TabsTrigger>
         </TabsList>
 
@@ -286,6 +294,10 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="holidays">
+          <HolidayManager />
         </TabsContent>
       </Tabs>
     </div>
