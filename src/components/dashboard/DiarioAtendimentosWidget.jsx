@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { atendimentoService } from "@/services";
+import { atendimentoService, clientService } from "@/services";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -35,7 +35,13 @@ export default function DiarioAtendimentosWidget() {
     telefone: "",
     categoria: "Prospecto",
     assunto: "",
-    status: "Pendente"
+    status: "Pendente",
+    client_id: null
+  });
+
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients", "lista-simples"],
+    queryFn: () => clientService.list("full_name"),
   });
 
   const { data: atendimentos = [], isLoading } = useQuery({
@@ -48,7 +54,7 @@ export default function DiarioAtendimentosWidget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
       setIsModalOpen(false);
-      setFormData({ nome_contato: "", telefone: "", categoria: "Prospecto", assunto: "", status: "Pendente" });
+      setFormData({ nome_contato: "", telefone: "", categoria: "Prospecto", assunto: "", status: "Pendente", client_id: null });
       toast({ title: "Atendimento registrado com sucesso!" });
     },
     onError: (error) => {
@@ -88,6 +94,38 @@ export default function DiarioAtendimentosWidget() {
               <DialogTitle>Registrar Novo Atendimento</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Vincular a Cliente Existente (Opcional)</Label>
+                <Select 
+                  value={formData.client_id || "none"} 
+                  onValueChange={(val) => {
+                    if (val === "none") {
+                      setFormData({...formData, client_id: null});
+                    } else {
+                      const client = clients.find(c => c.id === val);
+                      if (client) {
+                        setFormData({
+                          ...formData,
+                          client_id: client.id,
+                          nome_contato: client.full_name,
+                          telefone: client.phone || "",
+                          categoria: "Cliente"
+                        });
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um cliente..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum (Novo Contato)</SelectItem>
+                    {clients.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="nome">Nome do Contato</Label>
                 <Input id="nome" value={formData.nome_contato} onChange={(e) => setFormData({...formData, nome_contato: e.target.value})} placeholder="Ex: João Silva" />
