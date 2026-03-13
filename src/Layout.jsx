@@ -84,7 +84,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Tarefas", icon: CheckSquare, page: "Tasks" },
     { name: "Templates", icon: FileText, page: "Templates" },
     { name: "Prazos", icon: Calendar, page: "Deadlines" },
-    { name: "Financeiro", icon: Settings, page: "Financial" },
+    ...(user?.role !== "secretaria" && user?.role !== "assistente" ? [{ name: "Financeiro", icon: Settings, page: "Financial" }] : []),
   ];
 
   const handleLogout = async () => {

@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { aiService } from "@/services";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -778,7 +778,8 @@ export default function IncapacidadeRuralForm({ dados, onChange }) {
               <div className="space-y-2">
                 <Label>Trabalha na agricultura desde quando?</Label>
                 <Input
-                  type="month"
+                  type="text"
+                  placeholder="Ex: Desde criança, 1990..."
                   value={dados.trabalha_agricultura_desde || ""}
                   onChange={(e) =>
                     handleChange("trabalha_agricultura_desde", e.target.value)

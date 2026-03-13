@@ -940,7 +940,8 @@ export default function SalarioMaternidadeRuralForm({ dados, onChange }) {
               <div className="space-y-2">
                 <Label>Trabalha na agricultura desde quando?</Label>
                 <Input
-                  type="month"
+                  type="text"
+                  placeholder="Ex: Desde criança, 1990..."
                   value={dados.trabalha_agricultura_desde || ""}
                   onChange={(e) =>
                     handleChange("trabalha_agricultura_desde", e.target.value)

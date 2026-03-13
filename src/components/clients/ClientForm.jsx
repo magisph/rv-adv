@@ -84,6 +84,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
     zip_code: "",
     senha_meu_inss: "",
     inscrito_cadunico: null,
+    cadunico_updated_at: "",
     possui_senha_gov: null,
     possui_biometria: null,
     pedido_anterior_inss: null,
@@ -167,7 +168,8 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
       "grau_escolaridade",
       "area",
       "benefit_type",
-      "email_inss"
+      "email_inss",
+      "cadunico_updated_at"
     ];
 
     fieldsToNull.forEach(field => {
@@ -510,6 +512,21 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                         </Label>
                       </div>
                     </RadioGroup>
+                    {formData.inscrito_cadunico && (
+                      <div className="space-y-2 mt-3 block">
+                        <Label htmlFor="cadunico_updated_at">
+                          Última atualização do CadÚnico
+                        </Label>
+                        <Input
+                          id="cadunico_updated_at"
+                          type="date"
+                          value={formData.cadunico_updated_at || ""}
+                          onChange={(e) =>
+                            handleChange("cadunico_updated_at", e.target.value)
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3">

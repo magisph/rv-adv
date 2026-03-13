@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { authService } from "@/services/authService";
 import { userService, clientService, processService, beneficioService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
@@ -48,7 +48,7 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
   });
 
   const isAdmin = currentUser?.role === "admin";
-  const isCollaborativeMode = users.length > 1;
+  const isCollaborativeMode = users.length > 0;
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-list"],
