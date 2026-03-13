@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { documentService, clientService } from "@/services";
 import { aiService } from "@/services/aiService";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -430,6 +430,7 @@ function DocumentTypeCard({
       });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
       toast.success("Documento enviado com sucesso!");
       setUploadingType(null);
       setUploadFields({});

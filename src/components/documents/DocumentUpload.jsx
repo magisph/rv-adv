@@ -1,7 +1,7 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { documentService } from "@/services";
 import { aiService } from "@/services/aiService";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ export default function DocumentUpload({
   const [file, setFile] = useState(null);
   const [name, setName] = useState("");
   const [documentType, setDocumentType] = useState("outros");
+  const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
     mutationFn: async (data) => {
@@ -52,6 +53,7 @@ export default function DocumentUpload({
       return documentService.create(docData);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
       onSuccess?.();
     },
   });
