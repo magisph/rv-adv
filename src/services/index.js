@@ -14,6 +14,7 @@ export const templateService = new BaseService("templates");
 export const documentTemplateService = new BaseService("document_templates");
 export const userService = new BaseService("users");
 export const inssEmailService = new BaseService("client_inss_emails");
+export { atendimentoService } from "./atendimentoService";
 
 // Specialized Entities
 export const beneficioService = new BaseService("beneficios");
