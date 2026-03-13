@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Save, Calculator, CalendarDays } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { holidayService, processService, deadlineService } from "@/services";
 import { addBusinessDays } from "@/utils/businessDays";
 
@@ -23,7 +23,7 @@ export function CalculadoraCpcModal({ isOpen, onClose, comunicacao, numeroProces
     queryFn: () => holidayService.list(),
   });
   const feriadosArray = useMemo(() => {
-    return holidaysData.map(h => format(new Date(h.date), "yyyy-MM-dd"));
+    return holidaysData.map(h => h.date.substring(0, 10));
   }, [holidaysData]);
 
   // Buscar Processos
@@ -47,7 +47,7 @@ export function CalculadoraCpcModal({ isOpen, onClose, comunicacao, numeroProces
   const datasCpc = useMemo(() => {
     if (!comunicacao || !comunicacao.data_disponibilizacao_raw) return null;
     try {
-      const D = new Date(comunicacao.data_disponibilizacao_raw);
+      const D = parseISO(comunicacao.data_disponibilizacao_raw.substring(0, 10));
       const P = addBusinessDays(D, 1, feriadosArray);
       const I = addBusinessDays(P, 1, feriadosArray);
       // Para o CPC, o prazo em dias úteis começa a correr efetivamente a partir do primeiro dia útil,

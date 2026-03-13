@@ -281,12 +281,14 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
         </div>
       </CardContent>
 
-      <CalculadoraCpcModal 
-        isOpen={isCalculadoraOpen} 
-        onClose={() => setIsCalculadoraOpen(false)} 
-        comunicacao={comunicacaoWithRaw} 
-        numeroProcesso={numeroFormatado} 
-      />
+      {isCalculadoraOpen && (
+        <CalculadoraCpcModal 
+          isOpen={isCalculadoraOpen} 
+          onClose={() => setIsCalculadoraOpen(false)} 
+          comunicacao={comunicacaoWithRaw} 
+          numeroProcesso={numeroFormatado} 
+        />
+      )}
     </Card>
   );
 }
