@@ -87,16 +87,9 @@ serve(async (req) => {
       const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
       const mimeType = fileData.type || "image/jpeg";
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-
-      const geminiResponse = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              {
-                text: `Analise este documento jurídico brasileiro. Execute duas tarefas:
+      let rawText = "";
+      let usedModel = "gemini-2.0-flash";
+      const promptText = `Analise este documento jurídico brasileiro. Execute duas tarefas:
 1. EXTRAIA todo o texto visível do documento, mantendo a formatação (parágrafos, tabelas, campos).
 2. CLASSIFIQUE o documento em UMA das categorias: ${CATEGORIES.join(", ")}.
 
@@ -106,26 +99,72 @@ Responda EXCLUSIVAMENTE em JSON válido:
   "categoria": "nome_da_categoria",
   "confidence": 0.95,
   "campos_identificados": { "nome": "...", "cpf": "...", "data": "..." }
-}`,
-              },
-              {
-                inline_data: { mime_type: mimeType, data: base64 },
-              },
-            ],
-          }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
-        }),
-      });
+}`;
 
-      if (!geminiResponse.ok) {
-        const errText = await geminiResponse.text().catch(() => geminiResponse.statusText);
-        throw new Error(`Gemini Vision ${geminiResponse.status}: ${errText}`);
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+
+        const geminiResponse = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: promptText },
+                { inline_data: { mime_type: mimeType, data: base64 } },
+              ],
+            }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+          }),
+        });
+
+        if (!geminiResponse.ok) {
+          const errText = await geminiResponse.text().catch(() => geminiResponse.statusText);
+          throw new Error(`Gemini Vision ${geminiResponse.status}: ${errText}`);
+        }
+
+        const geminiData = await geminiResponse.json();
+        rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } catch (geminiError) {
+        console.warn("[OCR] Gemini SDK request failed. Triggering Copilot fallback (OpenRouter)...", geminiError);
+        usedModel = "google/gemini-2.5-flash (OpenRouter Fallback)";
+        
+        const openRouterKey = Deno.env.get("OPENROUTER_API_KEY");
+        if (!openRouterKey) {
+          throw new Error(`Gemini failed and OPENROUTER_API_KEY is not configured. Original error: ${geminiError instanceof Error ? geminiError.message : "Unknown"}`);
+        }
+
+        const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${openRouterKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: promptText },
+                  { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } }
+                ]
+              }
+            ],
+            response_format: { type: "json_object" }
+          })
+        });
+
+        if (!openRouterResponse.ok) {
+          const errText = await openRouterResponse.text().catch(() => openRouterResponse.statusText);
+          throw new Error(`OpenRouter Fallback ${openRouterResponse.status}: ${errText}`);
+        }
+
+        const openRouterData = await openRouterResponse.json();
+        rawText = openRouterData.choices?.[0]?.message?.content || "";
       }
 
-      const geminiData = await geminiResponse.json();
-      const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-      // Parse JSON from Gemini response
+      // Parse JSON from Gemini or OpenRouter response
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
@@ -144,7 +183,7 @@ Responda EXCLUSIVAMENTE em JSON válido:
                 confidence: parsed.confidence || null,
                 campos_identificados: parsed.campos_identificados || {},
                 processed_at: new Date().toISOString(),
-                model: "gemini-2.0-flash",
+                model: usedModel,
               },
               categoria: classifiedCategory,
             })
