@@ -392,9 +392,11 @@ function DocumentTypeCard({
   const Icon = category.icon;
 
   // Filtrar documentos desta categoria
-  const categoryDocs = documents.filter(
-    (doc) => doc.category === categoryKey && doc.is_active !== false,
-  );
+  const categoryDocs = React.useMemo(() => {
+    return documents.filter(
+      (doc) => doc.category === categoryKey && doc.is_active !== false,
+    );
+  }, [documents, categoryKey]);
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, typeId, fields }) => {
@@ -431,6 +433,7 @@ function DocumentTypeCard({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
+      queryClient.invalidateQueries({ queryKey: ["client-atendimentos"] });
       toast.success("Documento enviado com sucesso!");
       setUploadingType(null);
       setUploadFields({});
@@ -561,11 +564,14 @@ function DocumentTypeCard({
     }
   };
 
-  const allTypes = [...category.types, ...customTypes];
-  if (categoryKey === "rurais" && isMarried && category.conjugeTypes) {
-    allTypes.push({ divider: true, label: "Documentos do Cônjuge" });
-    allTypes.push(...category.conjugeTypes);
-  }
+  const allTypes = React.useMemo(() => {
+    const types = [...category.types, ...customTypes];
+    if (categoryKey === "rurais" && isMarried && category.conjugeTypes) {
+      types.push({ divider: true, label: "Documentos do Cônjuge" });
+      types.push(...category.conjugeTypes);
+    }
+    return types;
+  }, [category.types, customTypes, categoryKey, isMarried, category.conjugeTypes]);
 
   const docsCount = categoryDocs.length;
 

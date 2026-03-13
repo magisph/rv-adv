@@ -56,12 +56,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 // Constants
-const STATUS_COLORS = {
-  todo: "bg-slate-100 text-slate-700",
-  in_progress: "bg-blue-100 text-blue-700",
-  review: "bg-purple-100 text-purple-700",
-  done: "bg-green-100 text-green-700",
-};
 
 const PRIORITY_COLORS = {
   baixa: "bg-slate-100 text-slate-600",
@@ -401,12 +395,14 @@ export default function Tasks() {
     });
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    const matchesSearch =
-      task.title?.toLowerCase().includes(search.toLowerCase()) ||
-      task.description?.toLowerCase().includes(search.toLowerCase());
-    return matchesSearch;
-  });
+  const filteredTasks = React.useMemo(() => {
+    return tasks.filter((task) => {
+      const matchesSearch =
+        task.title?.toLowerCase().includes(search.toLowerCase()) ||
+        task.description?.toLowerCase().includes(search.toLowerCase());
+      return matchesSearch;
+    });
+  }, [tasks, search]);
 
   const getTaskUrgency = (task) => {
     if (!task.due_date || task.status === "done") return null;

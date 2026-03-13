@@ -54,6 +54,7 @@ export default function DocumentUpload({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
+      queryClient.invalidateQueries({ queryKey: ["client-atendimentos"] });
       onSuccess?.();
     },
   });

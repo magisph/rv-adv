@@ -285,16 +285,14 @@ export default function ClientDetail() {
     );
   }
 
-  const checklist = BENEFIT_CHECKLISTS[client.benefit_type] || [];
-  const completedDocs = checklist.filter(
-    (doc) => client.documents_checklist?.[doc.id],
-  ).length;
-  const progressPercent =
-    checklist.length > 0 ? (completedDocs / checklist.length) * 100 : 0;
+  const checklist = React.useMemo(() => BENEFIT_CHECKLISTS[client.benefit_type] || [], [client.benefit_type]);
   
-  // Using variables to hide lint warnings about them unused in this specific component scope.
-  // Actually, they are unused anywhere. Let's just suppress.
-  const _unused = { BENEFIT_LABELS, appointments, handleEditAppointment, handleDeleteAppointment, progressPercent };
+  const progressPercent = React.useMemo(() => {
+    const completedDocs = checklist.filter(
+      (doc) => client.documents_checklist?.[doc.id],
+    ).length;
+    return checklist.length > 0 ? (completedDocs / checklist.length) * 100 : 0;
+  }, [checklist, client.documents_checklist]);
 
   return (
     <div className="space-y-6">
