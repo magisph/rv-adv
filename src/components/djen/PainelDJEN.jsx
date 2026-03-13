@@ -51,14 +51,14 @@ function getField(obj, keys, fallback = null) {
 // ============================================================================
 // formatDate — Converte ISO / string de data para DD/MM/YYYY
 // ============================================================================
-function formatDate(raw) {
-  if (!raw) return null;
+function formatDate(data_variavel) {
+  if (!data_variavel) return null;
   try {
-    const d = new Date(raw);
-    if (isNaN(d.getTime())) return String(raw);
-    return format(d, "dd/MM/yyyy");
+    const d = new Date(data_variavel);
+    if (isNaN(d.getTime())) return String(data_variavel);
+    return format(new Date(data_variavel), "dd/MM/yyyy");
   } catch {
-    return String(raw);
+    return String(data_variavel);
   }
 }
 
@@ -149,9 +149,9 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
-    <Card className={`border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${isLida ? 'opacity-60 bg-slate-50' : ''}`}>
+    <Card className={`border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${isLida ? 'bg-slate-50 border-slate-300' : 'border-slate-200'}`}>
       {/* ── Cabeçalho – faixa superior com metadados ───────────────── */}
-      <CardHeader className="bg-amber-50/80 border-b border-amber-100 py-3 px-5">
+      <CardHeader className={`${isLida ? 'bg-slate-100/50 border-b border-slate-200' : 'bg-amber-50/80 border-b border-amber-100'} py-3 px-5`}>
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-slate-700 leading-relaxed flex-1">
             {dataDisp && (
@@ -163,7 +163,7 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
               <span className="text-slate-400"> · <span className="font-semibold text-[#1e3a5f]">{tribunal}</span></span>
             )}
             <span className="text-slate-400"> · </span>
-            <span className="font-mono text-xs bg-white/60 px-1.5 py-0.5 rounded border border-amber-200">
+            <span className={`font-mono text-xs bg-white/60 px-1.5 py-0.5 rounded border ${isLida ? 'border-slate-300' : 'border-amber-200'}`}>
               {numeroFormatado}
             </span>
             <span className="text-slate-400"> · </span>
@@ -172,28 +172,33 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
             </Badge>
           </p>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCalculadoraOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 bg-white border-slate-200"
-            >
-              <Calculator className="w-4 h-4 text-[#c9a227]" />
-              Calcular Prazo CPC
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => toggleLida(cardId)}
-              className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
-                isLida
-                  ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
-                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <CheckCircle2 className={`w-4 h-4 ${isLida ? 'fill-emerald-100' : ''}`} />
-              {isLida ? 'Lida' : 'Marcar como Lida'}
-            </Button>
+            {!isLida ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCalculadoraOpen(true)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 bg-white border-slate-200"
+                >
+                  <Calculator className="w-4 h-4 text-[#c9a227]" />
+                  Calcular Prazo CPC
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleLida(cardId)}
+                  className="flex items-center gap-1.5 text-xs font-medium transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Marcar como Lida
+                </Button>
+              </>
+            ) : (
+              <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold shadow-sm">
+                <CheckCircle2 className="w-4 h-4" />
+                Lida
+              </Badge>
+            )}
           </div>
         </div>
       </CardHeader>

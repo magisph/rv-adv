@@ -349,10 +349,10 @@ async function vigiarDJEN(): Promise<void> {
         const tipo = getField(n, ['tipocomunicacao', 'tipo_comunicacao', 'tipo']) ?? 'Publicação';
         console.log(`   └─ ${proc} — ${tipo}`);
 
-        // Data de corte: só notifica comunicações a partir de 12/03/2026
+        // Data de corte: só notifica comunicações a partir de 14/03/2026
         const dataDispRaw = getField(n, ['datadisponibilizacao', 'data_disponibilizacao']);
         const dataDisp = new Date(dataDispRaw);
-        const dataCorte = new Date('2026-03-12T00:00:00-03:00');
+        const dataCorte = new Date('2026-03-14T00:00:00-03:00');
 
         if (dataDisp >= dataCorte) {
           const { error } = await supabase.from('notifications').insert({
@@ -369,7 +369,7 @@ async function vigiarDJEN(): Promise<void> {
             console.error(`[Vigia DJEN] Erro ao inserir notificação no Supabase:`, error.message);
           }
         } else {
-          console.log(`   └─ Silenciado (Anterior a 12/03): ${proc}`);
+          console.log(`   └─ Silenciado (Anterior a 14/03): ${proc}`);
         }
       }
     } else {
