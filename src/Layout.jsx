@@ -24,7 +24,6 @@ import {
   UserPlus,
   CalendarDays,
   BellRing,
-  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,7 +79,6 @@ export default function Layout({ children, currentPageName }) {
     { name: "Dashboard", icon: LayoutDashboard, page: "Home" },
     { name: "Clientes", icon: Users, page: "Clients" },
     { name: "Processos", icon: FolderOpen, page: "Processes" },
-    { name: "Diário de Bordo", icon: BookOpen, page: "Atendimentos" },
     { name: "Radar CNJ", icon: Radar, page: "RadarCNJ" },
     { name: "DJEN Oficial", icon: BellRing, page: "IntimacoesDJEN" },
     { name: "Tarefas", icon: CheckSquare, page: "Tasks" },

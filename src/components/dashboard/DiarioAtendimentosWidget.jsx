@@ -6,6 +6,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Card,
+  CardHeader,
+  CardTitle,
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BookOpen, PhoneCall, Plus, ArrowRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
-export default function Atendimentos() {
+export default function DiarioAtendimentosWidget() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -37,8 +39,8 @@ export default function Atendimentos() {
   });
 
   const { data: atendimentos = [], isLoading } = useQuery({
-    queryKey: ["atendimentos"],
-    queryFn: () => atendimentoService.list("-created_at"),
+    queryKey: ["atendimentos", "widget"],
+    queryFn: () => atendimentoService.list("-created_at", 5), // limite de 5
   });
 
   const createMutation = useMutation({
@@ -68,18 +70,17 @@ export default function Atendimentos() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold flex items-center gap-2 text-slate-800">
-          <BookOpen className="w-8 h-8 text-[#c9a227]" />
-          Diário de Bordo
-        </h1>
-        
+    <Card className="flex flex-col h-full">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
+          <BookOpen className="w-5 h-5 text-[#c9a227]" />
+          Diário de Atendimentos
+        </CardTitle>
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Atendimento
+            <Button size="sm" className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white">
+              <Plus className="w-4 h-4 mr-1" />
+              Novo
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -134,71 +135,70 @@ export default function Atendimentos() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </CardHeader>
 
-      <div className="grid gap-4">
+      <CardContent className="flex-1 p-4 pt-0 space-y-3">
         {isLoading ? (
-          <p className="text-slate-500">Carregando atendimentos...</p>
+          <p className="text-sm text-slate-500 text-center py-4">Carregando atendimentos...</p>
         ) : atendimentos?.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center text-slate-500">
-              Nenhum atendimento registrado.
-            </CardContent>
-          </Card>
+          <p className="text-sm text-slate-500 text-center py-4">Nenhum atendimento registrado.</p>
         ) : (
-          atendimentos.map(atendimento => (
-            <Card key={atendimento.id}>
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start flex-col sm:flex-row gap-4">
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-lg text-slate-800">{atendimento.nome_contato}</h3>
-                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                        atendimento.categoria === 'Prospecto' ? 'bg-blue-100 text-blue-800' :
-                        atendimento.categoria === 'Cliente' ? 'bg-green-100 text-green-800' :
-                        'bg-slate-100 text-slate-800'
-                      }`}>
-                        {atendimento.categoria}
-                      </span>
-                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                        atendimento.status === 'Pendente' ? 'bg-amber-100 text-amber-800' :
-                        atendimento.status === 'Concluído' ? 'bg-green-100 text-green-800' :
-                        'bg-slate-100 text-slate-800'
-                      }`}>
-                        {atendimento.status}
-                      </span>
+          <div className="space-y-3 mt-2">
+            {atendimentos.map(atendimento => (
+              <div key={atendimento.id} className="p-3 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start flex-col gap-2">
+                  <div className="space-y-1.5 w-full">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <h3 className="font-semibold text-sm text-slate-800">{atendimento.nome_contato}</h3>
+                      <div className="flex gap-1.5">
+                        <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                          atendimento.categoria === 'Prospecto' ? 'bg-blue-100 text-blue-800' :
+                          atendimento.categoria === 'Cliente' ? 'bg-green-100 text-green-800' :
+                          'bg-slate-100 text-slate-800'
+                        }`}>
+                          {atendimento.categoria}
+                        </span>
+                        <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                          atendimento.status === 'Pendente' ? 'bg-amber-100 text-amber-800' :
+                          atendimento.status === 'Concluído' ? 'bg-green-100 text-green-800' :
+                          'bg-slate-100 text-slate-800'
+                        }`}>
+                          {atendimento.status}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-sm text-slate-500 flex items-center gap-4 flex-wrap">
+                    <div className="text-xs text-slate-500 flex items-center justify-between">
                       {atendimento.created_at && (
-                        <span>{format(new Date(atendimento.created_at), "dd/MM/yyyy • HH:mm", { locale: ptBR })}</span>
+                        <span>{format(new Date(atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}</span>
                       )}
                       {atendimento.telefone && (
                         <span className="flex items-center gap-1 font-medium text-slate-700">
-                          <PhoneCall className="w-3.5 h-3.5" />
+                          <PhoneCall className="w-3 h-3" />
                           {atendimento.telefone}
                         </span>
                       )}
                     </div>
-                    <p className="text-slate-700 bg-slate-50 p-3 rounded-md border border-slate-100 mt-2">
+                    <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded border border-slate-100 mt-1 line-clamp-2">
                       {atendimento.assunto}
                     </p>
                   </div>
                   
                   {atendimento.categoria === 'Prospecto' && atendimento.status === 'Pendente' && (
                     <Button 
+                      size="sm"
                       onClick={() => converterCliente(atendimento)}
-                      className="bg-green-600 hover:bg-green-700 w-full sm:w-auto text-white shadow-sm transition-all shadow-green-600/20"
+                      className="bg-green-600 hover:bg-green-700 w-full text-white shadow-sm transition-all h-8 text-xs mt-1"
                     >
                       <span>Converter em Cliente</span>
-                      <ArrowRight className="w-4 h-4 ml-2" />
+                      <ArrowRight className="w-3 h-3 ml-1" />
                     </Button>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          ))
+              </div>
+            ))}
+          </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

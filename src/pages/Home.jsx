@@ -1,5 +1,5 @@
-﻿import React from "react";
-import { authService } from "@/services/authService";
+import React from "react";
+
 import { clientService, processService, deadlineService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -13,18 +13,9 @@ import DeadlinesWidget from "@/components/dashboard/DeadlinesWidget";
 import TasksWidget from "@/components/dashboard/TasksWidget";
 import InssEmailsWidget from "@/components/dashboard/InssEmailsWidget";
 import CalendarWidget from "@/components/calendar/CalendarWidget";
+import DiarioAtendimentosWidget from "@/components/dashboard/DiarioAtendimentosWidget";
 import { motion } from "framer-motion";
-
 export default function Home() {
-  // Cache do usuário compartilhado com Layout
-  const { data: user } = useQuery({
-    queryKey: ["current-user"],
-    queryFn: () => authService.getCurrentUser(),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    retry: false,
-  });
-
   // Dashboard: carregar apenas últimos 10 de cada para performance
   const { data: clients = [], isLoading: loadingClients } = useQuery({
     queryKey: ["clients", { status: "ativo" }],
@@ -126,8 +117,8 @@ export default function Home() {
       {/* Prazos da Semana */}
       <DeadlinesWidget deadlines={deadlines} isLoading={loadingDeadlines} />
 
-      {/* Próximos Eventos */}
-      <CalendarWidget user={user} />
+      {/* Diário de Atendimentos Widget (Substituindo Próximos Eventos) */}
+      <DiarioAtendimentosWidget />
     </div>
   );
 }

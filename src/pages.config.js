@@ -13,14 +13,12 @@ import RadarCNJ from "./pages/RadarCNJ";
 import Settings from "./pages/Settings";
 import Tasks from "./pages/Tasks";
 import Templates from "./pages/Templates";
-import Atendimentos from "./pages/Atendimentos";
 import __Layout from "./Layout.jsx";
 
 export const PAGES = {
   CalendarSettings: CalendarSettings,
   ClientDetail: ClientDetail,
   Clients: Clients,
-  Atendimentos: Atendimentos,
   Deadlines: Deadlines,
   Documents: Documents,
   Financial: Financial,
