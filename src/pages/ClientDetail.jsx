@@ -323,6 +323,10 @@ export default function ClientDetail() {
             <User className="w-4 h-4" />
             Informações
           </TabsTrigger>
+          <TabsTrigger value="atendimentos" className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Histórico de Atendimentos
+          </TabsTrigger>
           <TabsTrigger value="beneficios" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
             Benefícios
@@ -334,10 +338,6 @@ export default function ClientDetail() {
           <TabsTrigger value="processes" className="flex items-center gap-2">
             <FolderOpen className="w-4 h-4" />
             Processos
-          </TabsTrigger>
-          <TabsTrigger value="atendimentos" className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4" />
-            Histórico de Atendimentos
           </TabsTrigger>
           <TabsTrigger value="emails" className="flex items-center gap-2">
             <Mail className="w-4 h-4" />
@@ -642,12 +642,73 @@ export default function ClientDetail() {
           </div>
         </TabsContent>
 
-        {/* Tab: Documentos */}
-        <TabsContent value="documents">
-          <ClientDocumentsSection
-            clientId={clientId}
-            clientName={client?.full_name}
-          />
+        {/* Tab: Atendimentos */}
+        <TabsContent value="atendimentos">
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-[#1e3a5f]" />
+                Histórico de Atendimentos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingAtendimentos ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+                </div>
+              ) : atendimentos.length === 0 ? (
+                <div className="text-center py-12 text-slate-500">
+                  <BookOpen className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                  <p>Nenhum atendimento registrado pela recepção para este cliente.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {atendimentos.map((atendimento) => (
+                    <Card key={atendimento.id} className="overflow-hidden border-slate-200 hover:shadow-sm transition-shadow">
+                      <div className="p-4 bg-white relative">
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#1e3a5f]" />
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-3">
+                          <div className="pl-3">
+                            <h3 className="font-semibold text-slate-800">{atendimento.nome_contato}</h3>
+                            <div className="flex items-center gap-3 text-sm text-slate-500 mt-1">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {format(new Date(atendimento.created_at), "dd/MM/yyyy HH:mm")}
+                              </span>
+                              {atendimento.telefone && (
+                                <span className="flex items-center gap-1 font-medium text-slate-600">
+                                  <PhoneCall className="w-3.5 h-3.5" />
+                                  {atendimento.telefone}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 pl-3 sm:pl-0">
+                            <Badge
+                              variant="outline"
+                              className={
+                                atendimento.status === 'Pendente' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                atendimento.status === 'Concluído' ? 'bg-green-100 text-green-700 border-green-200' :
+                                'bg-blue-100 text-blue-700 border-blue-200'
+                              }
+                            >
+                              {atendimento.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="pl-3 mt-3 pt-3 border-t border-slate-100">
+                          <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded border border-slate-100 whitespace-pre-wrap">
+                            {atendimento.assunto}
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Tab: Benefícios */}
@@ -828,6 +889,14 @@ export default function ClientDetail() {
           </Card>
         </TabsContent>
 
+        {/* Tab: Documentos */}
+        <TabsContent value="documents">
+          <ClientDocumentsSection
+            clientId={clientId}
+            clientName={client?.full_name}
+          />
+        </TabsContent>
+
         {/* Tab: Processos */}
         <TabsContent value="processes">
           <Card className="border-0 shadow-sm">
@@ -972,75 +1041,6 @@ export default function ClientDetail() {
                           <div className="bg-slate-50 p-4 rounded text-sm text-slate-700 whitespace-pre-wrap font-mono min-h-[100px] border border-slate-100">
                             {email.body_text || "Corpo do texto indisponível."}
                           </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab: Atendimentos */}
-        <TabsContent value="atendimentos">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[#1e3a5f]" />
-                Histórico de Atendimentos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoadingAtendimentos ? (
-                <div className="flex justify-center py-8">
-                  <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
-                </div>
-              ) : atendimentos.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
-                  <BookOpen className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                  <p>Nenhum atendimento registrado pela recepção para este cliente.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {atendimentos.map((atendimento) => (
-                    <Card key={atendimento.id} className="overflow-hidden border-slate-200 hover:shadow-sm transition-shadow">
-                      <div className="p-4 bg-white relative">
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#1e3a5f]" />
-                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-3">
-                          <div className="pl-3">
-                            <h3 className="font-semibold text-slate-800">{atendimento.nome_contato}</h3>
-                            <div className="flex items-center gap-3 text-sm text-slate-500 mt-1">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3.5 h-3.5" />
-                                {format(new Date(atendimento.created_at), "dd/MM/yyyy HH:mm")}
-                              </span>
-                              {atendimento.telefone && (
-                                <span className="flex items-center gap-1 font-medium text-slate-600">
-                                  <PhoneCall className="w-3.5 h-3.5" />
-                                  {atendimento.telefone}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-2 pl-3 sm:pl-0">
-                            <Badge
-                              variant="outline"
-                              className={
-                                atendimento.status === 'Pendente' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                atendimento.status === 'Concluído' ? 'bg-green-100 text-green-700 border-green-200' :
-                                'bg-blue-100 text-blue-700 border-blue-200'
-                              }
-                            >
-                              {atendimento.status}
-                            </Badge>
-                          </div>
-                        </div>
-                        
-                        <div className="pl-3 mt-3 pt-3 border-t border-slate-100">
-                          <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded border border-slate-100 whitespace-pre-wrap">
-                            {atendimento.assunto}
-                          </p>
                         </div>
                       </div>
                     </Card>
