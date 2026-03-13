@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { clientService, processService, appointmentService, beneficioService, documentService, notificationService, atendimentoService } from "@/services";
@@ -266,6 +266,16 @@ export default function ClientDetail() {
     }
   };
 
+  const progressData = useMemo(() => {
+    if (!client) return { checklist: [], completedDocs: 0, progressPercent: 0 };
+    
+    const checklist = BENEFIT_CHECKLISTS[client.benefit_type] || [];
+    const completedDocs = checklist.filter((doc) => client.documents_checklist?.[doc.id]).length;
+    const progressPercent = checklist.length > 0 ? (completedDocs / checklist.length) * 100 : 0;
+    
+    return { checklist, completedDocs, progressPercent };
+  }, [client]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -284,15 +294,6 @@ export default function ClientDetail() {
       </div>
     );
   }
-
-  const checklist = React.useMemo(() => BENEFIT_CHECKLISTS[client.benefit_type] || [], [client.benefit_type]);
-  
-  const progressPercent = React.useMemo(() => {
-    const completedDocs = checklist.filter(
-      (doc) => client.documents_checklist?.[doc.id],
-    ).length;
-    return checklist.length > 0 ? (completedDocs / checklist.length) * 100 : 0;
-  }, [checklist, client.documents_checklist]);
 
   return (
     <div className="space-y-6">
