@@ -1,5 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { djenBuscaPublica, formatarNumeroCNJ } from "@/services/cnjService";
 import {
   Card,
@@ -53,11 +54,7 @@ function formatDate(raw) {
   try {
     const d = new Date(raw);
     if (isNaN(d.getTime())) return String(raw);
-    return d.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    return format(d, "dd/MM/yyyy");
   } catch {
     return String(raw);
   }
