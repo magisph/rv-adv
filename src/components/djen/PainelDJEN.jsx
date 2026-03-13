@@ -22,7 +22,9 @@ import {
   User,
   Gavel,
   CheckCircle2,
+  Calculator,
 } from "lucide-react";
+import { CalculadoraCpcModal } from "./CalculadoraCpcModal";
 
 // ============================================================================
 // getField — Extrator blindado contra inconsistência de case nas chaves
@@ -100,6 +102,8 @@ function LoadingSkeleton() {
 
 // ─── Card de Comunicação — Layout de Gestão Processual ─────────────────────
 function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
+  const [isCalculadoraOpen, setIsCalculadoraOpen] = React.useState(false);
+
   // ── Extração blindada de campos ────────────────────────────────────────
   const numeroRaw = getField(comunicacao, [
     "numeroprocesso", "numero_processo", "numero", "processo",
@@ -141,6 +145,8 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
   const cardId = `${numeroFormatado}-${dataDispRaw || 'sem-data'}`;
   const isLida = lidas.includes(cardId);
 
+  const comunicacaoWithRaw = { ...comunicacao, data_disponibilizacao_raw: dataDispRaw };
+
   // ── Render ─────────────────────────────────────────────────────────
   return (
     <Card className={`border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${isLida ? 'opacity-60 bg-slate-50' : ''}`}>
@@ -165,19 +171,30 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
               {tipoAto}
             </Badge>
           </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => toggleLida(cardId)}
-            className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
-              isLida
-                ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
-                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <CheckCircle2 className={`w-4 h-4 ${isLida ? 'fill-emerald-100' : ''}`} />
-            {isLida ? 'Lida' : 'Marcar como Lida'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCalculadoraOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 bg-white border-slate-200"
+            >
+              <Calculator className="w-4 h-4 text-[#c9a227]" />
+              Calcular Prazo CPC
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleLida(cardId)}
+              className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
+                isLida
+                  ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <CheckCircle2 className={`w-4 h-4 ${isLida ? 'fill-emerald-100' : ''}`} />
+              {isLida ? 'Lida' : 'Marcar como Lida'}
+            </Button>
+          </div>
         </div>
       </CardHeader>
 
@@ -263,6 +280,13 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
           </div>
         </div>
       </CardContent>
+
+      <CalculadoraCpcModal 
+        isOpen={isCalculadoraOpen} 
+        onClose={() => setIsCalculadoraOpen(false)} 
+        comunicacao={comunicacaoWithRaw} 
+        numeroProcesso={numeroFormatado} 
+      />
     </Card>
   );
 }
