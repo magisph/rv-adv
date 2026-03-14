@@ -287,7 +287,7 @@ async function vigiarDJEN(): Promise<void> {
       numeroOab: '36219',
       ufOab: 'CE',
       nomeAdvogado: 'Ana Rafaela Vasconcelos Damasceno',
-      dataDisponibilizacaoInicio: '2026-01-01',
+      dataDisponibilizacaoInicio: '2026-03-16',
     });
 
     const url = `${DJEN_BASE}/api/v1/comunicacao?${params.toString()}`;
@@ -351,7 +351,7 @@ async function vigiarDJEN(): Promise<void> {
         // Data de corte: só notifica comunicações a partir de 14/03/2026
         const dataDispRaw = getField(n, ['datadisponibilizacao', 'data_disponibilizacao']);
         const dataDisp = new Date(dataDispRaw);
-        const dataCorte = new Date('2026-03-14T00:00:00-03:00');
+        const dataCorte = new Date('2026-03-16T00:00:00-03:00');
 
         if (dataDisp >= dataCorte) {
           const { data: adminUser } = await supabase
@@ -377,7 +377,7 @@ async function vigiarDJEN(): Promise<void> {
             console.error(`[Vigia DJEN] Erro ao inserir notificação no Supabase:`, error.message);
           }
         } else {
-          console.log(`   └─ Silenciado (Anterior a 14/03): ${proc}`);
+          console.log(`   └─ Silenciado (Anterior a 16/03): ${proc}`);
         }
       }
     } else {

@@ -23,6 +23,7 @@ import {
   Gavel,
   CheckCircle2,
   Calculator,
+  Trash2,
 } from "lucide-react";
 import { CalculadoraCpcModal } from "./CalculadoraCpcModal";
 
@@ -101,7 +102,7 @@ function LoadingSkeleton() {
 }
 
 // ─── Card de Comunicação — Layout de Gestão Processual ─────────────────────
-function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
+function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
   const [isCalculadoraOpen, setIsCalculadoraOpen] = React.useState(false);
 
   // ── Extração blindada de campos ────────────────────────────────────────
@@ -149,9 +150,9 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
-    <Card className={`border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${isLida ? 'bg-slate-50 border-slate-300' : 'border-slate-200'}`}>
+    <Card className={`border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${isLida ? 'bg-emerald-50/60 border-emerald-200' : 'border-slate-200'}`}>
       {/* ── Cabeçalho – faixa superior com metadados ───────────────── */}
-      <CardHeader className={`${isLida ? 'bg-slate-100/50 border-b border-slate-200' : 'bg-amber-50/80 border-b border-amber-100'} py-3 px-5`}>
+      <CardHeader className={`${isLida ? 'bg-emerald-100/50 border-b border-emerald-200' : 'bg-amber-50/80 border-b border-amber-100'} py-3 px-5`}>
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-slate-700 leading-relaxed flex-1">
             {dataDisp && (
@@ -163,7 +164,7 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
               <span className="text-slate-400"> · <span className="font-semibold text-[#1e3a5f]">{tribunal}</span></span>
             )}
             <span className="text-slate-400"> · </span>
-            <span className={`font-mono text-xs bg-white/60 px-1.5 py-0.5 rounded border ${isLida ? 'border-slate-300' : 'border-amber-200'}`}>
+            <span className={`font-mono text-xs bg-white/60 px-1.5 py-0.5 rounded border ${isLida ? 'border-emerald-300' : 'border-amber-200'}`}>
               {numeroFormatado}
             </span>
             <span className="text-slate-400"> · </span>
@@ -192,12 +193,32 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
                   <CheckCircle2 className="w-4 h-4" />
                   Marcar como Lida
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleExcluida(cardId)}
+                  className="flex items-center gap-1.5 text-xs font-medium transition-colors text-red-400 hover:text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Excluir
+                </Button>
               </>
             ) : (
-              <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold shadow-sm">
-                <CheckCircle2 className="w-4 h-4" />
-                Lida
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold shadow-sm">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Lida
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleExcluida(cardId)}
+                  className="flex items-center gap-1.5 text-xs font-medium transition-colors text-red-400 hover:text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Excluir
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -220,7 +241,7 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida }) {
             </span>
           </div>
           <div className="p-4 max-h-[600px] overflow-y-auto">
-            <pre className="text-sm text-slate-700 whitespace-pre-wrap break-words font-sans leading-relaxed">
+            <pre className={`text-sm whitespace-pre-wrap break-words font-sans leading-relaxed ${isLida ? 'text-slate-500' : 'text-slate-700'}`}>
               {teorExibido}
             </pre>
           </div>
@@ -305,6 +326,10 @@ export default function PainelDJEN() {
     JSON.parse(localStorage.getItem('djen_lidas') || '[]')
   );
 
+  const [excluidas, setExcluidas] = React.useState(() =>
+    JSON.parse(localStorage.getItem('djen_excluidas') || '[]')
+  );
+
   const toggleLida = (id) => {
     setLidas((prev) => {
       const next = prev.includes(id)
@@ -314,6 +339,17 @@ export default function PainelDJEN() {
       return next;
     });
   };
+
+  const toggleExcluida = (id) => {
+    setExcluidas((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((i) => i !== id)
+        : [...prev, id];
+      localStorage.setItem('djen_excluidas', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const {
     data,
     isLoading,
@@ -450,9 +486,26 @@ export default function PainelDJEN() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {comunicacoes.map((com, idx) => (
-            <ComunicacaoCard key={idx} comunicacao={com} lidas={lidas} toggleLida={toggleLida} />
-          ))}
+          {comunicacoes
+            .filter((com) => {
+              const dataDispRaw = getField(com, [
+                "datadisponibilizacao", "data_disponibilizacao", "datadisponibilizaçao",
+              ]);
+              const numeroRaw = getField(com, [
+                "numeroprocesso", "numero_processo", "numero", "processo",
+              ]);
+              const cardId = `${formatNumero(numeroRaw)}-${dataDispRaw || 'sem-data'}`;
+              return !excluidas.includes(cardId);
+            })
+            .map((com, idx) => (
+              <ComunicacaoCard 
+                key={idx} 
+                comunicacao={com} 
+                lidas={lidas} 
+                toggleLida={toggleLida} 
+                toggleExcluida={toggleExcluida}
+              />
+            ))}
         </div>
       )}
     </div>
