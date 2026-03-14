@@ -23,11 +23,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BookOpen, PhoneCall, Plus, ArrowRight } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 export default function DiarioAtendimentosWidget() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -55,10 +54,10 @@ export default function DiarioAtendimentosWidget() {
       queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
       setIsModalOpen(false);
       setFormData({ nome_contato: "", telefone: "", categoria: "Prospecto", assunto: "", status: "Pendente", client_id: null });
-      toast({ title: "Atendimento registrado com sucesso!" });
+      toast.success("Atendimento registrado com sucesso!");
     },
     onError: (error) => {
-      toast({ title: "Erro ao registrar", description: error.message, variant: "destructive" });
+      toast.error(error.message || "Erro ao registrar atendimento");
     }
   });
 
