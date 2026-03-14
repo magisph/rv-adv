@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { iniciarExtracaoPje } from './crawlers/pje-crawler.js';
 
 // ─── Config ────────────────────────────────────────────────────────
-const envPath = path.resolve(import.meta.dirname, '.env');
+const envPath = path.resolve(import.meta.dirname, '../.env');
 dotenv.config({ path: envPath });
 
 const app = express();
@@ -17,10 +17,9 @@ app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.json());
 
 // ─── Supabase Client ───────────────────────────────────────────────
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_KEY!,
-);
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+const supabase = createClient(supabaseUrl!, supabaseKey!);
 
 // ─── CNJ APIs Config (DataJud + DJEN) ───────────────────────────────
 const DATAJUD_API_KEY = 'APIKey cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
@@ -355,8 +354,17 @@ async function vigiarDJEN(): Promise<void> {
         const dataCorte = new Date('2026-03-14T00:00:00-03:00');
 
         if (dataDisp >= dataCorte) {
+          const { data: adminUser } = await supabase
+            .from('users')
+            .select('auth_id')
+            .eq('role', 'admin')
+            .limit(1)
+            .single();
+
+          const targetUserId = adminUser?.auth_id;
+
           const { error } = await supabase.from('notifications').insert({
-            user_id: process.env.SUPABASE_USER_ID,
+            user_id: targetUserId,
             type: 'djen',
             priority: 'urgente',
             title: 'Nova Publicação DJEN',
