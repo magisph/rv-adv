@@ -30,6 +30,7 @@ import {
   Calendar,
   BookOpen,
   PhoneCall,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
@@ -105,6 +106,11 @@ export default function ClientDetail() {
 
   const queryClient = useQueryClient();
 
+  const { data: currentUser } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: () => authService.getCurrentUser(),
+  });
+
   const { data: client, isLoading } = useQuery({
     queryKey: ["client", clientId],
     queryFn: () => clientService.filter({ id: clientId }),
@@ -171,6 +177,15 @@ export default function ClientDetail() {
     queryKey: ["client-atendimentos", clientId],
     queryFn: () => atendimentoService.filter({ client_id: clientId }, "-created_at"),
     enabled: !!clientId,
+  });
+
+  const deleteAtendimentoMutation = useMutation({
+    mutationFn: (id) => atendimentoService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-atendimentos", clientId] });
+      toast.success("Atendimento excluído com sucesso");
+    },
+    onError: (error) => toast.error(error.message || "Erro ao excluir atendimento")
   });
 
   const updateMutation = useMutation({
@@ -683,7 +698,7 @@ export default function ClientDetail() {
                               )}
                             </div>
                           </div>
-                          <div className="flex gap-2 pl-3 sm:pl-0">
+                          <div className="flex gap-2 pl-3 sm:pl-0 items-center">
                             <Badge
                               variant="outline"
                               className={
@@ -694,6 +709,21 @@ export default function ClientDetail() {
                             >
                               {atendimento.status}
                             </Badge>
+                            {currentUser?.role === 'admin' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm("Excluir este atendimento?")) {
+                                    deleteAtendimentoMutation.mutate(atendimento.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                         

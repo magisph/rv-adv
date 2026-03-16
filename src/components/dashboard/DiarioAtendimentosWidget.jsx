@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { atendimentoService, clientService } from "@/services";
+import { atendimentoService, clientService, taskService, documentService, aiService, userService } from "@/services";
+import { authService } from "@/services/authService";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -22,7 +23,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, PhoneCall, Plus, ArrowRight } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BookOpen, PhoneCall, Plus, ArrowRight, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DiarioAtendimentosWidget() {
@@ -35,7 +38,23 @@ export default function DiarioAtendimentosWidget() {
     categoria: "Prospecto",
     assunto: "",
     status: "Pendente",
-    client_id: null
+    client_id: null,
+    origem: "",
+    origem_nome: "",
+    detalhes: ""
+  });
+  const [arquivos, setArquivos] = useState([]);
+  const [encaminharAdmin, setEncaminharAdmin] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const { data: currentUser } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: () => authService.getCurrentUser(),
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => userService.list(),
   });
 
   const { data: clients = [] } = useQuery({
@@ -53,7 +72,9 @@ export default function DiarioAtendimentosWidget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
       setIsModalOpen(false);
-      setFormData({ nome_contato: "", telefone: "", categoria: "Prospecto", assunto: "", status: "Pendente", client_id: null });
+      setFormData({ nome_contato: "", telefone: "", categoria: "Prospecto", assunto: "", status: "Pendente", client_id: null, origem: "", origem_nome: "", detalhes: "" });
+      setArquivos([]);
+      setEncaminharAdmin(false);
       toast.success("Atendimento registrado com sucesso!");
     },
     onError: (error) => {
@@ -61,8 +82,54 @@ export default function DiarioAtendimentosWidget() {
     }
   });
 
-  const handleSave = () => {
-    createMutation.mutate(formData);
+  const deleteMutation = useMutation({
+    mutationFn: (id) => atendimentoService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
+      toast.success("Atendimento excluído!");
+    }
+  });
+
+  const handleSave = async () => {
+    setIsUploading(true);
+    try {
+      if (arquivos.length > 0) {
+        toast.info("Fazendo upload de documentos, aguarde...");
+        for (const file of arquivos) {
+          const file_url = await aiService.uploadFile(file, 'outros');
+          if (formData.client_id) {
+            await documentService.create({
+              parent_type: 'client',
+              parent_id: formData.client_id,
+              category: 'outros',
+              name: file.name,
+              file_url
+            });
+          }
+        }
+      }
+
+      await createMutation.mutateAsync(formData);
+
+      if (encaminharAdmin) {
+        const adminUser = users.find(u => u.role === 'admin');
+        if (adminUser) {
+          await taskService.create({
+            title: "Atendimento: " + formData.nome_contato,
+            description: formData.detalhes || formData.assunto,
+            assigned_to: adminUser.email,
+            client_id: formData.client_id,
+            priority: "media"
+          });
+          toast.success("Tarefa criada para a admin.");
+        }
+      }
+    } catch (e) {
+      toast.error(e.message || "Erro ao salvar atendimento");
+      console.error(e);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const converterCliente = (atendimento) => {
@@ -142,15 +209,78 @@ export default function DiarioAtendimentosWidget() {
                   <SelectContent>
                     <SelectItem value="Prospecto">Prospecto</SelectItem>
                     <SelectItem value="Cliente">Cliente</SelectItem>
-                    <SelectItem value="Parceiro">Parceiro</SelectItem>
+                    <SelectItem value="Consulta">Consulta</SelectItem>
                     <SelectItem value="Outros">Outros</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              
+              {!formData.client_id && (
+                <div className="grid gap-2">
+                  <Label>Origem</Label>
+                  <Select value={formData.origem} onValueChange={(val) => setFormData({...formData, origem: val})}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a origem..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Indicação">Indicação</SelectItem>
+                      <SelectItem value="Parceiro">Parceiro</SelectItem>
+                      <SelectItem value="Redes Sociais">Redes Sociais</SelectItem>
+                      <SelectItem value="Passagem">Passagem</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {(!formData.client_id && (formData.origem === 'Indicação' || formData.origem === 'Parceiro')) && (
+                <div className="grid gap-2">
+                  <Label>Nome de quem indicou / Parceiro</Label>
+                  <Input value={formData.origem_nome} onChange={(e) => setFormData({...formData, origem_nome: e.target.value})} placeholder="Ex: Maria Pereira" />
+                </div>
+              )}
+
               <div className="grid gap-2">
-                <Label htmlFor="assunto">Assunto</Label>
-                <Input id="assunto" value={formData.assunto} onChange={(e) => setFormData({...formData, assunto: e.target.value})} placeholder="Resumo do contato" />
+                <Label>Assunto</Label>
+                <Select value={formData.assunto} onValueChange={(val) => setFormData({...formData, assunto: val})}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o assunto..." /></SelectTrigger>
+                  <SelectContent>
+                    {!formData.client_id ? (
+                      <>
+                        <SelectItem value="Consulta">Consulta</SelectItem>
+                        <SelectItem value="Primeiro Atendimento">Primeiro Atendimento</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="Informações">Informações</SelectItem>
+                        <SelectItem value="Reunião">Reunião</SelectItem>
+                        <SelectItem value="Entregar Documento">Entregar Documento</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {formData.assunto && (
+                <div className="grid gap-2">
+                  <Label>Detalhes</Label>
+                  <Textarea value={formData.detalhes} onChange={(e) => setFormData({...formData, detalhes: e.target.value})} placeholder="Descreva os detalhes..." rows={3} />
+                </div>
+              )}
+
+              {formData.assunto === "Entregar Documento" && (
+                <div className="grid gap-2">
+                  <Label>Arquivos (Upload opcional)</Label>
+                  <Input type="file" multiple onChange={(e) => setArquivos(Array.from(e.target.files))} />
+                </div>
+              )}
+
+              {currentUser?.role !== 'admin' && (
+                <div className="flex items-center space-x-2 mt-2">
+                  <Checkbox id="encaminhar_admin" checked={encaminharAdmin} onCheckedChange={(val) => setEncaminharAdmin(val)} />
+                  <label htmlFor="encaminhar_admin" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Encaminhar para a Advogada (Criar Tarefa)
+                  </label>
+                </div>
+              )}
+
               <div className="grid gap-2">
                 <Label>Status</Label>
                 <Select value={formData.status} onValueChange={(val) => setFormData({...formData, status: val})}>
@@ -166,8 +296,8 @@ export default function DiarioAtendimentosWidget() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleSave} disabled={createMutation.isPending} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white">
-                Salvar Atendimento
+              <Button onClick={handleSave} disabled={createMutation.isPending || isUploading} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white">
+                {(createMutation.isPending || isUploading) ? "Salvando..." : "Salvar Atendimento"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -202,6 +332,21 @@ export default function DiarioAtendimentosWidget() {
                         }`}>
                           {atendimento.status}
                         </span>
+                        {currentUser?.role === 'admin' && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-5 w-5 ml-1 text-red-500 hover:text-red-700 bg-transparent hover:bg-red-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Excluir este atendimento?')) {
+                                deleteMutation.mutate(atendimento.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <div className="text-xs text-slate-500 flex items-center justify-between">
