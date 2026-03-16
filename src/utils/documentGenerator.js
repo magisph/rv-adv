@@ -49,7 +49,7 @@ export async function generateClientDocument(templateUrl, clientData, templateNa
       const cepPart = clientData.zip_code ? `CEP: ${clientData.zip_code}` : "";
       
       const templateData = {
-        FULL_NAME: clientData.full_name || "",
+        FULL_NAME: (clientData.full_name || "").toUpperCase(),
         estado_civil: clientData.estado_civil || "",
         profisssao: clientData.profissao || "",
         cpf: clientData.cpf_cnpj || "",
