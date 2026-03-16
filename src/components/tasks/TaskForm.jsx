@@ -113,7 +113,21 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+
+    // --- Data Sanitation ---
+    const payload = { ...formData };
+
+    // 1. Remove ghost columns not present in the 'tasks' table (PGRST204 fix)
+    delete payload.beneficio_id;
+    delete payload.beneficio_tipo;
+
+    // 2. Null Safety: PostgreSQL rejects empty strings in UUID and DATE fields
+    const nullableFields = ["client_id", "process_id", "due_date", "assigned_to"];
+    nullableFields.forEach((field) => {
+      if (payload[field] === "") payload[field] = null;
+    });
+
+    onSave(payload);
   };
 
   return (
