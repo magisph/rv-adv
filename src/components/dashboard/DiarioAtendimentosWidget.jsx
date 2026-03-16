@@ -48,8 +48,9 @@ export default function DiarioAtendimentosWidget() {
   const [isUploading, setIsUploading] = useState(false);
 
   const { data: currentUser } = useQuery({
-    queryKey: ["currentUser"],
+    queryKey: ["current-user"],
     queryFn: () => authService.getCurrentUser(),
+    staleTime: 5 * 60 * 1000
   });
 
   const { data: users = [] } = useQuery({
@@ -148,14 +149,14 @@ export default function DiarioAtendimentosWidget() {
           <BookOpen className="w-5 h-5 text-[#c9a227]" />
           Diário de Atendimentos
         </CardTitle>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Dialog open={isModalOpen} onOpenChange={(isOpen) => { if (!isOpen && (formData.nome_contato || formData.telefone || formData.assunto)) { if (!window.confirm('Existem informações não salvas. Deseja realmente cancelar e perder os dados?')) return; } setIsModalOpen(isOpen); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white">
               <Plus className="w-4 h-4 mr-1" />
               Novo
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Registrar Novo Atendimento</DialogTitle>
             </DialogHeader>
@@ -312,7 +313,7 @@ export default function DiarioAtendimentosWidget() {
         ) : (
           <div className="space-y-3 mt-2">
             {atendimentos.map(atendimento => (
-              <div key={atendimento.id} className="p-3 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+              <div key={atendimento.id} className="p-3 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => { if (atendimento.client_id) navigate(`/client-detail?id=${atendimento.client_id}&tab=atendimentos`); }}>
                 <div className="flex justify-between items-start flex-col gap-2">
                   <div className="space-y-1.5 w-full">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -333,18 +334,8 @@ export default function DiarioAtendimentosWidget() {
                           {atendimento.status}
                         </span>
                         {currentUser?.role === 'admin' && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-5 w-5 ml-1 text-red-500 hover:text-red-700 bg-transparent hover:bg-red-50"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm('Excluir este atendimento?')) {
-                                deleteMutation.mutate(atendimento.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
+                          <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); if(window.confirm('Excluir este atendimento?')) deleteMutation.mutate(atendimento.id); }}>
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         )}
                       </div>
