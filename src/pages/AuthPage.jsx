@@ -21,7 +21,7 @@ import {
 import { Scale } from "lucide-react";
 
 export default function AuthPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -31,8 +31,9 @@ export default function AuthPage() {
     setLoading(true);
     
     try {
+      const emailToUse = username.trim().toLowerCase() + "@rvadv.local";
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: emailToUse,
         password,
       });
 
@@ -53,8 +54,9 @@ export default function AuthPage() {
     setLoading(true);
     
     try {
+      const emailToUse = username.trim().toLowerCase() + "@rvadv.local";
       const { error } = await supabase.auth.signUp({
-        email,
+        email: emailToUse,
         password,
       });
 
@@ -94,19 +96,19 @@ export default function AuthPage() {
             <CardHeader>
               <CardTitle>Acesse sua conta</CardTitle>
               <CardDescription>
-                Insira seu e-mail e senha para entrar no painel.
+                Insira seu usuário e senha para entrar no painel.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email-login">E-mail</Label>
+                  <Label htmlFor="email-login">Usuário</Label>
                   <Input 
                     id="email-login" 
-                    type="email" 
-                    placeholder="email@exemplo.com" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="text" 
+                    placeholder="ex: rafaela.adv" 
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
                   />
                 </div>
@@ -143,13 +145,13 @@ export default function AuthPage() {
             <CardContent>
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email-signup">E-mail</Label>
+                  <Label htmlFor="email-signup">Usuário</Label>
                   <Input 
                     id="email-signup" 
-                    type="email" 
-                    placeholder="email@exemplo.com" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="text" 
+                    placeholder="ex: rafaela.adv" 
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
                   />
                 </div>
