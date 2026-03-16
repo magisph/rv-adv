@@ -6,10 +6,65 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// ============================================
+// CORS — restrito ao domínio de produção + localhost dev
+// ============================================
+const ALLOWED_ORIGINS = [
+  "https://rv-adv.app",
+  "https://www.rv-adv.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
+
+// ============================================
+// JWT Auth — valida token antes de processar
+// ============================================
+async function authenticateRequest(req: Request): Promise<{ userId: string } | null> {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+
+  const token = authHeader.replace("Bearer ", "");
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  );
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  return { userId: user.id };
+}
+
+// ============================================
+// Timeout helper — AbortController com deadline
+// ============================================
+const AI_TIMEOUT_MS = 60_000; // 60 segundos (vision é mais lento)
+
+function createTimeoutSignal(ms: number = AI_TIMEOUT_MS): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), ms);
+  return { signal: controller.signal, clear: () => clearTimeout(timeoutId) };
+}
+
+// ============================================
+// UUID validation
+// ============================================
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidUUID(value: string): boolean {
+  return UUID_REGEX.test(value);
+}
 
 const CATEGORIES = [
   "pessoais", "inss", "medicos", "judicial",
@@ -18,8 +73,19 @@ const CATEGORIES = [
 ];
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // 🔒 JWT Authentication Gate
+  const auth = await authenticateRequest(req);
+  if (!auth) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {
@@ -28,6 +94,14 @@ serve(async (req) => {
     if (!storage_path || !documento_id) {
       return new Response(
         JSON.stringify({ success: false, error: "storage_path and documento_id are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate UUID structure for pericia_id
+    if (pericia_id && !isValidUUID(pericia_id)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid pericia_id format (expected UUID)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -102,29 +176,39 @@ Responda EXCLUSIVAMENTE em JSON válido:
 }`;
 
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+        // 🔒 Gemini API key no header, NÃO na URL
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
 
-        const geminiResponse = await fetch(geminiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: promptText },
-                { inline_data: { mime_type: mimeType, data: base64 } },
-              ],
-            }],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
-          }),
-        });
+        const { signal, clear } = createTimeoutSignal();
+        try {
+          const geminiResponse = await fetch(geminiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": geminiApiKey,
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: promptText },
+                  { inline_data: { mime_type: mimeType, data: base64 } },
+                ],
+              }],
+              generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+            }),
+            signal,
+          });
 
-        if (!geminiResponse.ok) {
-          const errText = await geminiResponse.text().catch(() => geminiResponse.statusText);
-          throw new Error(`Gemini Vision ${geminiResponse.status}: ${errText}`);
+          if (!geminiResponse.ok) {
+            const errText = await geminiResponse.text().catch(() => geminiResponse.statusText);
+            throw new Error(`Gemini Vision ${geminiResponse.status}: ${errText}`);
+          }
+
+          const geminiData = await geminiResponse.json();
+          rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        } finally {
+          clear();
         }
-
-        const geminiData = await geminiResponse.json();
-        rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
       } catch (geminiError) {
         console.warn("[OCR] Gemini SDK request failed. Triggering Copilot fallback (OpenRouter)...", geminiError);
         usedModel = "google/gemini-2.5-flash (OpenRouter Fallback)";
@@ -134,34 +218,40 @@ Responda EXCLUSIVAMENTE em JSON válido:
           throw new Error(`Gemini failed and OPENROUTER_API_KEY is not configured. Original error: ${geminiError instanceof Error ? geminiError.message : "Unknown"}`);
         }
 
-        const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${openRouterKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { type: "text", text: promptText },
-                  { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } }
-                ]
-              }
-            ],
-            response_format: { type: "json_object" }
-          })
-        });
+        const { signal, clear } = createTimeoutSignal();
+        try {
+          const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${openRouterKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    { type: "text", text: promptText },
+                    { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } }
+                  ]
+                }
+              ],
+              response_format: { type: "json_object" }
+            }),
+            signal,
+          });
 
-        if (!openRouterResponse.ok) {
-          const errText = await openRouterResponse.text().catch(() => openRouterResponse.statusText);
-          throw new Error(`OpenRouter Fallback ${openRouterResponse.status}: ${errText}`);
+          if (!openRouterResponse.ok) {
+            const errText = await openRouterResponse.text().catch(() => openRouterResponse.statusText);
+            throw new Error(`OpenRouter Fallback ${openRouterResponse.status}: ${errText}`);
+          }
+
+          const openRouterData = await openRouterResponse.json();
+          rawText = openRouterData.choices?.[0]?.message?.content || "";
+        } finally {
+          clear();
         }
-
-        const openRouterData = await openRouterResponse.json();
-        rawText = openRouterData.choices?.[0]?.message?.content || "";
       }
 
       // Parse JSON from Gemini or OpenRouter response
@@ -188,10 +278,41 @@ Responda EXCLUSIVAMENTE em JSON válido:
               categoria: classifiedCategory,
             })
             .eq("id", documento_id);
-        } catch {
-          // JSON parsing failed, store raw text
+        } catch (parseError) {
+          // 🔒 JSON parsing failed — registra erro no banco em vez de falha silenciosa
+          console.error("[OCR] JSON parse failed:", (parseError as Error).message);
           extractedText = rawText;
+
+          await supabase
+            .from("pericia_documentos")
+            .update({
+              classificacao_ia: {
+                status: "parse_error",
+                error: `JSON parse failed: ${(parseError as Error).message}`,
+                raw_text_preview: rawText.substring(0, 500),
+                categoria: classifiedCategory,
+                processed_at: new Date().toISOString(),
+                model: usedModel,
+              },
+            })
+            .eq("id", documento_id);
         }
+      } else {
+        // No JSON found in response — store raw and mark as parse error
+        extractedText = rawText;
+        await supabase
+          .from("pericia_documentos")
+          .update({
+            classificacao_ia: {
+              status: "parse_error",
+              error: "No JSON object found in AI response",
+              raw_text_preview: rawText.substring(0, 500),
+              categoria: classifiedCategory,
+              processed_at: new Date().toISOString(),
+              model: usedModel,
+            },
+          })
+          .eq("id", documento_id);
       }
     } else if (isPDF) {
       // 3b. PDF → extract text and classify via Groq (text model)
@@ -253,7 +374,7 @@ Responda EXCLUSIVAMENTE em JSON válido:
   } catch (error) {
     console.error("[OCR] Error:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

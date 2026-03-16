@@ -6,12 +6,58 @@
 // ============================================
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+// ============================================
+// CORS — restrito ao domínio de produção + localhost dev
+// ============================================
+const ALLOWED_ORIGINS = [
+  "https://rv-adv.app",
+  "https://www.rv-adv.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
+
+// ============================================
+// JWT Auth — valida token antes de processar
+// ============================================
+async function authenticateRequest(req: Request): Promise<{ userId: string } | null> {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+
+  const token = authHeader.replace("Bearer ", "");
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  );
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  return { userId: user.id };
+}
+
+// ============================================
+// Timeout helper — AbortController com deadline
+// ============================================
+const AI_TIMEOUT_MS = 45_000; // 45 segundos
+
+function createTimeoutSignal(ms: number = AI_TIMEOUT_MS): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), ms);
+  return { signal: controller.signal, clear: () => clearTimeout(timeoutId) };
+}
 
 // ============================================
 // Provider configurations (read from Deno env)
@@ -35,7 +81,7 @@ function getProviders() {
         Deno.env.get("GEMINI_BASE_URL") ||
         "https://generativelanguage.googleapis.com/v1beta",
       apiKey: Deno.env.get("GEMINI_API_KEY") || "",
-      defaultModel: Deno.env.get("MODEL_VISION") || "gemini-3-flash-preview",
+      defaultModel: Deno.env.get("MODEL_VISION") || "gemini-2.5-flash",
     },
     COHERE: {
       baseUrl: "https://api.cohere.ai/v1",
@@ -67,29 +113,35 @@ async function callGroq(
   if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
   messages.push({ role: "user", content: prompt });
 
-  const response = await fetch(
-    `${providers.GROQ.baseUrl}/chat/completions`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${providers.GROQ.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: (options.model as string) || providers.GROQ.defaultModel,
-        messages,
-        temperature: (options.temperature as number) ?? 0.3,
-        max_tokens: (options.max_tokens as number) ?? 4096,
-      }),
-    }
-  );
+  const { signal, clear } = createTimeoutSignal();
+  try {
+    const response = await fetch(
+      `${providers.GROQ.baseUrl}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${providers.GROQ.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: (options.model as string) || providers.GROQ.defaultModel,
+          messages,
+          temperature: (options.temperature as number) ?? 0.3,
+          max_tokens: (options.max_tokens as number) ?? 4096,
+        }),
+        signal,
+      }
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`Groq ${response.status}: ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(`Groq ${response.status}: ${errorText}`);
+    }
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } finally {
+    clear();
   }
-  const data = await response.json();
-  return data.choices[0].message.content;
 }
 
 async function callOpenRouter(
@@ -102,32 +154,38 @@ async function callOpenRouter(
   if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
   messages.push({ role: "user", content: prompt });
 
-  const response = await fetch(
-    `${providers.OPENROUTER.baseUrl}/chat/completions`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${providers.OPENROUTER.apiKey}`,
-        "HTTP-Referer": "https://rv-adv.app",
-        "X-Title": "RV-Adv Legal System",
-      },
-      body: JSON.stringify({
-        model:
-          (options.model as string) || providers.OPENROUTER.defaultModel,
-        messages,
-        temperature: (options.temperature as number) ?? 0.3,
-        max_tokens: (options.max_tokens as number) ?? 4096,
-      }),
-    }
-  );
+  const { signal, clear } = createTimeoutSignal();
+  try {
+    const response = await fetch(
+      `${providers.OPENROUTER.baseUrl}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${providers.OPENROUTER.apiKey}`,
+          "HTTP-Referer": "https://rv-adv.app",
+          "X-Title": "RV-Adv Legal System",
+        },
+        body: JSON.stringify({
+          model:
+            (options.model as string) || providers.OPENROUTER.defaultModel,
+          messages,
+          temperature: (options.temperature as number) ?? 0.3,
+          max_tokens: (options.max_tokens as number) ?? 4096,
+        }),
+        signal,
+      }
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`OpenRouter ${response.status}: ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(`OpenRouter ${response.status}: ${errorText}`);
+    }
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } finally {
+    clear();
   }
-  const data = await response.json();
-  return data.choices[0].message.content;
 }
 
 async function callGeminiVision(
@@ -138,30 +196,39 @@ async function callGeminiVision(
   const providers = getProviders();
   const apiKey = providers.GEMINI.apiKey;
   const model = providers.GEMINI.defaultModel;
-  const url = `${providers.GEMINI.baseUrl}/models/${model}:generateContent?key=${apiKey}`;
+  const url = `${providers.GEMINI.baseUrl}/models/${model}:generateContent`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType, data: imageBase64 } },
-          ],
-        },
-      ],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
-    }),
-  });
+  const { signal, clear } = createTimeoutSignal(60_000);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: imageBase64 } },
+            ],
+          },
+        ],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+      }),
+      signal,
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`Gemini ${response.status}: ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(`Gemini ${response.status}: ${errorText}`);
+    }
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+  } finally {
+    clear();
   }
-  const data = await response.json();
-  return data.candidates[0].content.parts[0].text;
 }
 
 async function callOpenRouterVision(
@@ -183,30 +250,36 @@ async function callOpenRouterVision(
     },
   ];
 
-  const response = await fetch(
-    `${providers.OPENROUTER.baseUrl}/chat/completions`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${providers.OPENROUTER.apiKey}`,
-        "HTTP-Referer": "https://rv-adv.app",
-        "X-Title": "RV-Adv Legal System",
-      },
-      body: JSON.stringify({
-        model: "qwen/qwen2.5-vl-72b-instruct",
-        messages,
-        max_tokens: 4096,
-      }),
-    }
-  );
+  const { signal, clear } = createTimeoutSignal(60_000);
+  try {
+    const response = await fetch(
+      `${providers.OPENROUTER.baseUrl}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${providers.OPENROUTER.apiKey}`,
+          "HTTP-Referer": "https://rv-adv.app",
+          "X-Title": "RV-Adv Legal System",
+        },
+        body: JSON.stringify({
+          model: "qwen/qwen2.5-vl-72b-instruct",
+          messages,
+          max_tokens: 4096,
+        }),
+        signal,
+      }
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`OpenRouter Vision ${response.status}: ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(`OpenRouter Vision ${response.status}: ${errorText}`);
+    }
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } finally {
+    clear();
   }
-  const data = await response.json();
-  return data.choices[0].message.content;
 }
 
 async function callNVIDIA(
@@ -218,53 +291,65 @@ async function callNVIDIA(
   if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
   messages.push({ role: "user", content: prompt });
 
-  const response = await fetch(
-    `${providers.NVIDIA.baseUrl}/chat/completions`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${providers.NVIDIA.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: providers.NVIDIA.defaultModel,
-        messages,
-        temperature: 0.3,
-        max_tokens: 4096,
-      }),
-    }
-  );
+  const { signal, clear } = createTimeoutSignal();
+  try {
+    const response = await fetch(
+      `${providers.NVIDIA.baseUrl}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${providers.NVIDIA.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: providers.NVIDIA.defaultModel,
+          messages,
+          temperature: 0.3,
+          max_tokens: 4096,
+        }),
+        signal,
+      }
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`NVIDIA ${response.status}: ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(`NVIDIA ${response.status}: ${errorText}`);
+    }
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } finally {
+    clear();
   }
-  const data = await response.json();
-  return data.choices[0].message.content;
 }
 
 async function callCohere(prompt: string): Promise<string> {
   const providers = getProviders();
-  const response = await fetch(`${providers.COHERE.baseUrl}/generate`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${providers.COHERE.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: providers.COHERE.defaultModel,
-      prompt,
-      max_tokens: 50,
-      temperature: 0.1,
-    }),
-  });
+  const { signal, clear } = createTimeoutSignal();
+  try {
+    const response = await fetch(`${providers.COHERE.baseUrl}/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${providers.COHERE.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: providers.COHERE.defaultModel,
+        prompt,
+        max_tokens: 50,
+        temperature: 0.1,
+      }),
+      signal,
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`Cohere ${response.status}: ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(`Cohere ${response.status}: ${errorText}`);
+    }
+    const data = await response.json();
+    return data.generations[0].text.trim().toLowerCase();
+  } finally {
+    clear();
   }
-  const data = await response.json();
-  return data.generations[0].text.trim().toLowerCase();
 }
 
 // ============================================
@@ -422,9 +507,23 @@ Forneça análises objetivas com fundamentação legal.`;
 // ============================================
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // 🔒 JWT Authentication Gate
+  const auth = await authenticateRequest(req);
+  if (!auth) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized" }),
+      {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 
   try {
