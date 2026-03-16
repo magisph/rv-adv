@@ -20,9 +20,9 @@ export default function BeneficioFormulario({
 
   // Formulários específicos por tipo de benefício
   const renderFormulario = () => {
-    // BPC/LOAS - Idoso - Formulário Completo
-    if (tipoBeneficio === "bpc_loas_idoso") {
-      return <BPCIdosoForm dados={dados} onChange={onChange} />;
+    // BPC/LOAS - Idoso e PCD - Formulário Completo
+    if (tipoBeneficio === "bpc_loas_idoso" || tipoBeneficio === "bpc_loas_pcd") {
+      return <BPCIdosoForm tipoBeneficio={tipoBeneficio} dados={dados} onChange={onChange} />;
     }
 
     // Aposentadoria por Idade Rural - Formulário Completo
@@ -38,43 +38,6 @@ export default function BeneficioFormulario({
     // Salário-Maternidade Rural - Formulário Completo
     if (tipoBeneficio === "salario_maternidade_rural") {
       return <SalarioMaternidadeRuralForm dados={dados} onChange={onChange} />;
-    }
-
-    // BPC/LOAS - PCD
-    if (tipoBeneficio === "bpc_loas_pcd") {
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Tipo de Deficiência</Label>
-            <Input
-              value={dados.tipo_deficiencia || ""}
-              onChange={(e) => handleChange("tipo_deficiencia", e.target.value)}
-              placeholder="Ex: Física, Mental, Intelectual, Sensorial"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Descrição da Deficiência</Label>
-            <Textarea
-              value={dados.descricao_deficiencia || ""}
-              onChange={(e) =>
-                handleChange("descricao_deficiencia", e.target.value)
-              }
-              placeholder="Descreva a condição de saúde"
-              rows={3}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Renda per capita familiar</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={dados.renda_per_capita || ""}
-              onChange={(e) => handleChange("renda_per_capita", e.target.value === "" ? null : parseFloat(e.target.value))}
-              placeholder="Valor em R$"
-            />
-          </div>
-        </div>
-      );
     }
 
     // Aposentadoria por Idade Urbano (genérico)

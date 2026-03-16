@@ -56,9 +56,8 @@ const BENS_RESIDENCIA = [
 
 const TIPOS_IMPEDIMENTO = ["Físico", "Mental", "Intelectual", "Sensorial"];
 
-export default function BPCIdosoForm({ dados, onChange }) {
+export default function BPCIdosoForm({ tipoBeneficio, dados, onChange }) {
   const [membros, setMembros] = useState(dados.membros_grupo_familiar || []);
-  const [veiculos, setVeiculos] = useState(dados.veiculos || []);
 
   const handleChange = (field, value) => {
     if (field.includes(".")) {
@@ -149,7 +148,6 @@ export default function BPCIdosoForm({ dados, onChange }) {
     handleChange("membros_grupo_familiar", novosM);
   };
 
-  // Safe checks for nested objects
   const triagem = dados.triagem_elegibilidade || {};
   const cif = dados.cif_pcd || {};
   const rendaDet = dados.renda_detalhada || {};
@@ -193,6 +191,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
 
         {/* VERIFICAÇÃO */}
         <TabsContent value="verificacao" className="space-y-6 pt-4">
+          <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Responda SIM ou NÃO para cada item. Um NÃO pode ser impeditivo — registrar e avaliar antes de prosseguir.</span></p>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">2.1 — Requisitos comuns (Idoso e PcD)</CardTitle>
@@ -235,7 +234,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                     value={triagem.recebe_beneficio || ""}
                     onChange={(e) => handleChange("triagem_elegibilidade.recebe_beneficio", e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">Exceções: Bolsa Família, Auxílio-Gás, assistência médica</p>
+                  <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Se SIM: verificar se é vedado — art. 20, §4º, LOAS. Exceções: Bolsa Família, Auxílio-Gás, assistência médica</span></p>
                 </div>
 
                 <div className="space-y-2">
@@ -250,6 +249,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                       <SelectItem value="Sim">Sim</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Vínculo ativo pode elevar a renda. Verificar CNIS de todos os membros.</span></p>
                 </div>
               </div>
               
@@ -266,7 +266,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
             </CardContent>
           </Card>
 
-          {dados.tipo_beneficio === "bpc_loas_idoso" && (
+          {tipoBeneficio === "bpc_loas_idoso" && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">2.2 — Requisito pessoal: IDOSO</CardTitle>
@@ -280,6 +280,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                       value={triagem.doc_idade || ""}
                       onChange={(e) => handleChange("triagem_elegibilidade.doc_idade", e.target.value)}
                     />
+                    <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Necessário ter ≥ 65 anos na data do requerimento — art. 20, caput, LOAS</span></p>
                   </div>
                   <div className="space-y-2">
                     <Label>Tem direito a aposentadoria pelo INSS?</Label>
@@ -293,13 +294,14 @@ export default function BPCIdosoForm({ dados, onChange }) {
                         <SelectItem value="Sim">Sim — avaliar qual é mais vantajoso</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Se sim: comparar valor esperado da aposentadoria com o BPC (1 SM). Planejar estratégia antes do protocolo.</span></p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {dados.tipo_beneficio === "bpc_loas_pcd" && (
+          {tipoBeneficio === "bpc_loas_pcd" && (
             <>
               <Card>
                 <CardHeader>
@@ -340,6 +342,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                           <SelectItem value="Não">Não</SelectItem>
                         </SelectContent>
                       </Select>
+                      <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Impedimento de longo prazo: efeitos por ≥ 2 anos — art. 20, §10, Lei 8.742/1993</span></p>
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label>Natureza do impedimento</Label>
@@ -480,7 +483,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                         value={cif.custo_medicamentos || ""}
                         onChange={(e) => handleChange("cif_pcd.custo_medicamentos", parseFloat(e.target.value) || "")}
                       />
-                      <p className="text-xs text-muted-foreground mt-1">Será deduzido da renda se não fornecido pelo SUS</p>
+                      <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Atenção: será deduzido da renda se não fornecido pelo SUS — art. 8º, §4º, Port. 34/2025</span></p>
                     </div>
                     
                     <div className="space-y-2">
@@ -504,12 +507,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
               <CardTitle className="text-base">Bloco 3 — Composição do Grupo Familiar</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3 text-sm text-blue-800">
-                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <strong>Atenção:</strong> Membro casado, em união estável, divorciado, separado ou viúvo NÃO integra o grupo familiar. Cônjuge separado de fato sem divórcio também NÃO integra se não viver no mesmo teto (produzir Declaração).
-                </div>
-              </div>
+              <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Membro casado, em união estável, divorciado, separado ou viúvo NÃO integra o grupo familiar — art. 7º, §1º, II, Port. 34/2025. Cônjuge separado de fato sem divórcio também NÃO integra se não viver no mesmo teto (produzir Declaração).</span></p>
 
               <div className="space-y-4">
                 {membros.map((membro, index) => (
@@ -595,6 +593,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
 
         {/* RENDA */}
         <TabsContent value="renda" className="space-y-6 pt-4">
+          <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Registrar TODAS as fontes de renda, inclusive informais. Rendas informais declaradas no CadÚnico devem ser computadas — art. 8º, §2º, Port. 34/2025. Ajuda de terceiros deve ser declarada como eventual/sazonal/pequeno valor.</span></p>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Bloco 4 — Apuração da Renda Familiar</CardTitle>
@@ -620,6 +619,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                   <div className="space-y-2">
                     <Label>Última atualização (data)</Label>
                     <Input type="date" value={rendaDet.data_cadunico || ""} onChange={(e) => handleChange("renda_detalhada.data_cadunico", e.target.value)} />
+                    <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Deve ser ≤ 24 meses. Se desatualizado, providenciar ANTES do protocolo — art. 19, Port. 34/2025</span></p>
                   </div>
                   <div className="space-y-2">
                     <Label>Número de membros no CadÚnico</Label>
@@ -640,6 +640,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                       <SelectItem value="Sim">Sim (EXCLUIR do cálculo - art. 20, §14)</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Este é um dos principais ajustes que pode viabilizar o BPC. Identificar com precisão.</span></p>
                 </div>
 
                 <div className="space-y-2">
@@ -647,9 +648,10 @@ export default function BPCIdosoForm({ dados, onChange }) {
                   <Textarea 
                     value={rendaDet.ajuda_terceiros || ""} 
                     onChange={(e) => handleChange("renda_detalhada.ajuda_terceiros", e.target.value)} 
-                    placeholder="Declarar como eventual e sazonal"
+                    placeholder="Quem ajuda e valores"
                     rows={2} 
                   />
+                  <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Declarar como eventual, sazonal e de pequeno valor. Produzir Declaração de Ajuda de Terceiros (Modelo M-02 do Manual).</span></p>
                 </div>
 
                 <div className="space-y-2">
@@ -666,6 +668,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
 
               <div className="space-y-4 pt-4 border-t">
                 <h4 className="font-semibold text-sm">4.2 — Deduções Admitidas</h4>
+                <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Se os gastos efetivos superarem os valores padrão do Anexo I, apresentar recibos dos últimos 12 meses para deduzir o valor real — art. 8º, §7º, Port. 34/2025. A negativa formal do SUS é INDISPENSÁVEL para cada categoria.</span></p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Medicamentos (Não SUS)</Label>
@@ -755,6 +758,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
                   <div className="space-y-2">
                     <Label>Valor do aluguel / Recibos</Label>
                     <Input value={dados.valor_aluguel || ""} onChange={(e) => handleChange("valor_aluguel", e.target.value)} placeholder="R$ ... tem contrato?" />
+                    <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Solicitar recibos retroativos — comprovam despesa real e condição de miserabilidade</span></p>
                   </div>
                 )}
                 
@@ -764,8 +768,9 @@ export default function BPCIdosoForm({ dados, onChange }) {
                 </div>
                 
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Bens Móveis Relevantes (veículos, eletro de valor, registrar origem)</Label>
+                  <Label>Bens Móveis Relevantes (veículos, eletro de valor)</Label>
                   <Textarea value={dados.bens_valor || ""} onChange={(e) => handleChange("bens_valor", e.target.value)} rows={2} />
+                  <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Registrar a origem de cada bem (herança, doação, compra parcelada)</span></p>
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
@@ -784,6 +789,7 @@ export default function BPCIdosoForm({ dados, onChange }) {
 
         {/* ESTRATÉGIA */}
         <TabsContent value="estrategia" className="space-y-6 pt-4">
+          <p className="text-xs text-red-500 mt-1.5 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /> <span>Registre aqui tudo que ainda precisa ser providenciado antes do protocolo. Cada pendência pode impactar a viabilidade ou os retroativos — Tema STJ 1.124.</span></p>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Bloco 7 e 8 — Estratégia e Documentações Pendentes</CardTitle>
