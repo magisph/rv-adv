@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { djenBuscaPublica, formatarNumeroCNJ } from "@/services/cnjService";
@@ -331,6 +331,11 @@ export default function PainelDJEN() {
   );
 
   const toggleLida = (id) => {
+    // TODO [DÍVIDA TÉCNICA — Cross-device]: Estado de leitura atualmente persiste
+    // apenas no LocalStorage do dispositivo atual. Para sincronização entre
+    // múltiplos dispositivos/sessões, migrar para a tabela de preferências do
+    // usuário no Supabase (ex.: user_preferences.djen_lidas JSONB ou tabela
+    // dedicada djen_reading_state com colunas user_id, card_id, lida, updated_at).
     setLidas((prev) => {
       const next = prev.includes(id)
         ? prev.filter((i) => i !== id)
@@ -341,6 +346,11 @@ export default function PainelDJEN() {
   };
 
   const toggleExcluida = (id) => {
+    // TODO [DÍVIDA TÉCNICA — Cross-device]: Estado de exclusão/ocultação atualmente
+    // persiste apenas no LocalStorage do dispositivo atual. Para sincronização entre
+    // múltiplos dispositivos/sessões, migrar para a tabela de preferências do
+    // usuário no Supabase (ex.: user_preferences.djen_excluidas JSONB ou tabela
+    // dedicada djen_reading_state com colunas user_id, card_id, excluida, updated_at).
     setExcluidas((prev) => {
       const next = prev.includes(id)
         ? prev.filter((i) => i !== id)
@@ -364,6 +374,26 @@ export default function PainelDJEN() {
     refetchOnWindowFocus: false,
     retry: 2,
   });
+
+  // ── Hooks must be declared before any early return (Rules of Hooks) ─────────────
+  // Memoize raw list to avoid re-deriving on every render when deps haven't changed
+  const comunicacoes = useMemo(() => data?.comunicacoes ?? [], [data]);
+
+  // Memoize filtered list — heavy iteration with getField() calls per item
+  const comunicacoesFiltradas = useMemo(
+    () =>
+      comunicacoes.filter((com) => {
+        const dataDispRaw = getField(com, [
+          "datadisponibilizacao", "data_disponibilizacao", "datadisponibilizaçao",
+        ]);
+        const numeroRaw = getField(com, [
+          "numeroprocesso", "numero_processo", "numero", "processo",
+        ]);
+        const cardId = `${formatNumero(numeroRaw)}-${dataDispRaw || 'sem-data'}`;
+        return !excluidas.includes(cardId);
+      }),
+    [comunicacoes, excluidas]
+  );
 
   // ── Loading State ────────────────────────────────────────────────────
   if (isLoading) {
@@ -425,7 +455,6 @@ export default function PainelDJEN() {
   }
 
   // ── Success State ────────────────────────────────────────────────────
-  const comunicacoes = data?.comunicacoes ?? [];
 
   return (
     <div className="space-y-6">
@@ -486,26 +515,15 @@ export default function PainelDJEN() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {comunicacoes
-            .filter((com) => {
-              const dataDispRaw = getField(com, [
-                "datadisponibilizacao", "data_disponibilizacao", "datadisponibilizaçao",
-              ]);
-              const numeroRaw = getField(com, [
-                "numeroprocesso", "numero_processo", "numero", "processo",
-              ]);
-              const cardId = `${formatNumero(numeroRaw)}-${dataDispRaw || 'sem-data'}`;
-              return !excluidas.includes(cardId);
-            })
-            .map((com, idx) => (
-              <ComunicacaoCard 
-                key={idx} 
-                comunicacao={com} 
-                lidas={lidas} 
-                toggleLida={toggleLida} 
-                toggleExcluida={toggleExcluida}
-              />
-            ))}
+          {comunicacoesFiltradas.map((com, idx) => (
+            <ComunicacaoCard 
+              key={idx} 
+              comunicacao={com} 
+              lidas={lidas} 
+              toggleLida={toggleLida} 
+              toggleExcluida={toggleExcluida}
+            />
+          ))}
         </div>
       )}
     </div>

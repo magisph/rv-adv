@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { authService } from "@/services/authService";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -160,7 +160,7 @@ export default function NotificationSettings() {
           setSilentMode(userData.silent_mode);
         }
       } catch (e) {
-        console.log("User not logged in");
+        // Usuário não autenticado — fluxo esperado antes do login
       }
     };
     loadUser();

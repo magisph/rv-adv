@@ -56,8 +56,8 @@ export default function Dashboard() {
       ) {
         try {
           await calendarService.syncToGoogleCalendar(novaPericia.id);
-        } catch (error) {
-          console.log("Sync opcional falhou:", error);
+        } catch {
+          // Sync com Google Calendar é opcional — falha não bloqueia a operação
         }
       }
 
@@ -88,8 +88,8 @@ export default function Dashboard() {
       if (atualizada.data_pericia && atualizada.status === "Perícia Agendada") {
         try {
           await calendarService.syncToGoogleCalendar(id);
-        } catch (error) {
-          console.log("Sync opcional falhou:", error);
+        } catch {
+          // Sync com Google Calendar é opcional — falha não bloqueia a operação
         }
       }
 
@@ -166,8 +166,8 @@ export default function Dashboard() {
           await calendarService.deleteFromGoogleCalendar(
             periciaParaDeletar.google_calendar_event_id
           );
-        } catch (error) {
-          console.log("Remoção do Calendar falhou:", error);
+        } catch {
+          // Remoção do Calendar é opcional — falha não bloqueia a exclusão da perícia
         }
       }
     },

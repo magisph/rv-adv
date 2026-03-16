@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { authService } from "@/services/authService";
 import { taskService, appointmentService, deadlineService } from "@/services";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -53,7 +53,7 @@ export default function CalendarSettings() {
           setIsConnected(false);
         }
       } catch (e) {
-        console.log("User not logged in");
+        // Usuário não autenticado — fluxo esperado antes do login
       }
     };
     loadUser();

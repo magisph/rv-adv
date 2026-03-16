@@ -182,7 +182,6 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
         requirements.serviceWorker = registrations.length > 0;
       }
 
-      console.log("📋 PWA: Requisitos", requirements);
 
       return requirements;
     };
@@ -196,7 +195,6 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
     // Verificar estado anterior
     const pwaState = getPWAState();
     if (pwaState?.dismissed && !pwaState?.installed) {
-      console.log("ℹ️ PWA: Usuário já dispensou o prompt");
       return;
     }
 
@@ -214,7 +212,6 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
 
     // Evento para Android/Desktop/Chrome
     const handleBeforeInstallPrompt = (e) => {
-      console.log("✅ PWA: beforeinstallprompt disparado");
       // Previne o mini-infobar automático do Chrome
       e.preventDefault();
       // Salva o evento para usar depois
@@ -225,7 +222,6 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
 
     // Evento quando o app é instalado
     const handleAppInstalled = () => {
-      console.log("✅ PWA: App instalado com sucesso");
       setIsInstalled(true);
       setShowInstallButton(false);
       setDeferredPrompt(null);
@@ -237,7 +233,6 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
 
     // Para iOS, mostrar botão se não estiver instalado
     if (isIOS && !checkIfInstalled() && !pwaState?.dismissed) {
-      console.log("ℹ️ PWA: iOS detectado, preparando prompt");
       setShowInstallButton(true);
     }
 
@@ -253,7 +248,6 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
   const handleInstallClick = async () => {
     if (isIOS) {
       // Para iOS, mostrar instruções
-      console.log("ℹ️ PWA: Mostrando instruções iOS");
       setShowIOSInstructions(true);
       return;
     }
@@ -265,23 +259,17 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
 
     try {
       // Mostrar prompt de instalação nativo
-      console.log("ℹ️ PWA: Mostrando prompt nativo");
       await deferredPrompt.prompt();
 
       // Aguardar a escolha do usuário
       const choiceResult = await deferredPrompt.userChoice;
 
-      console.log("📊 PWA: Escolha do usuário:", choiceResult.outcome);
-
       if (choiceResult.outcome === "accepted") {
-        console.log("✅ PWA: Instalação aceita");
         setShowInstallButton(false);
         setIsInstalled(true);
         setPWAState(false, true);
-      } else {
-        console.log("❌ PWA: Instalação cancelada pelo usuário");
-        // Não marca como dismissed se usuário apenas cancelou
       }
+      // Se cancelado, não marca como dismissed
 
       // Limpar o prompt salvo
       setDeferredPrompt(null);
@@ -292,7 +280,6 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
   };
 
   const handleDismiss = () => {
-    console.log("ℹ️ PWA: Usuário dispensou o prompt");
     setShowInstallButton(false);
     setPWAState(true, false);
   };

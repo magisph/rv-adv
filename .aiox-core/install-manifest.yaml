@@ -1,5 +1,5 @@
-version: 4.4.6
-installed_at: '2026-03-05T16:29:05.476Z'
+version: 5.0.3
+installed_at: '2026-03-16T20:08:23.314Z'
 install_type: full
 files:
   - core\code-intel-client.js
@@ -602,7 +602,6 @@ files:
   - development\template-template.md
   - development\tool-template.js
   - development\workflow-template.yaml
-  - development\.gitignore
   - development\example-agent.yaml
   - development\LICENSE
   - development\package.json
@@ -938,6 +937,7 @@ files:
   - data\learned-patterns.yaml
   - data\mcp-discipline.js
   - data\mcp-tool-examples.yaml
+  - data\registry-update-log.jsonl
   - data\csharp.md
   - data\go.md
   - data\java.md
@@ -974,7 +974,6 @@ files:
   - scripts\command-execution-hook.js
   - scripts\diagnose-installation.js
   - scripts\diagnose-npx-issue.ps1
-  - scripts\.gitignore
   - scripts\index.html
   - scripts\package-lock.json
   - scripts\package.json
