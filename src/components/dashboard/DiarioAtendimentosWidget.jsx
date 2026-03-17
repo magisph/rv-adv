@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BookOpen, PhoneCall, Plus, ArrowRight, Trash2 } from "lucide-react";
+import { BookOpen, PhoneCall, Plus, ArrowRight, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DiarioAtendimentosWidget() {
@@ -46,6 +46,7 @@ export default function DiarioAtendimentosWidget() {
   const [arquivos, setArquivos] = useState([]);
   const [encaminharAdmin, setEncaminharAdmin] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: currentUser } = useQuery({
     queryKey: ["current-user"],
@@ -305,14 +306,32 @@ export default function DiarioAtendimentosWidget() {
         </Dialog>
       </CardHeader>
 
-      <CardContent className="flex-1 p-4 pt-0 space-y-3">
+      <div className="px-4 pt-2 pb-0">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <Input
+            placeholder="Buscar por nome..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8 h-8 text-xs bg-slate-50 border-slate-200 focus:bg-white"
+          />
+        </div>
+      </div>
+
+      <CardContent className="flex-1 p-4 pt-2 space-y-3">
         {isLoading ? (
           <p className="text-sm text-slate-500 text-center py-4">Carregando atendimentos...</p>
-        ) : atendimentos?.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-4">Nenhum atendimento registrado.</p>
-        ) : (
+        ) : (() => {
+          const filteredAtendimentos = atendimentos.filter(a =>
+            a.nome_contato?.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+          return filteredAtendimentos.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-4">
+              {searchTerm ? "Nenhum resultado encontrado." : "Nenhum atendimento registrado."}
+            </p>
+          ) : (
           <div className="space-y-3 mt-2">
-            {atendimentos.map(atendimento => (
+            {filteredAtendimentos.map(atendimento => (
               <div key={atendimento.id} className="p-3 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => { if (atendimento.client_id) navigate(`/client-detail?id=${atendimento.client_id}&tab=atendimentos`); }}>
                 <div className="flex justify-between items-start flex-col gap-2">
                   <div className="space-y-1.5 w-full">
@@ -370,7 +389,7 @@ export default function DiarioAtendimentosWidget() {
               </div>
             ))}
           </div>
-        )}
+        ); })()}
       </CardContent>
     </Card>
   );
