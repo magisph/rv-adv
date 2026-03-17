@@ -47,7 +47,9 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
     queryFn: () => userService.list(),
   });
 
-  const isAdmin = currentUser?.role === "admin";
+  const userRole = currentUser?.role?.toLowerCase() || "";
+  const _isAdmin = userRole === "admin" || userRole === "dono";
+  const isAssistant = userRole === "secretaria" || userRole === "assistente";
   const isCollaborativeMode = users.length > 0;
 
   const { data: clients = [] } = useQuery({
@@ -64,6 +66,17 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
     queryKey: ["beneficios-list"],
     queryFn: () => beneficioService.list(),
   });
+
+  // Auto-assign secretaria/assistente to themselves
+  useEffect(() => {
+    if (isAssistant && currentUser?.email && !task) {
+      setFormData((prev) => ({
+        ...prev,
+        assigned_to: currentUser.email,
+        assigned_name: currentUser.full_name || currentUser.email,
+      }));
+    }
+  }, [isAssistant, currentUser]);
 
   useEffect(() => {
     if (task) {
@@ -201,31 +214,39 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
         </div>
       </div>
 
-      {isAdmin && isCollaborativeMode && (
+      {isCollaborativeMode && (
         <div className="space-y-2">
           <Label htmlFor="assigned_to">Responsável</Label>
-          <Select
-            value={
-              users.find((u) => u.email === formData.assigned_to)?.id || ""
-            }
-            onValueChange={handleUserChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um responsável" />
-            </SelectTrigger>
-            <SelectContent>
-              {users.map((user) => (
-                <SelectItem key={user.id} value={user.id}>
-                  <div className="flex items-center gap-2">
-                    {user.full_name || user.email}
-                    {user.role === "admin" && (
-                      <Crown className="w-3 h-3 text-amber-500" />
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {isAssistant ? (
+            <Input
+              value={currentUser?.full_name || currentUser?.email || ""}
+              disabled
+              className="bg-slate-100 cursor-not-allowed"
+            />
+          ) : (
+            <Select
+              value={
+                users.find((u) => u.email === formData.assigned_to)?.id || ""
+              }
+              onValueChange={handleUserChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um responsável" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    <div className="flex items-center gap-2">
+                      {user.full_name || user.email}
+                      {(user.role === "admin" || user.role === "dono") && (
+                        <Crown className="w-3 h-3 text-amber-500" />
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       )}
 

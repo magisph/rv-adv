@@ -696,7 +696,14 @@ export default function TasksWidget() {
 
   // Organizar, filtrar e ordenar tarefas
   const tasksByColumn = Object.keys(KANBAN_COLUMNS).reduce((acc, columnId) => {
+    const role = user?.role?.toLowerCase() || "";
+    const isAdmin = role === "admin" || role === "dono";
+    const isTunnelVision = role === "secretaria" || role === "assistente";
+
     const columnTasks = allTasks.filter((task) => {
+      // RBAC: Visão de Túnel — secretária/assistente só vê suas tarefas
+      if (isTunnelVision && task.assigned_to !== user?.email) return false;
+
       const taskColumn =
         task.kanban_column || (task.status === "done" ? "done" : "todo");
       const matchesColumn = taskColumn === columnId;
@@ -704,7 +711,6 @@ export default function TasksWidget() {
       const matchesDate = passesDateFilter(task);
 
       // Filtro por usuário (apenas admin)
-      const isAdmin = user?.role === "admin";
       const matchesUser =
         !isAdmin ||
         !isCollaborativeMode ||

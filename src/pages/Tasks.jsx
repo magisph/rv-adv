@@ -396,13 +396,19 @@ export default function Tasks() {
   };
 
   const filteredTasks = React.useMemo(() => {
+    const role = user?.role?.toLowerCase() || "";
+    const isTunnelVision = role === "secretaria" || role === "assistente";
+
     return tasks.filter((task) => {
+      // RBAC: Visão de Túnel — secretária/assistente só vê suas tarefas
+      if (isTunnelVision && task.assigned_to !== user?.email) return false;
+
       const matchesSearch =
         task.title?.toLowerCase().includes(search.toLowerCase()) ||
         task.description?.toLowerCase().includes(search.toLowerCase());
       return matchesSearch;
     });
-  }, [tasks, search]);
+  }, [tasks, search, user]);
 
   const getTaskUrgency = (task) => {
     if (!task.due_date || task.status === "done") return null;
