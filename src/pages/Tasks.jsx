@@ -95,7 +95,10 @@ function SortableTaskCard({ task, urgency, onEdit, onDelete, onStatusChange }) {
   // Render the original card contents but heavily structured for a vertical Kanban
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none block">
-      <Card className={`border-0 shadow-sm hover:shadow-md transition-shadow relative ${isDragging ? "ring-2 ring-blue-500/50" : ""}`}>
+      <Card 
+        className={`border-0 shadow-sm hover:shadow-md transition-shadow relative cursor-pointer ${isDragging ? "ring-2 ring-blue-500/50" : ""}`}
+        onClick={() => onEdit(task)}
+      >
         <CardContent className="p-3 leading-tight" onPointerDown={(e) => {
           if (e.target.closest("button") || e.target.closest("[role='menuitem']")) {
             // Dropdown triggers handled correctly without dragging issues
@@ -105,7 +108,8 @@ function SortableTaskCard({ task, urgency, onEdit, onDelete, onStatusChange }) {
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 const order = ["todo", "in_progress", "review", "done"];
                 const nextStatus = order[(order.indexOf(task.status) + 1) % order.length];
                 onStatusChange(task, nextStatus);
@@ -168,7 +172,7 @@ function SortableTaskCard({ task, urgency, onEdit, onDelete, onStatusChange }) {
               </div>
             </div>
 
-            <div onPointerDown={(e) => e.stopPropagation()} className="shrink-0">
+            <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} className="shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-6 w-6 -mr-1 -mt-1 hover:bg-slate-100 text-slate-400">

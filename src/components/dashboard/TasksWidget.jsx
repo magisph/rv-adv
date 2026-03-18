@@ -853,10 +853,13 @@ export default function TasksWidget() {
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onClick={() => {
+              if (!isSelectionMode) startEditTitle(task);
+            }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0, x: swipeOffset }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className={`rounded-lg border-l-4 border p-3 mb-2 shadow-sm hover:shadow-md transition-all group relative ${
+            className={`rounded-lg border-l-4 border p-3 mb-2 shadow-sm hover:shadow-md transition-all group relative cursor-pointer ${
               snapshot.isDragging ? "shadow-lg rotate-2" : ""
             } ${isCritical ? "animate-pulse-border" : ""} ${
               isOverdue ? "bg-red-50" : isToday ? "bg-orange-50" : "bg-white"
@@ -889,6 +892,7 @@ export default function TasksWidget() {
                   type="checkbox"
                   checked={selectedTasks.has(task.id)}
                   onChange={() => toggleTaskSelection(task.id)}
+                  onClick={(e) => e.stopPropagation()}
                   className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
               ) : (
@@ -911,6 +915,8 @@ export default function TasksWidget() {
                           variant="outline"
                           className={`${priorityConfig.color} text-xs cursor-pointer hover:opacity-80 transition-opacity`}
                           style={{ minWidth: "65px", minHeight: "20px" }}
+                          onClick={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
                         >
                           <PriorityIcon className="w-3 h-3 mr-1" />
                           {priorityConfig.label}
@@ -967,6 +973,7 @@ export default function TasksWidget() {
                   <Input
                     value={editTitleValue}
                     onChange={(e) => setEditTitleValue(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
                     onBlur={() => handleInlineEditTitle(task)}
                     onKeyPress={(e) => {
                       if (e.key === "Enter") handleInlineEditTitle(task);
@@ -996,6 +1003,7 @@ export default function TasksWidget() {
                     <textarea
                       value={editDescValue}
                       onChange={(e) => setEditDescValue(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
                       onBlur={() => handleInlineEditDesc(task)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && e.ctrlKey)
@@ -1070,7 +1078,8 @@ export default function TasksWidget() {
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 md:opacity-0 md:group-hover:opacity-100"
-                    onClick={() => setLongPressTask(task)}
+                    onClick={(e) => { e.stopPropagation(); setLongPressTask(task); }}
+                    onPointerDown={(e) => e.stopPropagation()}
                   >
                     <MoreVertical className="w-4 h-4" />
                   </Button>
