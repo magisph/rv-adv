@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { authService } from "@/services/authService";
+import { aiService } from "@/services/aiService";
 import { userService, clientService, processService, beneficioService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Save, X, Crown } from "lucide-react";
+import { toast } from "sonner";
 
 export default function TaskForm({ task, onSave, onCancel, isSaving }) {
   const [currentUser, setCurrentUser] = useState(null);
+  const [arquivos, setArquivos] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -124,7 +128,7 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // --- Data Sanitation ---
@@ -139,6 +143,23 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
     nullableFields.forEach((field) => {
       if (payload[field] === "") payload[field] = null;
     });
+
+    // 3. Upload attachments before saving
+    if (arquivos.length > 0) {
+      setIsUploading(true);
+      try {
+        const uploadedUrls = [];
+        for (const file of arquivos) {
+          const url = await aiService.uploadFile({ file });
+          uploadedUrls.push(url);
+        }
+        payload.attachments = uploadedUrls;
+      } catch (err) {
+        console.error("Erro no upload:", err);
+      } finally {
+        setIsUploading(false);
+      }
+    }
 
     onSave(payload);
   };
@@ -308,6 +329,29 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
         </div>
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="attachments">Anexos (PDF, DOCX)</Label>
+        <input
+          id="attachments"
+          type="file"
+          multiple
+          accept=".pdf,.docx"
+          className="block w-full text-sm text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+          onChange={(e) => {
+            const selected = Array.from(e.target.files);
+            if (selected.length > 5) {
+              toast.error("Máximo de 5 arquivos permitidos.");
+              e.target.value = "";
+              return;
+            }
+            setArquivos(selected);
+          }}
+        />
+        {arquivos.length > 0 && (
+          <p className="text-xs text-slate-500">{arquivos.length} arquivo(s) selecionado(s)</p>
+        )}
+      </div>
+
       <div className="flex items-center justify-end gap-3 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           <X className="w-4 h-4 mr-2" />
@@ -315,11 +359,11 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
         </Button>
         <Button
           type="submit"
-          disabled={isSaving}
+          disabled={isSaving || isUploading}
           className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
         >
           <Save className="w-4 h-4 mr-2" />
-          {isSaving ? "Salvando..." : "Salvar"}
+          {isUploading ? "Enviando..." : isSaving ? "Salvando..." : "Salvar"}
         </Button>
       </div>
     </form>

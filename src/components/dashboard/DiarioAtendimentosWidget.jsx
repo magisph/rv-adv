@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BookOpen, PhoneCall, Plus, ArrowRight, Trash2, Search } from "lucide-react";
+import { BookOpen, PhoneCall, Plus, ArrowRight, Trash2, Search, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DiarioAtendimentosWidget() {
@@ -47,6 +47,7 @@ export default function DiarioAtendimentosWidget() {
   const [encaminharAdmin, setEncaminharAdmin] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   const { data: currentUser } = useQuery({
     queryKey: ["current-user"],
@@ -92,6 +93,20 @@ export default function DiarioAtendimentosWidget() {
     }
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => atendimentoService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
+      setIsModalOpen(false);
+      setEditingId(null);
+      setFormData({ nome_contato: "", telefone: "", categoria: "Prospecto", assunto: "", status: "Pendente", client_id: null, origem: "", origem_nome: "", detalhes: "" });
+      toast.success("Atendimento atualizado!");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Erro ao atualizar atendimento");
+    }
+  });
+
   const handleSave = async () => {
     setIsUploading(true);
     try {
@@ -111,19 +126,23 @@ export default function DiarioAtendimentosWidget() {
         }
       }
 
-      await createMutation.mutateAsync(formData);
+      if (editingId) {
+        await updateMutation.mutateAsync({ id: editingId, data: formData });
+      } else {
+        await createMutation.mutateAsync(formData);
 
-      if (encaminharAdmin) {
-        const adminUser = users.find(u => u.role === 'admin');
-        if (adminUser) {
-          await taskService.create({
-            title: "Atendimento: " + formData.nome_contato,
-            description: formData.detalhes || formData.assunto,
-            assigned_to: adminUser.email,
-            client_id: formData.client_id,
-            priority: "media"
-          });
-          toast.success("Tarefa criada para a admin.");
+        if (encaminharAdmin) {
+          const adminUser = users.find(u => u.role === 'admin');
+          if (adminUser) {
+            await taskService.create({
+              title: "Atendimento: " + formData.nome_contato,
+              description: formData.detalhes || formData.assunto,
+              assigned_to: adminUser.email,
+              client_id: formData.client_id,
+              priority: "media"
+            });
+            toast.success("Tarefa criada para a admin.");
+          }
         }
       }
     } catch (e) {
@@ -132,6 +151,22 @@ export default function DiarioAtendimentosWidget() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleEdit = (atendimento) => {
+    setFormData({
+      nome_contato: atendimento.nome_contato || "",
+      telefone: atendimento.telefone || "",
+      categoria: atendimento.categoria || "Prospecto",
+      assunto: atendimento.assunto || "",
+      status: atendimento.status || "Pendente",
+      client_id: atendimento.client_id || null,
+      origem: atendimento.origem || "",
+      origem_nome: atendimento.origem_nome || "",
+      detalhes: atendimento.detalhes || ""
+    });
+    setEditingId(atendimento.id);
+    setIsModalOpen(true);
   };
 
   const converterCliente = (atendimento) => {
@@ -150,16 +185,16 @@ export default function DiarioAtendimentosWidget() {
           <BookOpen className="w-5 h-5 text-[#c9a227]" />
           Diário de Atendimentos
         </CardTitle>
-        <Dialog open={isModalOpen} onOpenChange={(isOpen) => { if (!isOpen && (formData.nome_contato || formData.telefone || formData.assunto)) { if (!window.confirm('Existem informações não salvas. Deseja realmente cancelar e perder os dados?')) return; } setIsModalOpen(isOpen); }}>
+        <Dialog open={isModalOpen} onOpenChange={(isOpen) => { if (!isOpen && (formData.nome_contato || formData.telefone || formData.assunto)) { if (!window.confirm('Existem informações não salvas. Deseja realmente cancelar e perder os dados?')) return; } setIsModalOpen(isOpen); if (!isOpen) { setEditingId(null); } }}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white">
+            <Button size="sm" className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white" onClick={() => { setFormData({ nome_contato: "", telefone: "", categoria: "Prospecto", assunto: "", status: "Pendente", client_id: null, origem: "", origem_nome: "", detalhes: "" }); setEditingId(null); }}>
               <Plus className="w-4 h-4 mr-1" />
               Novo
             </Button>
           </DialogTrigger>
           <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
             <DialogHeader>
-              <DialogTitle>Registrar Novo Atendimento</DialogTitle>
+              <DialogTitle>{editingId ? "Editar Atendimento" : "Registrar Novo Atendimento"}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
@@ -298,8 +333,8 @@ export default function DiarioAtendimentosWidget() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleSave} disabled={createMutation.isPending || isUploading} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white">
-                {(createMutation.isPending || isUploading) ? "Salvando..." : "Salvar Atendimento"}
+              <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending || isUploading} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white">
+                {(createMutation.isPending || updateMutation.isPending || isUploading) ? "Salvando..." : editingId ? "Salvar Edição" : "Salvar Atendimento"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -337,7 +372,7 @@ export default function DiarioAtendimentosWidget() {
                   <div className="space-y-1.5 w-full">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <h3 className="font-semibold text-sm text-slate-800">{atendimento.nome_contato}</h3>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1.5 items-center">
                         <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
                           atendimento.categoria === 'Prospecto' ? 'bg-blue-100 text-blue-800' :
                           atendimento.categoria === 'Cliente' ? 'bg-green-100 text-green-800' :
@@ -352,9 +387,12 @@ export default function DiarioAtendimentosWidget() {
                         }`}>
                           {atendimento.status}
                         </span>
-                        {currentUser?.role === 'admin' && (
-                          <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); if(window.confirm('Excluir este atendimento?')) deleteMutation.mutate(atendimento.id); }}>
-                            <Trash2 className="w-4 h-4" />
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-600" onClick={(e) => { e.stopPropagation(); handleEdit(atendimento); }}>
+                          <Pencil className="w-3 h-3" />
+                        </Button>
+                        {(currentUser?.role === 'admin' || currentUser?.role === 'dono') && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); if(window.confirm('Excluir este atendimento?')) deleteMutation.mutate(atendimento.id); }}>
+                            <Trash2 className="w-3 h-3" />
                           </Button>
                         )}
                       </div>
@@ -373,6 +411,9 @@ export default function DiarioAtendimentosWidget() {
                     <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded border border-slate-100 mt-1 line-clamp-2">
                       {atendimento.assunto}
                     </p>
+                    {atendimento.detalhes && (
+                      <p className="text-[11px] text-slate-500 italic mt-1 line-clamp-2">{atendimento.detalhes}</p>
+                    )}
                   </div>
                   
                   {atendimento.categoria === 'Prospecto' && atendimento.status === 'Pendente' && (
