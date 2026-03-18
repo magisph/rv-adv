@@ -28,7 +28,6 @@ import {
   Circle,
   Clock,
   Eye,
-  AlertCircle,
   Edit,
   Trash2,
 } from "lucide-react";
@@ -270,6 +269,7 @@ export default function Tasks() {
     mutationFn: (data) => taskService.create(data),
     onSuccess: async (task) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["monitor-tasks"] });
       setShowForm(false);
@@ -296,6 +296,7 @@ export default function Tasks() {
     mutationFn: ({ id, data }) => taskService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["monitor-tasks"] });
       setShowForm(false);
@@ -306,7 +307,10 @@ export default function Tasks() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => taskService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
+    },
     onError: (error) => toast.error(error.message || "Erro ao excluir tarefa"),
   });
 
@@ -338,7 +342,7 @@ export default function Tasks() {
         return;
       }
       if (newStatus === "done") {
-        toast.error("Apenas o administrador pode dar a tarefa como Concluída");
+        toast.error("Apenas a advogada (admin) pode revisar e concluir as tarefas.");
         return;
       }
     }
@@ -383,7 +387,7 @@ export default function Tasks() {
         return;
       }
       if (newStatus === "done") {
-        toast.error("Apenas o administrador pode dar a tarefa como Concluída");
+        toast.error("Apenas a advogada (admin) pode revisar e concluir as tarefas.");
         return; // BLOQUEIO CRÍTICO
       }
     }

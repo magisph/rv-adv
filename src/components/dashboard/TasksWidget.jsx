@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { userService, taskService, notificationService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -251,24 +252,24 @@ export default function TasksWidget() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => taskService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["kanban-tasks"]);
-      queryClient.invalidateQueries(["tasks"]);
+      queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => taskService.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries(["kanban-tasks"]);
-      queryClient.invalidateQueries(["tasks"]);
+      queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 
   const createMutation = useMutation({
     mutationFn: (data) => taskService.create(data),
     onSuccess: async (task) => {
-      queryClient.invalidateQueries(["kanban-tasks"]);
-      queryClient.invalidateQueries(["tasks"]);
+      queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       setShowForm(false);
       setShowQuickCreate(false);
       setQuickTaskTitle("");
@@ -305,10 +306,19 @@ export default function TasksWidget() {
     if (!task) return;
 
     // Verificar permissões
-    const isAdmin = user?.role === "admin";
+    const userRole = user?.role?.toLowerCase() || "";
+    const isAdmin = userRole === "admin" || userRole === "dono";
     const isMyTask = task.assigned_to === user?.email;
 
     if (!isAdmin && !isMyTask) return;
+
+    // RBAC — Pipeline de Aprovação Estrita
+    if (userRole === "secretaria" || userRole === "assistente") {
+      if (destination.droppableId === "done") {
+        toast.error("Apenas a advogada (admin) pode revisar e concluir as tarefas.");
+        return;
+      }
+    }
 
     const newColumn = KANBAN_COLUMNS[destination.droppableId];
 
@@ -345,6 +355,16 @@ export default function TasksWidget() {
   };
 
   const handleMoveTask = async (task, columnId) => {
+    // RBAC — Pipeline de Aprovação Estrita
+    const userRole = user?.role?.toLowerCase() || "";
+    if (userRole === "secretaria" || userRole === "assistente") {
+      if (columnId === "done") {
+        toast.error("Apenas a advogada (admin) pode revisar e concluir as tarefas.");
+        setLongPressTask(null);
+        return;
+      }
+    }
+
     const newColumn = KANBAN_COLUMNS[columnId];
     await updateMutation.mutateAsync({
       id: task.id,
