@@ -52,13 +52,8 @@ export class BaseService {
   }
   
   async delete(id) {
-    const { error } = await supabase
-      .from(this.table)
-      .delete()
-      .eq('id', id);
-      
+    const { error } = await supabase.from(this.table).delete().eq('id', id);
     if (error) throw error;
-    return true;
   }
   
   async getById(id) {
