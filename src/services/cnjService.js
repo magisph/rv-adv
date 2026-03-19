@@ -1,9 +1,12 @@
 // ============================================================================
 // cnjService.js — Motor de Buscas do Governo (DataJud + DJEN)
-// Padrão Ouro: Consulta via Proxy local (evita CORS)
+// DataJud: Consulta via Edge Function global (datajud-bypass) no Supabase.
+// DJEN: Consulta via Proxy local (localhost:3001) — migração pendente.
 // ============================================================================
 
-// ─── Proxy Config (backend local em localhost:3001) ─────────────────────────
+import { supabase } from '../lib/supabase';
+
+// ─── Proxy Config (DJEN ainda usa backend local em localhost:3001) ────────────
 const PROXY_BASE = "http://localhost:3001";
 
 // ─── Mapeamento J+TT → Sigla do Tribunal (Jurisdição do escritório: CE) ─────
@@ -66,27 +69,28 @@ export function formatarNumeroCNJ(numeroCNJ) {
 // ============================================================================
 // datajudBuscaNumero(numero)
 //
-// POST para o proxy local que repassa ao DataJud.
+// Invoca a Edge Function 'datajud-bypass' no Supabase (global, sem CORS).
 // Retorna: { classeProcessual, assuntos, movimentos, orgaoJulgador, _raw }
 // ============================================================================
 export async function datajudBuscaNumero(numero) {
   const sigla = resolverTribunal(numero);
   const numeroFormatado = formatarNumeroCNJ(numero);
 
-  const response = await fetch(`${PROXY_BASE}/api/cnj/datajud`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sigla, numeroFormatado }),
+  const { data, error } = await supabase.functions.invoke('datajud-bypass', {
+    body: { sigla, numeroFormatado },
   });
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
+  if (error) {
+    throw new Error(`DataJud Edge Function erro (${sigla}): ${error.message}`);
+  }
+
+  if (!data?.success) {
     throw new Error(
-      `DataJud erro ${response.status} (${sigla}): ${text || response.statusText}`
+      `DataJud erro (${sigla}): ${data?.error || 'Resposta inesperada da Edge Function'}`
     );
   }
 
-  const json = await response.json();
+  const json = data.data;
 
   const hits = json?.hits?.hits ?? [];
   if (hits.length === 0) {
