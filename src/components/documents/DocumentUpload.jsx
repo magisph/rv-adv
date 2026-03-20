@@ -44,7 +44,7 @@ export default function DocumentUpload({
       const docData = {
         name: data.name || file.name,
         file_url,
-        document_type: data.documentType,
+        document_type: data.documentType || null,
         parent_type: parentType,
         parent_id: parentId,
         ocr_processed: false,

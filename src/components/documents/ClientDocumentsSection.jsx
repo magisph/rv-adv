@@ -405,13 +405,27 @@ function DocumentTypeCard({
           file.type === "image/png" ||
           file.type === "application/pdf")
       ) {
-        // Mostrar opção de OCR
         setOcrFileUrl(file_url);
         setOcrDocType(typeId);
         setShowOCR(true);
       }
 
-      // Criar documento
+      // Serializar campos dinâmicos (ex: data_comprovante, numero_protocolo)
+      // em uma string de descrição para não poluir o payload com colunas inexistentes
+      const extraFields = fields || {};
+      const descriptionParts = Object.entries(extraFields)
+        .filter(([, v]) => v !== "" && v != null)
+        .map(([k, v]) => {
+          const label = k
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+          return `${label}: ${v}`;
+        });
+      const description = descriptionParts.length > 0
+        ? descriptionParts.join(" | ")
+        : null;
+
+      // Criar documento — apenas colunas válidas da tabela documents
       return documentService.create({
         name: file.name,
         file_url,
@@ -421,8 +435,8 @@ function DocumentTypeCard({
         parent_id: clientId,
         is_active: true,
         file_size: file.size,
-        file_type: file.type,
-        ...fields,
+        file_type: file.type || null,
+        description,
       });
     },
     onSuccess: () => {
