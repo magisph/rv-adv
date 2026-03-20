@@ -177,6 +177,8 @@ export default function ClientDetail() {
     queryKey: ["client-atendimentos", clientId],
     queryFn: () => atendimentoService.filter({ client_id: clientId }, "-created_at"),
     enabled: !!clientId,
+    staleTime: 2 * 60 * 1000, // 2 minutos
+    gcTime: 10 * 60 * 1000,   // 10 minutos
   });
 
   const deleteAtendimentoMutation = useMutation({
@@ -924,6 +926,10 @@ export default function ClientDetail() {
           <ClientDocumentsSection
             clientId={clientId}
             clientName={client?.full_name}
+            isMarried={
+              client?.estado_civil === "casado" ||
+              client?.estado_civil === "uniao_estavel"
+            }
           />
         </TabsContent>
 

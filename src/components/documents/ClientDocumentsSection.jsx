@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { documentService, clientService } from "@/services";
+import { documentService } from "@/services";
 import { aiService } from "@/services/aiService";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -818,29 +818,33 @@ function DocumentTypeCard({
                         )}
                       </div>
                     ))}
-                    <div className="flex gap-2 mt-2">
-                      <Button
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => handleUploadConfirm(type.id)}
-                        disabled={uploadMutation.isPending}
-                      >
-                        {uploadMutation.isPending
-                          ? "Enviando..."
-                          : "Confirmar Upload"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs"
-                        onClick={() => {
-                          setUploadingType(null);
-                          setUploadFields({});
-                        }}
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
+                  </div>
+                )}
+
+                {/* Botão de confirmação — renderiza SEMPRE que um arquivo está selecionado */}
+                {isUploading && (
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => handleUploadConfirm(type.id)}
+                      disabled={uploadMutation.isPending}
+                    >
+                      {uploadMutation.isPending
+                        ? "Enviando..."
+                        : "Confirmar Upload"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                      onClick={() => {
+                        setUploadingType(null);
+                        setUploadFields({});
+                      }}
+                    >
+                      Cancelar
+                    </Button>
                   </div>
                 )}
               </div>
@@ -881,6 +885,7 @@ function DocumentTypeCard({
 export default function ClientDocumentsSection({
   clientId,
   clientName,
+  isMarried: isMarriedProp,
   onOCRDataExtracted,
 }) {
   const queryClient = useQueryClient();
@@ -895,15 +900,6 @@ export default function ClientDocumentsSection({
     enabled: !!clientId,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-  });
-
-  const { data: client } = useQuery({
-    queryKey: ["client", clientId],
-    queryFn: () => clientService.filter({ id: clientId }),
-    select: (data) => data[0],
-    enabled: !!clientId,
-    staleTime: 3 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
   });
 
   const handleRefresh = () => {
@@ -948,9 +944,7 @@ export default function ClientDocumentsSection({
     }
   };
 
-  const isMarried =
-    client?.estado_civil === "casado" ||
-    client?.estado_civil === "uniao_estavel";
+  const isMarried = !!isMarriedProp;
 
   return (
     <div className="space-y-4">
