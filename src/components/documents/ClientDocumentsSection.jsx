@@ -990,12 +990,66 @@ export default function ClientDocumentsSection({
     }
   };
 
+  const [isBulkDownloadingAll, setIsBulkDownloadingAll] = useState(false);
+
+  const handleDownloadAll = async () => {
+    const activeDocs = documents.filter((d) => d.is_active !== false && d.file_url);
+    if (activeDocs.length === 0) {
+      toast.warning("Nenhum documento disponível para download.");
+      return;
+    }
+    setIsBulkDownloadingAll(true);
+    toast.info(`Preparando malote com ${activeDocs.length} documento(s)...`);
+    try {
+      const zip = new JSZip();
+      await Promise.all(
+        activeDocs.map(async (doc) => {
+          try {
+            const response = await fetch(doc.file_url);
+            const blob = await response.blob();
+            zip.file(doc.name || `documento_${doc.id}`, blob);
+          } catch (err) {
+            console.warn(`Falha ao baixar "${doc.name}":`, err);
+          }
+        })
+      );
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      saveAs(zipBlob, "Documentos_Completos_Cliente.zip");
+      toast.success("Malote Digital gerado com sucesso!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar o Malote Digital.");
+    } finally {
+      setIsBulkDownloadingAll(false);
+    }
+  };
+
   const isMarried =
     client?.estado_civil === "casado" ||
     client?.estado_civil === "uniao_estavel";
 
   return (
     <div className="space-y-4">
+      {/* Header Global: Malote Digital */}
+      <div className="flex items-center justify-between px-1">
+        <div>
+          <h2 className="text-xl font-bold text-slate-800">Documentos do Cliente</h2>
+          {clientName && (
+            <p className="text-sm text-slate-500">{clientName}</p>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white"
+          onClick={handleDownloadAll}
+          disabled={isBulkDownloadingAll || documents.filter((d) => d.is_active !== false).length === 0}
+        >
+          <Archive className="w-4 h-4" />
+          {isBulkDownloadingAll ? "Gerando ZIP..." : "Baixar Todos (ZIP)"}
+        </Button>
+      </div>
+
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3, 4].map((i) => (

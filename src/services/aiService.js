@@ -16,7 +16,7 @@ async function uploadFileToStorage(file) {
   const filePath = `documents/${fileName}`;
 
   const { data, error } = await supabase.storage
-    .from('uploads')
+    .from('client-documents')
     .upload(filePath, file, {
       cacheControl: '3600',
       upsert: false
@@ -25,7 +25,7 @@ async function uploadFileToStorage(file) {
   if (error) throw error;
 
   const { data: urlData } = supabase.storage
-    .from('uploads')
+    .from('client-documents')
     .getPublicUrl(data.path);
 
   return { file_url: urlData.publicUrl, path: data.path };
