@@ -33,7 +33,6 @@ import {
   Archive,
 } from "lucide-react";
 import { toast } from "sonner";
-import OCRExtractor from "./OCRExtractor";
 
 // Definição das categorias e seus tipos de documentos
 const DOCUMENT_TYPES = {
@@ -853,29 +852,6 @@ function DocumentTypeCard({
 
 
 
-          {/* OCR Extractor */}
-          {showOCR && ocrFileUrl && (
-            <div className="mt-4">
-              <OCRExtractor
-                fileUrl={ocrFileUrl}
-                documentType={ocrDocType}
-                onDataExtracted={(data) => {
-                  onOCRData(data);
-                  setShowOCR(false);
-                  setOcrFileUrl(null);
-                  setOcrDocType(null);
-                  toast.success(
-                    "Dados extraídos! Use-os para preencher o formulário do cliente.",
-                  );
-                }}
-                onCancel={() => {
-                  setShowOCR(false);
-                  setOcrFileUrl(null);
-                  setOcrDocType(null);
-                }}
-              />
-            </div>
-          )}
         </CardContent>
       )}
     </Card>
