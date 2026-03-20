@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { userService, taskService, notificationService } from "@/services";
@@ -44,6 +44,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import TaskForm from "@/components/tasks/TaskForm";
 
 const PRIORITY_CONFIG = {
   urgente: {
@@ -109,6 +110,7 @@ const KANBAN_COLUMNS = {
 
 export default function TasksWidget() {
   const [showForm, setShowForm] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [quickTaskTitle, setQuickTaskTitle] = useState("");
   const [quickTaskColumn, setQuickTaskColumn] = useState("todo");
@@ -116,10 +118,6 @@ export default function TasksWidget() {
   const [quickTaskDueDate, setQuickTaskDueDate] = useState("");
   const [quickAssignedUser, setQuickAssignedUser] = useState("");
   const [longPressTask, setLongPressTask] = useState(null);
-  const [editingTaskTitle, setEditingTaskTitle] = useState(null);
-  const [editTitleValue, setEditTitleValue] = useState("");
-  const [editingTaskDesc, setEditingTaskDesc] = useState(null);
-  const [editDescValue, setEditDescValue] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -486,48 +484,19 @@ export default function TasksWidget() {
     setLongPressTask(null);
   };
 
-  const handleInlineEditTitle = async (task) => {
-    if (!editTitleValue.trim() || editTitleValue === task.title) {
-      setEditingTaskTitle(null);
-      return;
+  const handleEdit = (task) => {
+    setEditingTask(task);
+    setShowForm(true);
+  };
+
+  const handleSave = (data) => {
+    if (editingTask) {
+      updateMutation.mutate({ id: editingTask.id, data });
+    } else {
+      createMutation.mutate(data);
     }
-
-    await updateMutation.mutateAsync({
-      id: task.id,
-      data: { ...task, title: editTitleValue },
-    });
-    setEditingTaskTitle(null);
-  };
-
-  const startEditTitle = (task) => {
-    const isAdmin = user?.role === "admin";
-    const isMyTask = task.assigned_to === user?.email;
-    if (!isAdmin && !isMyTask) return;
-
-    setEditingTaskTitle(task.id);
-    setEditTitleValue(task.title);
-  };
-
-  const handleInlineEditDesc = async (task) => {
-    if (editDescValue === task.description) {
-      setEditingTaskDesc(null);
-      return;
-    }
-
-    await updateMutation.mutateAsync({
-      id: task.id,
-      data: { ...task, description: editDescValue },
-    });
-    setEditingTaskDesc(null);
-  };
-
-  const startEditDesc = (task) => {
-    const isAdmin = user?.role === "admin";
-    const isMyTask = task.assigned_to === user?.email;
-    if (!isAdmin && !isMyTask) return;
-
-    setEditingTaskDesc(task.id);
-    setEditDescValue(task.description || "");
+    setShowForm(false);
+    setEditingTask(null);
   };
 
   const toggleTaskSelection = (taskId) => {
@@ -714,72 +683,74 @@ export default function TasksWidget() {
     return false;
   };
 
-  // Organizar, filtrar e ordenar tarefas
-  const tasksByColumn = Object.keys(KANBAN_COLUMNS).reduce((acc, columnId) => {
+  // Organizar, filtrar e ordenar tarefas — useMemo para evitar re-renders durante DnD
+  const tasksByColumn = useMemo(() => {
     const role = user?.role?.toLowerCase() || "";
     const isAdmin = role === "admin" || role === "dono";
     const isTunnelVision = role === "secretaria" || role === "assistente";
 
-    const columnTasks = allTasks.filter((task) => {
-      // RBAC: Visão de Túnel — secretária/assistente só vê suas tarefas
-      if (isTunnelVision && task.assigned_to !== user?.email) return false;
+    return Object.keys(KANBAN_COLUMNS).reduce((acc, columnId) => {
+      const columnTasks = allTasks.filter((task) => {
+        // RBAC: Visão de Túnel — secretária/assistente só vê suas tarefas
+        if (isTunnelVision && task.assigned_to !== user?.email) return false;
 
-      const taskColumn =
-        task.kanban_column || (task.status === "done" ? "done" : "todo");
-      const matchesColumn = taskColumn === columnId;
-      const matchesPriority = priorityFilters[task.priority || "media"];
-      const matchesDate = passesDateFilter(task);
+        const taskColumn =
+          task.kanban_column || (task.status === "done" ? "done" : "todo");
+        const matchesColumn = taskColumn === columnId;
+        const matchesPriority = priorityFilters[task.priority || "media"];
+        const matchesDate = passesDateFilter(task);
 
-      // Filtro por usuário (apenas admin)
-      const matchesUser =
-        !isAdmin ||
-        !isCollaborativeMode ||
-        userFilters[task.assigned_to] !== false;
+        // Filtro por usuário (apenas admin)
+        const matchesUser =
+          !isAdmin ||
+          !isCollaborativeMode ||
+          userFilters[task.assigned_to] !== false;
 
-      // Filtro de busca por texto
-      const matchesSearch =
-        !searchQuery ||
-        task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.client_name?.toLowerCase().includes(searchQuery.toLowerCase());
+        // Filtro de busca por texto
+        const matchesSearch =
+          !searchQuery ||
+          task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          task.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          task.client_name?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return (
-        matchesColumn &&
-        matchesPriority &&
-        matchesDate &&
-        matchesUser &&
-        matchesSearch
-      );
-    });
+        return (
+          matchesColumn &&
+          matchesPriority &&
+          matchesDate &&
+          matchesUser &&
+          matchesSearch
+        );
+      });
 
-    // Ordenar por prioridade ou data
-    acc[columnId] = columnTasks.sort((a, b) => {
-      if (sortBy === "due_date") {
-        const statusA = getTemporalStatus(a.due_date);
-        const statusB = getTemporalStatus(b.due_date);
+      // Ordenar por prioridade ou data
+      acc[columnId] = columnTasks.sort((a, b) => {
+        if (sortBy === "due_date") {
+          const statusA = getTemporalStatus(a.due_date);
+          const statusB = getTemporalStatus(b.due_date);
 
-        // Sem data vai para o final
-        if (!a.due_date && !b.due_date) return 0;
-        if (!a.due_date) return 1;
-        if (!b.due_date) return -1;
+          // Sem data vai para o final
+          if (!a.due_date && !b.due_date) return 0;
+          if (!a.due_date) return 1;
+          if (!b.due_date) return -1;
 
-        // Ordenar por prioridade temporal
-        if (statusA.priority !== statusB.priority) {
-          return statusA.priority - statusB.priority;
+          // Ordenar por prioridade temporal
+          if (statusA.priority !== statusB.priority) {
+            return statusA.priority - statusB.priority;
+          }
+
+          // Se mesma prioridade temporal, ordenar por data
+          return new Date(a.due_date) - new Date(b.due_date);
+        } else {
+          // Ordenar por prioridade
+          const priorityA = PRIORITY_CONFIG[a.priority || "media"]?.order ?? 2;
+          const priorityB = PRIORITY_CONFIG[b.priority || "media"]?.order ?? 2;
+          return priorityA - priorityB;
         }
+      });
 
-        // Se mesma prioridade temporal, ordenar por data
-        return new Date(a.due_date) - new Date(b.due_date);
-      } else {
-        // Ordenar por prioridade
-        const priorityA = PRIORITY_CONFIG[a.priority || "media"]?.order ?? 2;
-        const priorityB = PRIORITY_CONFIG[b.priority || "media"]?.order ?? 2;
-        return priorityA - priorityB;
-      }
-    });
-
-    return acc;
-  }, {});
+      return acc;
+    }, {});
+  }, [allTasks, user, priorityFilters, periodFilters, userFilters, searchQuery, sortBy, isCollaborativeMode]);
 
   const filteredTaskCount = Object.values(tasksByColumn).flat().length;
 
@@ -854,7 +825,7 @@ export default function TasksWidget() {
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onClick={() => {
-              if (!isSelectionMode) startEditTitle(task);
+              if (!isSelectionMode) handleEdit(task);
             }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0, x: swipeOffset }}
@@ -969,27 +940,9 @@ export default function TasksWidget() {
                   </span>
                 </div>
 
-                {editingTaskTitle === task.id ? (
-                  <Input
-                    value={editTitleValue}
-                    onChange={(e) => setEditTitleValue(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    onBlur={() => handleInlineEditTitle(task)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") handleInlineEditTitle(task);
-                      if (e.key === "Escape") setEditingTaskTitle(null);
-                    }}
-                    autoFocus
-                    className="text-sm mb-1"
-                  />
-                ) : (
-                  <h4
-                    className="font-medium text-slate-800 text-sm mb-1 break-words cursor-text hover:bg-slate-50 rounded px-1 -mx-1"
-                    onDoubleClick={() => startEditTitle(task)}
-                  >
-                    {task.title}
-                  </h4>
-                )}
+                <h4 className="font-medium text-slate-800 text-sm mb-1 break-words">
+                  {task.title}
+                </h4>
 
                 {task.client_name && (
                   <p className="text-xs text-slate-500 truncate mb-1">
@@ -997,32 +950,11 @@ export default function TasksWidget() {
                   </p>
                 )}
 
-                {/* Descrição editável inline */}
-                {(task.description || editingTaskDesc === task.id) &&
-                  (editingTaskDesc === task.id ? (
-                    <textarea
-                      value={editDescValue}
-                      onChange={(e) => setEditDescValue(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      onBlur={() => handleInlineEditDesc(task)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && e.ctrlKey)
-                          handleInlineEditDesc(task);
-                        if (e.key === "Escape") setEditingTaskDesc(null);
-                      }}
-                      autoFocus
-                      className="text-xs text-slate-600 mb-1 w-full border rounded px-2 py-1"
-                      rows="2"
-                      placeholder="Adicionar descrição..."
-                    />
-                  ) : (
-                    <p
-                      className="text-xs text-slate-600 mb-1 break-words cursor-text hover:bg-slate-50 rounded px-1 -mx-1"
-                      onDoubleClick={() => startEditDesc(task)}
-                    >
-                      {task.description}
-                    </p>
-                  ))}
+                {task.description && (
+                  <p className="text-xs text-slate-600 mb-1 break-words line-clamp-2">
+                    {task.description}
+                  </p>
+                )}
 
                 {task.due_date && (
                   <div className="flex items-center gap-1 text-xs">
@@ -1623,6 +1555,21 @@ export default function TasksWidget() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Task Dialog — abre ao clicar no card */}
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); setEditingTask(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingTask ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
+          </DialogHeader>
+          <TaskForm
+            task={editingTask}
+            onSave={handleSave}
+            onCancel={() => { setShowForm(false); setEditingTask(null); }}
+            isSaving={updateMutation.isPending || createMutation.isPending}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Quick Create Dialog */}
       <Dialog open={showQuickCreate} onOpenChange={setShowQuickCreate}>
