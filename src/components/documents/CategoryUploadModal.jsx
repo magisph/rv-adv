@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { documentService } from "@/services";
 import { aiService } from "@/services/aiService";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,10 @@ export default function CategoryUploadModal({
 
   const addFiles = (newFiles) => {
     const validFiles = newFiles.filter((file) => {
-      if (!ACCEPTED_TYPES.includes(file.type)) {
+      const fileExt = file.name.split('.').pop().toLowerCase();
+      const validExts = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'tiff'];
+
+      if (!ACCEPTED_TYPES.includes(file.type) && !validExts.includes(fileExt)) {
         alert(`Arquivo "${file.name}" não é um tipo aceito.`);
         return false;
       }
