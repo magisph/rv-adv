@@ -35,6 +35,7 @@ import {
   Clock,
   Plus,
   RefreshCw,
+  ChevronLeft,
   ChevronRight,
   Calendar,
   MoreVertical,
@@ -935,9 +936,6 @@ export default function TasksWidget() {
                     </Badge>
                   )}
 
-                  <span className="text-xs font-medium text-slate-500 truncate ml-auto">
-                    #{task.id.slice(0, 6)}
-                  </span>
                 </div>
 
                 <h4 className="font-medium text-slate-800 text-sm mb-1 break-words">
@@ -999,6 +997,43 @@ export default function TasksWidget() {
                     </span>
                   </div>
                 )}
+
+                {/* Teletransporte: setas de navegação de status */}
+                {(() => {
+                  const ORDER = ["todo", "in_progress", "review", "done"];
+                  const currentCol = task.kanban_column || (task.status === "done" ? "done" : "todo");
+                  const normalizedCol = currentCol === "in_review" ? "review" : currentCol;
+                  const idx = ORDER.indexOf(normalizedCol);
+                  const prevCol = idx > 0 ? ORDER[idx - 1] : null;
+                  const nextCol = idx < ORDER.length - 1 ? ORDER[idx + 1] : null;
+                  const LABELS = { todo: "A Fazer", in_progress: "Em Progresso", review: "Em Revisão", done: "Concluído" };
+                  return (
+                    <div
+                      className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100"
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        disabled={!prevCol}
+                        onClick={(e) => { e.stopPropagation(); if (prevCol) handleMoveTask(task, prevCol); }}
+                        className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+                      >
+                        <ChevronLeft className="w-3 h-3" />
+                        {prevCol ? LABELS[prevCol] : null}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!nextCol}
+                        onClick={(e) => { e.stopPropagation(); if (nextCol) handleMoveTask(task, nextCol); }}
+                        className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+                      >
+                        {nextCol ? LABELS[nextCol] : null}
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
 
               <DropdownMenu

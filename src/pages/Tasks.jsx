@@ -30,6 +30,8 @@ import {
   Eye,
   Edit,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -190,6 +192,42 @@ function SortableTaskCard({ task, urgency, onEdit, onDelete, onStatusChange }) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
+
+            {/* Teletransporte: setas de navegação de status */}
+            <div
+              className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {(() => {
+                const ORDER = ["todo", "in_progress", "review", "done"];
+                const idx = ORDER.indexOf(task.status);
+                const prevStatus = idx > 0 ? ORDER[idx - 1] : null;
+                const nextStatus = idx < ORDER.length - 1 ? ORDER[idx + 1] : null;
+                return (
+                  <>
+                    <button
+                      type="button"
+                      disabled={!prevStatus}
+                      onClick={(e) => { e.stopPropagation(); if (prevStatus) onStatusChange(task, prevStatus); }}
+                      className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+                    >
+                      <ChevronLeft className="w-3 h-3" />
+                      {prevStatus === "todo" ? "A Fazer" : prevStatus === "in_progress" ? "Em Progresso" : prevStatus === "review" ? "Em Revisão" : null}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!nextStatus}
+                      onClick={(e) => { e.stopPropagation(); if (nextStatus) onStatusChange(task, nextStatus); }}
+                      className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+                    >
+                      {nextStatus === "in_progress" ? "Em Progresso" : nextStatus === "review" ? "Em Revisão" : nextStatus === "done" ? "Concluído" : null}
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </CardContent>
