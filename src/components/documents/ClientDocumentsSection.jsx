@@ -29,7 +29,6 @@ import {
   Building,
   Heart,
   Sprout,
-  Plus,
   LineChart,
   Archive,
 } from "lucide-react";
@@ -376,11 +375,6 @@ function DocumentTypeCard({
   const [expanded, setExpanded] = useState(false);
   const [uploadingType, setUploadingType] = useState(null);
   const [uploadFields, setUploadFields] = useState({});
-  const [customTypes, setCustomTypes] = useState([]);
-  const [showAddCustom, setShowAddCustom] = useState(false);
-  const [customName, setCustomName] = useState("");
-  const [observations, setObservations] = useState("");
-  const [showObservations, setShowObservations] = useState(false);
   const [showOCR, setShowOCR] = useState(false);
   const [ocrFileUrl, setOcrFileUrl] = useState(null);
   const [ocrDocType, setOcrDocType] = useState(null);
@@ -494,20 +488,6 @@ function DocumentTypeCard({
     });
   };
 
-  const handleAddCustomType = () => {
-    if (!customName.trim()) return;
-    setCustomTypes([
-      ...customTypes,
-      {
-        id: `custom_${Date.now()}`,
-        label: customName,
-        allowMultiple: true,
-        fields: [],
-      },
-    ]);
-    setCustomName("");
-    setShowAddCustom(false);
-  };
 
   const getDocsForType = (typeId) => {
     return categoryDocs.filter((doc) => doc.subcategory === typeId);
@@ -544,20 +524,22 @@ function DocumentTypeCard({
     toast.info(`Preparando ${docsToDownload.length} arquivo(s) para download...`);
     try {
       const zip = new JSZip();
-      await Promise.all(
-        docsToDownload.map(async (doc) => {
+      for (const doc of docsToDownload) {
+        try {
           const response = await fetch(doc.file_url);
+          if (!response.ok) throw new Error(`Falha no download: ${response.status}`);
           const blob = await response.blob();
-          zip.file(doc.name, blob);
-        })
-      );
+          zip.file(doc.name || `documento_${doc.id}`, blob);
+        } catch {
+          // arquivo individual falhou — continua com os demais
+        }
+      }
       const today = new Date().toISOString().split("T")[0];
       const zipBlob = await zip.generateAsync({ type: "blob" });
       saveAs(zipBlob, `Documentos_${category.name}_${today}.zip`);
       toast.success("ZIP gerado com sucesso!");
       setSelectedDocs(new Set());
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Erro ao gerar o arquivo ZIP.");
     } finally {
       setIsBulkDownloading(false);
@@ -565,13 +547,13 @@ function DocumentTypeCard({
   };
 
   const allTypes = React.useMemo(() => {
-    const types = [...category.types, ...customTypes];
+    const types = [...category.types];
     if (categoryKey === "rurais" && isMarried && category.conjugeTypes) {
       types.push({ divider: true, label: "Documentos do Cônjuge" });
       types.push(...category.conjugeTypes);
     }
     return types;
-  }, [category.types, customTypes, categoryKey, isMarried, category.conjugeTypes]);
+  }, [category.types, categoryKey, isMarried, category.conjugeTypes]);
 
   const docsCount = categoryDocs.length;
 
@@ -851,77 +833,7 @@ function DocumentTypeCard({
             );
           })}
 
-          {/* Botão adicionar outros */}
-          {categoryKey !== "rurais" && (
-            <div className="pt-2">
-              {showAddCustom ? (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Nome do documento..."
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    className="h-9 text-sm"
-                  />
-                  <Button size="sm" onClick={handleAddCustomType}>
-                    Adicionar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddCustom(false);
-                      setCustomName("");
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs"
-                  onClick={() => setShowAddCustom(true)}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Adicionar Outro Documento {category.name}
-                </Button>
-              )}
-            </div>
-          )}
 
-          {/* Campo de observações */}
-          <div className="pt-3 border-t">
-            {showObservations ? (
-              <div className="space-y-2">
-                <Label className="text-xs text-slate-600">Observações</Label>
-                <textarea
-                  className="w-full h-20 text-xs p-2 border rounded resize-none"
-                  placeholder="Adicione observações sobre estes documentos..."
-                  value={observations}
-                  onChange={(e) => setObservations(e.target.value)}
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs"
-                  onClick={() => setShowObservations(false)}
-                >
-                  Ocultar
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-xs text-slate-500"
-                onClick={() => setShowObservations(true)}
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                Adicionar observações
-              </Button>
-            )}
-          </div>
 
           {/* OCR Extractor */}
           {showOCR && ocrFileUrl && (
@@ -1002,22 +914,20 @@ export default function ClientDocumentsSection({
     toast.info(`Preparando malote com ${activeDocs.length} documento(s)...`);
     try {
       const zip = new JSZip();
-      await Promise.all(
-        activeDocs.map(async (doc) => {
-          try {
-            const response = await fetch(doc.file_url);
-            const blob = await response.blob();
-            zip.file(doc.name || `documento_${doc.id}`, blob);
-          } catch (err) {
-            console.warn(`Falha ao baixar "${doc.name}":`, err);
-          }
-        })
-      );
+      for (const doc of activeDocs) {
+        try {
+          const response = await fetch(doc.file_url);
+          if (!response.ok) throw new Error(`Falha no download: ${response.status}`);
+          const blob = await response.blob();
+          zip.file(doc.name || `documento_${doc.id}`, blob);
+        } catch {
+          // arquivo individual falhou — continua com os demais
+        }
+      }
       const zipBlob = await zip.generateAsync({ type: "blob" });
       saveAs(zipBlob, "Documentos_Completos_Cliente.zip");
       toast.success("Malote Digital gerado com sucesso!");
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Erro ao gerar o Malote Digital.");
     } finally {
       setIsBulkDownloadingAll(false);
