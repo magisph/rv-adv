@@ -3,7 +3,7 @@
  * Comunicação HTTP com o servidor local de scraping (porta 3001).
  */
 
-const SCRAPER_BASE_URL = 'http://localhost:3001';
+const SCRAPER_BASE_URL = 'http://46.224.176.59:3001';
 
 async function handleResponse(response) {
   const data = await response.json();

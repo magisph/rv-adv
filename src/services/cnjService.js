@@ -7,7 +7,7 @@
 import { supabase } from '../lib/supabase';
 
 // ─── Proxy Config (DJEN ainda usa backend local em localhost:3001) ────────────
-const PROXY_BASE = "http://localhost:3001";
+const PROXY_BASE = "https://rafaelavasconcelos.adv.br";
 
 // ─── Mapeamento J+TT → Sigla do Tribunal (Jurisdição do escritório: CE) ─────
 const TRIBUNAL_MAP = {
