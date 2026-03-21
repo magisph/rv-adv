@@ -437,7 +437,7 @@ export default function PainelDJEN() {
               {error?.message || "Não foi possível conectar ao servidor do DJEN."}
             </p>
             <p className="text-xs text-red-400 mt-2">
-              Verifique se o proxy local (localhost:3001) está ativo.
+              Verifique sua conexão ou tente novamente em instantes.
             </p>
             <Button
               variant="outline"

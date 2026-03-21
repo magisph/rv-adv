@@ -1,13 +1,11 @@
 // ============================================================================
 // cnjService.js — Motor de Buscas do Governo (DataJud + DJEN)
 // DataJud: Consulta via Edge Function global (datajud-bypass) no Supabase.
-// DJEN: Consulta via Proxy local (localhost:3001) — migração pendente.
+// DJEN:    Consulta via Edge Function global (djen-bypass) no Supabase.
+// ── Migração DJEN concluída em 2026-03-21 — Mixed Content/Geo-Block fix ──
 // ============================================================================
 
 import { supabase } from '../lib/supabase';
-
-// ─── Proxy Config (DJEN ainda usa backend local em localhost:3001) ────────────
-const PROXY_BASE = "https://rafaelavasconcelos.adv.br";
 
 // ─── Mapeamento J+TT → Sigla do Tribunal (Jurisdição do escritório: CE) ─────
 const TRIBUNAL_MAP = {
@@ -128,34 +126,31 @@ export async function datajudBuscaNumero(numero) {
 // ============================================================================
 // djenBuscaPublica()
 //
-// GET para o proxy local que repassa ao DJEN — comunicações/intimações
-// da advogada Ana Rafaela Vasconcelos Damasceno (OAB/CE 36219).
+// Invoca a Edge Function 'djen-bypass' no Supabase (global, sem CORS).
+// Consulta comunicações/intimações da advogada (OAB/CE 36219) via DJEN.
 // Retorna: lista de comunicações públicas.
 // ============================================================================
 export async function djenBuscaPublica() {
-  const params = new URLSearchParams({
-    numeroOab: "36219",
-    ufOab: "CE",
-    nomeAdvogado: "Ana Rafaela Vasconcelos Damasceno",
-    dataDisponibilizacaoInicio: "2026-03-16",
+  const { data, error } = await supabase.functions.invoke('djen-bypass', {
+    body: {
+      numeroOab: "36219",
+      ufOab: "CE",
+      nomeAdvogado: "Ana Rafaela Vasconcelos Damasceno",
+      dataDisponibilizacaoInicio: "2026-03-16",
+    },
   });
 
-  const response = await fetch(
-    `${PROXY_BASE}/api/cnj/djen?${params.toString()}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    }
-  );
+  if (error) {
+    throw new Error(`DJEN Edge Function erro: ${error.message}`);
+  }
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
+  if (!data?.success) {
     throw new Error(
-      `DJEN erro ${response.status}: ${text || response.statusText}`
+      `DJEN erro: ${data?.error || 'Resposta inesperada da Edge Function'}`
     );
   }
 
-  const json = await response.json();
+  const json = data.data;
 
   // A API pode retornar em diferentes formatos (lista direta ou wrapper)
   const comunicacoes = Array.isArray(json)
