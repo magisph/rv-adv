@@ -1,13 +1,17 @@
 // ============================================
 // Supabase Edge Function: djen-bypass
-// Proxy seguro para a API pública do DJEN (CNJ).
+// Proxy seguro para a API PÚBLICA do DJEN (CNJ).
 // Elimina dependência do proxy reverso externo e resolve
 // Mixed Content (HTTP vs HTTPS) e Geo-Block (403).
+//
+// AUTH: JWT validado nativamente pelo Supabase Edge Runtime
+//       (deploy SEM --no-verify-jwt). Nenhuma revalidação manual.
+// DJEN: API pública — NENHUM header Authorization enviado.
+//
 // Deploy: npx supabase functions deploy djen-bypass
 // ============================================
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 // ============================================
 // CORS — restrito ao domínio de produção + localhost dev
@@ -36,31 +40,7 @@ function getCorsHeaders(req: Request) {
 }
 
 // ============================================
-// JWT Auth — valida token antes de processar
-// ============================================
-async function authenticateRequest(
-  req: Request
-): Promise<{ userId: string } | null> {
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-
-  const token = authHeader.replace("Bearer ", "");
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: `Bearer ${token}` } } }
-  );
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error || !user) return null;
-  return { userId: user.id };
-}
-
-// ============================================
-// DJEN API — Comunicações públicas do PJe
+// DJEN API — Comunicações públicas do PJe (sem autenticação)
 // ============================================
 const DJEN_API_BASE = "https://comunicaapi.pje.jus.br/api/v1/comunicacao";
 
@@ -86,17 +66,8 @@ serve(async (req: Request) => {
     );
   }
 
-  // 🔒 JWT Authentication Gate
-  const auth = await authenticateRequest(req);
-  if (!auth) {
-    return new Response(
-      JSON.stringify({ success: false, error: "Unauthorized" }),
-      {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  }
+  // AUTH: JWT já validado pelo Supabase Edge Runtime na porta de entrada.
+  // Nenhuma revalidação manual necessária aqui.
 
   try {
     // Parse body — parâmetros vindos do frontend
@@ -146,10 +117,11 @@ serve(async (req: Request) => {
 
     let djenResponse: Response;
     try {
+      // DJEN é API pública — NENHUM header de autenticação enviado
       djenResponse = await fetch(djenUrl, {
         method: "GET",
         headers: {
-          Accept: "application/json",
+          "Accept": "application/json",
         },
         signal: controller.signal,
       });
