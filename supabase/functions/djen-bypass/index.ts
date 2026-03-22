@@ -6,7 +6,11 @@
 //
 // AUTH: JWT validado nativamente pelo Supabase Edge Runtime
 //       (deploy SEM --no-verify-jwt). Nenhuma revalidação manual.
-// DJEN: API pública — NENHUM header Authorization enviado.
+//
+// DJEN: Endpoint PÚBLICO do WSO2 Gateway do CNJ.
+//       O WSO2 rejeita a requisição com 401 se QUALQUER header
+//       Authorization estiver presente (APIKey, Bearer, etc.).
+//       NENHUM header de autenticação é enviado ao CNJ.
 //
 // Deploy: npx supabase functions deploy djen-bypass
 // ============================================
@@ -115,9 +119,11 @@ serve(async (req: Request) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
+    // CRÍTICO: O WSO2 Gateway do CNJ é PÚBLICO e rejeita com 401
+    // QUALQUER header Authorization (APIKey ou Bearer JWT).
+    // O objeto headers deve conter SOMENTE o mínimo necessário.
     let djenResponse: Response;
     try {
-      // DJEN é API pública — NENHUM header de autenticação enviado
       djenResponse = await fetch(djenUrl, {
         method: "GET",
         headers: {
