@@ -360,6 +360,36 @@ const DOCUMENT_TYPES = {
       },
     ],
   },
+  comprovacao: {
+    name: "Comprovação",
+    color: "#E91E63",
+    bgColor: "#FCE4EC",
+    icon: FileText,
+    types: [
+      {
+        id: "provas_documentais",
+        label: "Provas Documentais",
+        allowMultiple: true,
+        fields: [
+          { name: "descricao", label: "Descrição", type: "text" }
+        ],
+      },
+      {
+        id: "boletim_ocorrencia",
+        label: "Boletim de Ocorrência",
+        allowMultiple: true,
+        fields: [],
+      },
+      {
+        id: "outros_comprovantes",
+        label: "Outros Comprovantes",
+        allowMultiple: true,
+        fields: [
+          { name: "descricao", label: "Descrição", type: "text" }
+        ],
+      },
+    ],
+  },
 };
 
 function DocumentTypeCard({
@@ -863,6 +893,7 @@ export default function ClientDocumentsSection({
   clientName,
   isMarried: isMarriedProp,
   onOCRDataExtracted,
+  areaAtuacao,
 }) {
   const queryClient = useQueryClient();
 
@@ -922,6 +953,14 @@ export default function ClientDocumentsSection({
 
   const isMarried = !!isMarriedProp;
 
+  const filteredCategories = React.useMemo(() => {
+    if (areaAtuacao === "Cível") {
+      const allowed = ["pessoais", "comprovacao", "analises"];
+      return Object.entries(DOCUMENT_TYPES).filter(([key]) => allowed.includes(key));
+    }
+    return Object.entries(DOCUMENT_TYPES).filter(([key]) => key !== "comprovacao");
+  }, [areaAtuacao]);
+
   return (
     <div className="space-y-4">
       {/* Header Global: Malote Digital */}
@@ -955,7 +994,7 @@ export default function ClientDocumentsSection({
         </div>
       ) : (
         <>
-          {Object.entries(DOCUMENT_TYPES).map(([key, category]) => (
+          {filteredCategories.map(([key, category]) => (
             <DocumentTypeCard
               key={key}
               category={category}

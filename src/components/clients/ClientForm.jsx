@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { User, Save, X, MapPin, Shield } from "lucide-react";
+import { User, Save, X, MapPin, Shield, Briefcase } from "lucide-react";
 
 const ESTADOS_CIVIS = {
   solteiro: "Solteiro(a)",
@@ -89,6 +90,13 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
     possui_biometria: null,
     pedido_anterior_inss: null,
     area: "",
+    area_atuacao: "Previdenciário",
+    dados_civeis: {
+      parteAdversa: { nome: "", cpfCnpj: "", endereco: "" },
+      fatosCronologia: "",
+      expectativaPedido: "",
+      urgenciasRiscos: ""
+    },
     observations: "",
     status: "ativo",
     ...client,
@@ -178,6 +186,12 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
       }
     });
 
+    if (payload.area_atuacao === "Cível") {
+      payload.email_inss = null;
+    } else {
+      payload.dados_civeis = null;
+    }
+
     onSave(payload);
   };
 
@@ -197,6 +211,32 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <Card className="bg-slate-50 border-blue-100 mb-6">
+        <CardContent className="pt-6">
+          <div className="space-y-3">
+            <Label className="text-base font-semibold text-[#1e3a5f]">Área de Atuação *</Label>
+            <RadioGroup
+              value={formData.area_atuacao}
+              onValueChange={(v) => {
+                handleChange("area_atuacao", v);
+                if (activeTab === "previdenciario" && v === "Cível") setActiveTab("civel");
+                if (activeTab === "civel" && v !== "Cível") setActiveTab("previdenciario");
+              }}
+              className="flex gap-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="Previdenciário" id="area-prev" />
+                <Label htmlFor="area-prev" className="cursor-pointer">Previdenciário</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="Cível" id="area-civel" />
+                <Label htmlFor="area-civel" className="cursor-pointer">Cível</Label>
+              </div>
+            </RadioGroup>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pessoais" className="flex items-center gap-2">
@@ -207,13 +247,17 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
             <MapPin className="w-4 h-4" />
             Endereço
           </TabsTrigger>
-          <TabsTrigger
-            value="previdenciario"
-            className="flex items-center gap-2"
-          >
-            <Shield className="w-4 h-4" />
-            Preliminares
-          </TabsTrigger>
+          {formData.area_atuacao !== "Cível" ? (
+            <TabsTrigger value="previdenciario" className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Preliminares
+            </TabsTrigger>
+          ) : (
+            <TabsTrigger value="civel" className="flex items-center gap-2">
+              <Briefcase className="w-4 h-4" />
+              Triagem Cível
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Tab: Dados Pessoais */}
@@ -382,19 +426,21 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                     placeholder="email@exemplo.com"
                   />
                 </div>
-                <div className="space-y-2 md:col-span-2 border-t pt-4 mt-2">
-                  <Label htmlFor="email_inss">E-mail Exclusivo INSS</Label>
-                  <Input
-                    id="email_inss"
-                    type="email"
-                    value={formData.email_inss || ""}
-                    onChange={(e) => handleChange("email_inss", e.target.value)}
-                    placeholder="ex: pedrohdm@rafaelavasconcelos.adv.br"
-                  />
-                  <p className="text-xs text-slate-500">
-                    Gerado automaticamente a partir do nome se deixado em branco.
-                  </p>
-                </div>
+                {formData.area_atuacao !== "Cível" && (
+                  <div className="space-y-2 md:col-span-2 border-t pt-4 mt-2">
+                    <Label htmlFor="email_inss">E-mail Exclusivo INSS</Label>
+                    <Input
+                      id="email_inss"
+                      type="email"
+                      value={formData.email_inss || ""}
+                      onChange={(e) => handleChange("email_inss", e.target.value)}
+                      placeholder="ex: pedrohdm@rafaelavasconcelos.adv.br"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Gerado automaticamente a partir do nome se deixado em branco.
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -458,8 +504,9 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
         </TabsContent>
 
         {/* Tab: Previdenciário */}
-        <TabsContent value="previdenciario" className="space-y-6 mt-6">
-          <Card>
+        {formData.area_atuacao !== "Cível" && (
+          <TabsContent value="previdenciario" className="space-y-6 mt-6">
+            <Card>
             <CardHeader>
               <CardTitle className="text-base">
                 Informações Preliminares
@@ -755,6 +802,153 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
+
+        {/* Tab: Cível */}
+        {formData.area_atuacao === "Cível" && (
+          <TabsContent value="civel" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Dados da Parte Adversa</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Nome Completo / Razão Social</Label>
+                    <Input
+                      value={formData.dados_civeis?.parteAdversa?.nome || ""}
+                      onChange={(e) => handleChange("dados_civeis", {
+                        ...formData.dados_civeis,
+                        parteAdversa: { ...(formData.dados_civeis?.parteAdversa || {}), nome: e.target.value }
+                      })}
+                      placeholder="Nome do réu/requerido"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>CPF / CNPJ</Label>
+                    <Input
+                      value={formData.dados_civeis?.parteAdversa?.cpfCnpj || ""}
+                      onChange={(e) => handleChange("dados_civeis", {
+                        ...formData.dados_civeis,
+                        parteAdversa: { ...(formData.dados_civeis?.parteAdversa || {}), cpfCnpj: e.target.value }
+                      })}
+                      placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Endereço Completo</Label>
+                    <Input
+                      value={formData.dados_civeis?.parteAdversa?.endereco || ""}
+                      onChange={(e) => handleChange("dados_civeis", {
+                        ...formData.dados_civeis,
+                        parteAdversa: { ...(formData.dados_civeis?.parteAdversa || {}), endereco: e.target.value }
+                      })}
+                      placeholder="Rua, Número, Bairro, Cidade - UF, CEP"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Fatos e Cronologia</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label>Descreva os fatos em ordem cronológica</Label>
+                  <Textarea
+                    value={formData.dados_civeis?.fatosCronologia || ""}
+                    onChange={(e) => handleChange("dados_civeis", {
+                      ...formData.dados_civeis,
+                      fatosCronologia: e.target.value
+                    })}
+                    placeholder="O que aconteceu? Quando? Como?"
+                    rows={5}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Expectativa / Pedido</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label>O que o cliente deseja com o processo?</Label>
+                  <Textarea
+                    value={formData.dados_civeis?.expectativaPedido || ""}
+                    onChange={(e) => handleChange("dados_civeis", {
+                      ...formData.dados_civeis,
+                      expectativaPedido: e.target.value
+                    })}
+                    placeholder="Indenização, obrigação de fazer, etc."
+                    rows={3}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Urgências e Riscos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label>Há risco de perda de direito, prescrição ou necessidade de liminar?</Label>
+                  <Textarea
+                    value={formData.dados_civeis?.urgenciasRiscos || ""}
+                    onChange={(e) => handleChange("dados_civeis", {
+                      ...formData.dados_civeis,
+                      urgenciasRiscos: e.target.value
+                    })}
+                    placeholder="Descreva se há urgência..."
+                    rows={3}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Status e Observações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="status_civel">Status do Cliente</Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(v) => handleChange("status", v)}
+                    >
+                      <SelectTrigger id="status_civel">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ativo">Ativo</SelectItem>
+                        <SelectItem value="inativo">Inativo</SelectItem>
+                        <SelectItem value="processo_andamento">Processo em Andamento</SelectItem>
+                        <SelectItem value="processo_concluido">Processo Concluído</SelectItem>
+                        <SelectItem value="prospecto">Prospecto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="observations_civel">Observações Gerais</Label>
+                    <Textarea
+                      id="observations_civel"
+                      value={formData.observations}
+                      onChange={(e) => handleChange("observations", e.target.value)}
+                      placeholder="Informações adicionais sobre o cliente"
+                      rows={4}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Actions */}
@@ -786,13 +980,13 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
             <Button
               type="button"
               className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
-              onClick={() => setActiveTab("previdenciario")}
+              onClick={() => setActiveTab(formData.area_atuacao === "Cível" ? "civel" : "previdenciario")}
             >
               Avançar
             </Button>
           </>
         )}
-        {activeTab === "previdenciario" && (
+        {(activeTab === "previdenciario" || activeTab === "civel") && (
           <>
             <Button
               type="button"

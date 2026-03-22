@@ -344,10 +344,12 @@ export default function ClientDetail() {
             <BookOpen className="w-4 h-4" />
             Histórico de Atendimentos
           </TabsTrigger>
-          <TabsTrigger value="beneficios" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Benefícios
-          </TabsTrigger>
+          {client.area_atuacao !== "Cível" && (
+            <TabsTrigger value="beneficios" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Benefícios
+            </TabsTrigger>
+          )}
           <TabsTrigger value="documents" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
             Documentos
@@ -356,10 +358,12 @@ export default function ClientDetail() {
             <FolderOpen className="w-4 h-4" />
             Processos
           </TabsTrigger>
-          <TabsTrigger value="emails" className="flex items-center gap-2">
-            <Mail className="w-4 h-4" />
-            E-mails INSS
-          </TabsTrigger>
+          {client.area_atuacao !== "Cível" && (
+            <TabsTrigger value="emails" className="flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              E-mails INSS
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Tab: Informações */}
@@ -646,6 +650,59 @@ export default function ClientDetail() {
               </Card>
             </div>
 
+            {/* Card 4: Dados Cíveis (só se for cível) */}
+            {client.area_atuacao === "Cível" && client.dados_civeis && (
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-[#1e3a5f]" />
+                    Dados do Processo Cível
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {client.dados_civeis.parteAdversa && (
+                      <div className="pb-3 border-b">
+                        <h4 className="font-semibold text-slate-800 mb-2">Parte Adversa</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-700">
+                          <div><span className="text-slate-500">Nome:</span> {client.dados_civeis.parteAdversa.nome || "-"}</div>
+                          <div><span className="text-slate-500">CPF/CNPJ:</span> {client.dados_civeis.parteAdversa.cpfCnpj || "-"}</div>
+                          <div className="sm:col-span-2"><span className="text-slate-500">Endereço:</span> {client.dados_civeis.parteAdversa.endereco || "-"}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {client.dados_civeis.fatosCronologia && (
+                      <div className="pb-3 border-b">
+                        <h4 className="font-semibold text-slate-800 mb-2">Fatos e Cronologia</h4>
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap bg-slate-50 p-3 rounded">
+                          {client.dados_civeis.fatosCronologia}
+                        </p>
+                      </div>
+                    )}
+
+                    {client.dados_civeis.expectativaPedido && (
+                      <div className="pb-3 border-b">
+                        <h4 className="font-semibold text-slate-800 mb-2">Expectativa/Pedido</h4>
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                          {client.dados_civeis.expectativaPedido}
+                        </p>
+                      </div>
+                    )}
+
+                    {client.dados_civeis.urgenciasRiscos && (
+                      <div>
+                        <h4 className="font-semibold text-slate-800 mb-2">Urgências e Riscos</h4>
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                          {client.dados_civeis.urgenciasRiscos}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Status de Documentos */}
             <DocumentStatusCard
               documents={clientDocuments}
@@ -930,6 +987,7 @@ export default function ClientDetail() {
               client?.estado_civil === "casado" ||
               client?.estado_civil === "uniao_estavel"
             }
+            areaAtuacao={client?.area_atuacao}
           />
         </TabsContent>
 
