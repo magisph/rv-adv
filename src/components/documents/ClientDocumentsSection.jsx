@@ -31,6 +31,7 @@ import {
   Sprout,
   LineChart,
   Archive,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 
