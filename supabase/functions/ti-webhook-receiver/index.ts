@@ -9,15 +9,9 @@ function normalize(num: string): string {
 }
 
 /**
- * Verifica a assinatura HMAC-SHA256 do webhook.
+ * Gera o hash HMAC-SHA256 em formato Hexadecimal.
  */
-async function verifySignature(
-  payload: string,
-  signature: string | null,
-  secret: string | undefined
-): Promise<boolean> {
-  if (!signature || !secret) return false;
-
+async function getHMACSignature(payload: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(secret);
   const key = await crypto.subtle.importKey(
@@ -25,19 +19,13 @@ async function verifySignature(
     keyData,
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["verify"]
+    ["sign"]
   );
-
-  const sigData = new Uint8Array(
-    signature.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
-  );
-
-  return await crypto.subtle.verify(
-    "HMAC",
-    key,
-    sigData,
-    encoder.encode(payload)
-  );
+  
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 serve(async (req: Request) => {
@@ -49,17 +37,18 @@ serve(async (req: Request) => {
     });
   }
 
-  const signature = req.headers.get("X-Webhook-Signature");
-  const secret = Deno.env.get("TI_WEBHOOK_SECRET");
+  const signatureHeader = req.headers.get("X-Webhook-Signature");
+  const secret = Deno.env.get("TI_WEBHOOK_SECRET") || "";
 
-  // Clonamos o corpo para ler como texto e manter a integridade para o HMAC
+  // 2. Extração Crítica do Texto Bruto (Raw Body)
   const rawBody = await req.text();
 
-  // 2. Blindagem Criptográfica (HMAC-SHA256)
-  const isValid = await verifySignature(rawBody, signature, secret);
+  // 3. Blindagem Criptográfica (Matemática Estrita HMAC-SHA256)
+  const hashCalculadoHex = await getHMACSignature(rawBody, secret);
+  const expectedSig = 'sha256=' + hashCalculadoHex;
 
-  if (!isValid) {
-    console.error("[Webhook TI] Assinatura inválida.");
+  if (signatureHeader !== expectedSig) {
+    console.error(`[Webhook TI] Assinatura inválida. Recebida: ${signatureHeader}`);
     return new Response(JSON.stringify({ error: "Invalid signature" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
@@ -70,7 +59,7 @@ serve(async (req: Request) => {
     const body = JSON.parse(rawBody);
     const { event_type, payload } = body;
 
-    // 3. Processamento do Evento
+    // 4. Processamento do Evento
     if (event_type !== "publications.created") {
       return new Response(JSON.stringify({ message: "Evento ignorado" }), {
         status: 200,
