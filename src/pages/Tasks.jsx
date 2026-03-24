@@ -51,34 +51,35 @@ const PRIORITY_COLORS = {
 const STATUS_ICONS = {
   todo: Circle,
   in_progress: Clock,
-  review: Eye,
+  in_review: Eye,
   done: CheckCircle2,
 };
 
 const COLUMNS = [
   { id: "todo", title: "A Fazer", icon: Circle },
   { id: "in_progress", title: "Em Progresso", icon: Clock },
-  { id: "review", title: "Em Revisão", icon: Eye },
+  { id: "in_review", title: "Em Revisão", icon: Eye },
   { id: "done", title: "Concluído", icon: CheckCircle2 },
 ];
 
 const STATUS_LABELS = {
   todo: "A Fazer",
   in_progress: "Em Progresso",
-  review: "Em Revisão",
+  in_review: "Em Revisão",
   done: "Concluído",
 };
 
 function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole }) {
   const StatusIcon = STATUS_ICONS[task.status] || Circle;
 
-  const ORDER = ["todo", "in_progress", "review", "done"];
+  const ORDER = ["todo", "in_progress", "in_review", "done"];
   const idx = ORDER.indexOf(task.status);
   const prevStatus = idx > 0 ? ORDER[idx - 1] : null;
   const nextStatus = idx < ORDER.length - 1 ? ORDER[idx + 1] : null;
 
   // RBAC: secretaria/assistente não pode mover para "done"
-  const isRestricted = userRole === "secretaria" || userRole === "assistente";
+  const normalizedRole = userRole?.toLowerCase() || "";
+  const isRestricted = normalizedRole === "secretaria" || normalizedRole === "assistente";
   const nextDisabled = !nextStatus || (isRestricted && nextStatus === "done");
 
   return (
@@ -109,7 +110,7 @@ function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole })
                 className={`w-4 h-4 ${
                   task.status === "done"
                     ? "text-green-600"
-                    : task.status === "review"
+                    : task.status === "in_review"
                     ? "text-purple-600"
                     : task.status === "in_progress"
                     ? "text-blue-600"
@@ -224,7 +225,7 @@ function BoardColumn({ column, tasks, onEdit, onDelete, onStatusChange, getTaskU
             className={`w-4 h-4 ${
               column.id === "done"
                 ? "text-green-600"
-                : column.id === "review"
+                : column.id === "in_review"
                 ? "text-purple-600"
                 : column.id === "in_progress"
                 ? "text-blue-600"
@@ -339,8 +340,9 @@ export default function Tasks() {
   };
 
   const handleStatusChange = (task, newStatus) => {
-    const isAssistant = userRole === "secretaria" || userRole === "assistente";
-    const isAdmin = userRole === "admin" || userRole === "dono";
+    const normalizedRole = userRole?.toLowerCase() || "";
+    const isAssistant = normalizedRole === "secretaria" || normalizedRole === "assistente";
+    const isAdmin = normalizedRole === "admin" || normalizedRole === "dono";
 
     if (isAssistant && !isAdmin) {
       if (task.assigned_to !== user?.email) {
@@ -360,7 +362,8 @@ export default function Tasks() {
   };
 
   const filteredTasks = React.useMemo(() => {
-    const isTunnelVision = userRole === "secretaria" || userRole === "assistente";
+    const normalizedRole = userRole?.toLowerCase() || "";
+    const isTunnelVision = normalizedRole === "secretaria" || normalizedRole === "assistente";
 
     return tasks.filter((task) => {
       // RBAC: Visão de Túnel — secretária/assistente só vê suas tarefas
@@ -435,7 +438,7 @@ export default function Tasks() {
                     column={column}
                     tasks={filteredTasks.filter((t) => {
                       if (column.id === 'todo') {
-                        return t.status === 'todo' || !['in_progress','review','done'].includes(t.status);
+                        return t.status === 'todo' || !['in_progress','in_review','done'].includes(t.status);
                       }
                       return t.status === column.id;
                     })}

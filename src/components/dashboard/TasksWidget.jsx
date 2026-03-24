@@ -688,7 +688,7 @@ export default function TasksWidget() {
     const [showPriorityMenu, setShowPriorityMenu] = useState(false);
     const PriorityIcon = priorityConfig.icon;
 
-    const isAdmin = user?.role?.toLowerCase() === "admin";
+    const isAdmin = user?.role?.toLowerCase() === "admin" || user?.role?.toLowerCase() === "dono";
     const canEditPriority = isAdmin;
 
     const isCritical = task.priority === "urgente";
@@ -970,7 +970,7 @@ export default function TasksWidget() {
       .length,
   };
 
-  const isAdmin = user?.role?.toLowerCase() === "admin";
+  const isAdmin = user?.role?.toLowerCase() === "admin" || user?.role?.toLowerCase() === "dono";
   const canCreateTasks = isAdmin;
 
   // Gerar cor do avatar baseado no email
