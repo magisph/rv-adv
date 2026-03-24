@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { djenBuscaPublica, formatarNumeroCNJ } from "@/services/cnjService";
+import { formatarNumeroCNJ } from "@/services/cnjService";
 import {
   Card,
   CardContent,
@@ -9,13 +9,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
   Inbox,
-  AlertCircle,
-  RefreshCw,
   Scale,
   Building2,
   CalendarDays,
@@ -26,6 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { CalculadoraCpcModal } from "./CalculadoraCpcModal";
+import { processMoveService } from "@/services";
 
 // ============================================================================
 // getField — Extrator blindado contra inconsistência de case nas chaves
@@ -363,21 +361,26 @@ export default function PainelDJEN() {
   const {
     data,
     isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
   } = useQuery({
-    queryKey: ["djen-comunicacoes"],
-    queryFn: djenBuscaPublica,
+    queryKey: ["djen-comunicacoes-reativas"],
+    queryFn: () => processMoveService.filter({ move_type: 'intimacao' }, "-date"),
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    retry: 2,
   });
 
   // ── Hooks must be declared before any early return (Rules of Hooks) ─────────────
-  // Memoize raw list to avoid re-deriving on every render when deps haven't changed
-  const comunicacoes = useMemo(() => data?.comunicacoes ?? [], [data]);
+  // Transform process_moves structure to match what ComunicacaoCard expects
+  const comunicacoes = useMemo(() => {
+    if (!data) return [];
+    return data.map(move => ({
+      numero_processo: move.process_number,
+      data_disponibilizacao: move.date,
+      conteudo: move.description,
+      tipo_comunicacao: "Intimação",
+      sigla_tribunal: "WebHook TI",
+      // Adicionando metadados salvos se houver (placeholder para campos extras)
+      ...move
+    }));
+  }, [data]);
 
   // Memoize filtered list — heavy iteration with getField() calls per item
   const comunicacoesFiltradas = useMemo(
@@ -407,49 +410,10 @@ export default function PainelDJEN() {
             <h2 className="text-lg font-bold text-slate-800">
               Caixa de Entrada Oficial
             </h2>
-            <p className="text-sm text-slate-500">Consultando o DJEN...</p>
+            <p className="text-sm text-slate-500">Sincronizando intimações...</p>
           </div>
         </div>
         <LoadingSkeleton />
-      </div>
-    );
-  }
-
-  // ── Error State ──────────────────────────────────────────────────────
-  if (isError) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#1e3a5f] rounded-lg flex items-center justify-center">
-            <Inbox className="w-5 h-5 text-[#c9a227]" />
-          </div>
-          <h2 className="text-lg font-bold text-slate-800">
-            Caixa de Entrada Oficial
-          </h2>
-        </div>
-        <Alert variant="destructive" className="border-red-200 bg-red-50">
-          <AlertCircle className="h-5 w-5" />
-          <AlertTitle className="font-semibold">
-            Erro ao consultar o DJEN
-          </AlertTitle>
-          <AlertDescription className="mt-1">
-            <p className="text-sm">
-              {error?.message || "Não foi possível conectar ao servidor do DJEN."}
-            </p>
-            <p className="text-xs text-red-400 mt-2">
-              Verifique sua conexão ou tente novamente em instantes.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3 border-red-300 text-red-600 hover:bg-red-100"
-              onClick={() => refetch()}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Tentar Novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
       </div>
     );
   }
@@ -479,24 +443,12 @@ export default function PainelDJEN() {
             variant="outline"
             className="border-[#1e3a5f]/30 text-[#1e3a5f] text-sm px-3 py-1"
           >
-            OAB: {data?.oab ?? "—"}
+            Sincronização Ativa (TI)
           </Badge>
           <Badge className="bg-[#c9a227] text-[#1e3a5f] font-semibold text-sm px-3 py-1 hover:bg-[#c9a227]/90">
             {comunicacoes.length}{" "}
             {comunicacoes.length === 1 ? "publicação" : "publicações"}
           </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="text-slate-600 border-slate-300"
-          >
-            <RefreshCw
-              className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
-            />
-            Atualizar
-          </Button>
         </div>
       </div>
 
