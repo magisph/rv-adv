@@ -315,7 +315,7 @@ export default function TasksWidget() {
   const handleQuickCreate = () => {
     if (!quickTaskTitle.trim() || !user) return;
 
-    const isAdmin = user?.role === "admin";
+    const isAdmin = user?.role?.toLowerCase() === "admin";
     const column = KANBAN_COLUMNS[quickTaskColumn];
 
     // Determinar responsável
@@ -688,7 +688,7 @@ export default function TasksWidget() {
     const [showPriorityMenu, setShowPriorityMenu] = useState(false);
     const PriorityIcon = priorityConfig.icon;
 
-    const isAdmin = user?.role === "admin";
+    const isAdmin = user?.role?.toLowerCase() === "admin";
     const canEditPriority = isAdmin;
 
     const isCritical = task.priority === "urgente";
@@ -702,6 +702,7 @@ export default function TasksWidget() {
     return (
       <motion.div
         layout
+        layoutId={String(task.id)}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
@@ -851,13 +852,12 @@ export default function TasksWidget() {
 
             {/* Teletransporte: setas de navegação de status */}
             {(() => {
-              const ORDER = ["todo", "in_progress", "review", "done"];
+              const ORDER = ["todo", "in_progress", "in_review", "done"];
               const currentCol = task.kanban_column || (task.status === "done" ? "done" : "todo");
-              const normalizedCol = currentCol === "in_review" ? "review" : currentCol;
-              const idx = ORDER.indexOf(normalizedCol);
+              const idx = ORDER.indexOf(currentCol);
               const prevCol = idx > 0 ? ORDER[idx - 1] : null;
               const nextCol = idx < ORDER.length - 1 ? ORDER[idx + 1] : null;
-              const LABELS = { todo: "A Fazer", in_progress: "Em Progresso", review: "Em Revisão", done: "Concluído" };
+              const LABELS = { todo: "A Fazer", in_progress: "Em Progresso", in_review: "Em Revisão", done: "Concluído" };
               const nextDisabled = !nextCol || (isRestricted && nextCol === "done");
               return (
                 <div
@@ -970,7 +970,7 @@ export default function TasksWidget() {
       .length,
   };
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role?.toLowerCase() === "admin";
   const canCreateTasks = isAdmin;
 
   // Gerar cor do avatar baseado no email
@@ -1300,7 +1300,7 @@ export default function TasksWidget() {
                           </Badge>
                         </div>
 
-                        <div className="min-h-[200px]">
+                        <div className="min-h-[200px] flex flex-col gap-3 justify-start">
                           <AnimatePresence mode="popLayout">
                             {columnTasks.map((task) => (
                               <KanbanCard

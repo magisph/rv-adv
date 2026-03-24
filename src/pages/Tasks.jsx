@@ -84,6 +84,7 @@ function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole })
   return (
     <motion.div
       layout
+      layoutId={String(task.id)}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
