@@ -39,12 +39,10 @@ import {
   ChevronRight,
   Calendar,
   MoreVertical,
-  GripVertical,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { motion } from "framer-motion";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import TaskForm from "@/components/tasks/TaskForm";
 
 const PRIORITY_CONFIG = {
@@ -122,8 +120,7 @@ export default function TasksWidget() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [swipingTask, setSwipingTask] = useState(null);
-  const [swipeDirection, setSwipeDirection] = useState(null);
+
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState("priority");
   const [viewMode, setViewMode] = useState("my");
@@ -162,7 +159,7 @@ export default function TasksWidget() {
           filters[u.email] = true;
         });
         setUserFilters(filters);
-      } catch (e) {
+      } catch {
         // Usuário não autenticado — fluxo esperado antes do login
       }
     };
@@ -256,7 +253,7 @@ export default function TasksWidget() {
     },
   });
 
-  const deleteMutation = useMutation({
+  const _deleteMutation = useMutation({
     mutationFn: (id) => taskService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
@@ -290,68 +287,7 @@ export default function TasksWidget() {
     },
   });
 
-  const handleDragEnd = async (result) => {
-    if (!result.destination) return;
 
-    const { source, destination, draggableId } = result;
-
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    )
-      return;
-
-    const task = allTasks.find((t) => t.id === draggableId);
-    if (!task) return;
-
-    // Verificar permissões
-    const userRole = user?.role?.toLowerCase() || "";
-    const isAdmin = userRole === "admin" || userRole === "dono";
-    const isMyTask = task.assigned_to === user?.email;
-
-    if (!isAdmin && !isMyTask) return;
-
-    // RBAC — Pipeline de Aprovação Estrita
-    if (userRole === "secretaria" || userRole === "assistente") {
-      if (destination.droppableId === "done") {
-        toast.error("Apenas a advogada (admin) pode revisar e concluir as tarefas.");
-        return;
-      }
-    }
-
-    const newColumn = KANBAN_COLUMNS[destination.droppableId];
-
-    try {
-      await updateMutation.mutateAsync({
-        id: task.id,
-        data: {
-          ...task,
-          status: newColumn.status,
-          kanban_column: destination.droppableId,
-        },
-      });
-    } catch (error) {
-      console.error("Erro ao mover tarefa:", error);
-    }
-
-    // Notificar admin se user comum concluiu tarefa
-    if (!isAdmin && destination.droppableId === "done") {
-      const admin = allUsers.find((u) => u.role === "admin");
-      if (admin) {
-        const adminId = await authService.getUserIdByEmail(admin.email);
-        if (adminId) {
-          await notificationService.create({
-            title: "Tarefa Concluída",
-            message: `${user?.full_name} concluiu: "${task.title}"`,
-            type: "tarefa",
-            user_id: adminId,
-            link: "/tasks",
-            related_id: task.id,
-          });
-        }
-      }
-    }
-  };
 
   const handleMoveTask = async (task, columnId) => {
     // RBAC — Pipeline de Aprovação Estrita
@@ -562,17 +498,7 @@ export default function TasksWidget() {
     setIsSelectionMode(false);
   };
 
-  const handleSwipeAction = async (task, action) => {
-    if (action === "complete") {
-      await handleMoveTask(task, "done");
-    } else if (action === "delete") {
-      if (window.confirm("Tem certeza que deseja excluir esta tarefa?")) {
-        await deleteMutation.mutateAsync(task.id);
-      }
-    }
-    setSwipingTask(null);
-    setSwipeDirection(null);
-  };
+
 
   const handleReassignTask = async (task, newUserEmail) => {
     const newUser = allUsers.find((u) => u.email === newUserEmail);
@@ -755,341 +681,266 @@ export default function TasksWidget() {
 
   const filteredTaskCount = Object.values(tasksByColumn).flat().length;
 
-  const KanbanCard = ({ task, index, columnId }) => {
+  const KanbanCard = ({ task, columnId }) => {
     const priorityConfig =
       PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.media;
     const temporalStatus = getTemporalStatus(task.due_date);
-    const [touchStartTime, setTouchStartTime] = useState(null);
-    const [touchStartX, setTouchStartX] = useState(null);
-    const [swipeOffset, setSwipeOffset] = useState(0);
     const [showPriorityMenu, setShowPriorityMenu] = useState(false);
     const PriorityIcon = priorityConfig.icon;
 
     const isAdmin = user?.role === "admin";
-    const isMyTask = task.assigned_to === user?.email;
     const canEditPriority = isAdmin;
-
-    const handleTouchStart = (e) => {
-      setTouchStartTime(Date.now());
-      setTouchStartX(e.touches[0].clientX);
-    };
-
-    const handleTouchMove = (e) => {
-      if (!touchStartX) return;
-      const currentX = e.touches[0].clientX;
-      const diff = currentX - touchStartX;
-
-      if (Math.abs(diff) > 10) {
-        setSwipeOffset(diff);
-      }
-    };
-
-    const handleTouchEnd = () => {
-      const swipeThreshold = 80;
-
-      if (Math.abs(swipeOffset) > swipeThreshold) {
-        if (swipeOffset > 0) {
-          // Swipe direita: concluir
-          handleSwipeAction(task, "complete");
-        } else {
-          // Swipe esquerda: excluir
-          handleSwipeAction(task, "delete");
-        }
-      } else if (
-        touchStartTime &&
-        Date.now() - touchStartTime > 500 &&
-        Math.abs(swipeOffset) < 10
-      ) {
-        setLongPressTask(task);
-      }
-
-      setTouchStartTime(null);
-      setTouchStartX(null);
-      setSwipeOffset(0);
-    };
 
     const isCritical = task.priority === "urgente";
     const isOverdue = temporalStatus?.type === "overdue";
     const isToday = temporalStatus?.type === "today";
 
+    // RBAC: secretaria/assistente não pode mover para "done"
+    const userRole = user?.role?.toLowerCase() || "";
+    const isRestricted = userRole === "secretaria" || userRole === "assistente";
+
     return (
-      <Draggable
-        draggableId={task.id}
-        index={index}
-        isDragDisabled={isSelectionMode}
+      <motion.div
+        layout
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        transition={{ duration: 0.2 }}
+        onClick={() => {
+          if (!isSelectionMode) handleEdit(task);
+        }}
+        className={`rounded-lg border-l-4 border p-3 mb-2 shadow-sm hover:shadow-md transition-all group relative cursor-pointer ${isCritical ? "animate-pulse-border" : ""} ${
+          isOverdue ? "bg-red-50" : isToday ? "bg-orange-50" : "bg-white"
+        } ${selectedTasks.has(task.id) ? "ring-2 ring-blue-500" : ""}`}
+        style={{
+          borderLeftColor: priorityConfig.borderColor,
+        }}
       >
-        {(provided, snapshot) => (
-          <motion.div
-            ref={provided.innerRef}
-            {...provided.draggableProps}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onClick={() => {
-              if (!isSelectionMode) handleEdit(task);
-            }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0, x: swipeOffset }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className={`rounded-lg border-l-4 border p-3 mb-2 shadow-sm hover:shadow-md transition-all group relative cursor-pointer ${
-              snapshot.isDragging ? "shadow-lg rotate-2" : ""
-            } ${isCritical ? "animate-pulse-border" : ""} ${
-              isOverdue ? "bg-red-50" : isToday ? "bg-orange-50" : "bg-white"
-            } ${selectedTasks.has(task.id) ? "ring-2 ring-blue-500" : ""}`}
-            style={{
-              borderLeftColor: priorityConfig.borderColor,
-              transform:
-                swipeOffset !== 0 ? `translateX(${swipeOffset}px)` : undefined,
-            }}
-          >
-            {/* Swipe Actions Background */}
-            {Math.abs(swipeOffset) > 10 && (
-              <div
-                className={`absolute inset-0 flex items-center justify-between px-4 rounded-lg ${
-                  swipeOffset > 0 ? "bg-green-500" : "bg-red-500"
-                }`}
-              >
-                {swipeOffset > 0 ? (
-                  <CheckCircle2 className="w-6 h-6 text-white" />
-                ) : (
-                  <div className="ml-auto">
-                    <AlertCircle className="w-6 h-6 text-white" />
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="flex items-start gap-2">
-              {isSelectionMode ? (
-                <input
-                  type="checkbox"
-                  checked={selectedTasks.has(task.id)}
-                  onChange={() => toggleTaskSelection(task.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-              ) : (
-                <div
-                  {...provided.dragHandleProps}
-                  className="cursor-grab active:cursor-grabbing hidden md:block pt-1"
+        <div className="flex items-start gap-2">
+          {isSelectionMode && (
+            <input
+              type="checkbox"
+              checked={selectedTasks.has(task.id)}
+              onChange={() => toggleTaskSelection(task.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {canEditPriority ? (
+                <DropdownMenu
+                  open={showPriorityMenu}
+                  onOpenChange={setShowPriorityMenu}
                 >
-                  <GripVertical className="w-4 h-4 text-slate-400" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  {canEditPriority ? (
-                    <DropdownMenu
-                      open={showPriorityMenu}
-                      onOpenChange={setShowPriorityMenu}
-                    >
-                      <DropdownMenuTrigger asChild>
-                        <Badge
-                          variant="outline"
-                          className={`${priorityConfig.color} text-xs cursor-pointer hover:opacity-80 transition-opacity`}
-                          style={{ minWidth: "65px", minHeight: "20px" }}
-                          onClick={(e) => e.stopPropagation()}
-                          onPointerDown={(e) => e.stopPropagation()}
-                        >
-                          <PriorityIcon className="w-3 h-3 mr-1" />
-                          {priorityConfig.label}
-                        </Badge>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        {Object.entries(PRIORITY_CONFIG).map(
-                          ([key, config]) => {
-                            const Icon = config.icon;
-                            return (
-                              <DropdownMenuItem
-                                key={key}
-                                onClick={() => handleChangePriority(task, key)}
-                                className="flex items-center gap-2"
-                              >
-                                <Icon
-                                  className="w-4 h-4"
-                                  style={{ color: config.borderColor }}
-                                />
-                                {config.label}
-                              </DropdownMenuItem>
-                            );
-                          },
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : (
+                  <DropdownMenuTrigger asChild>
                     <Badge
                       variant="outline"
-                      className={`${priorityConfig.color} text-xs`}
+                      className={`${priorityConfig.color} text-xs cursor-pointer hover:opacity-80 transition-opacity`}
                       style={{ minWidth: "65px", minHeight: "20px" }}
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
                     >
                       <PriorityIcon className="w-3 h-3 mr-1" />
                       {priorityConfig.label}
                     </Badge>
-                  )}
-
-                  {temporalStatus && (isOverdue || isToday) && (
-                    <Badge
-                      variant="outline"
-                      className={`${temporalStatus.color} text-xs font-medium`}
-                    >
-                      {isOverdue && <AlertCircle className="w-3 h-3 mr-1" />}
-                      {temporalStatus.label}
-                    </Badge>
-                  )}
-
-                </div>
-
-                <h4 className="font-medium text-slate-800 text-sm mb-1 break-words">
-                  {task.title}
-                </h4>
-
-                {task.client_name && (
-                  <p className="text-xs text-slate-500 truncate mb-1">
-                    {task.client_name}
-                  </p>
-                )}
-
-                {task.description && (
-                  <p className="text-xs text-slate-600 mb-1 break-words line-clamp-2">
-                    {task.description}
-                  </p>
-                )}
-
-                {task.due_date && (
-                  <div className="flex items-center gap-1 text-xs">
-                    <Calendar className="w-3 h-3" />
-                    <span
-                      className={
-                        temporalStatus
-                          ? isOverdue
-                            ? "text-red-700 font-medium"
-                            : isToday
-                              ? "text-orange-700 font-medium"
-                              : "text-slate-500"
-                          : "text-slate-500"
-                      }
-                    >
-                      {format(new Date(task.due_date), "dd/MM/yy", {
-                        locale: ptBR,
-                      })}
-                    </span>
-                    {temporalStatus && !isOverdue && !isToday && (
-                      <span className="text-slate-400">
-                        • {temporalStatus.label}
-                      </span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {Object.entries(PRIORITY_CONFIG).map(
+                      ([key, config]) => {
+                        const Icon = config.icon;
+                        return (
+                          <DropdownMenuItem
+                            key={key}
+                            onClick={() => handleChangePriority(task, key)}
+                            className="flex items-center gap-2"
+                          >
+                            <Icon
+                              className="w-4 h-4"
+                              style={{ color: config.borderColor }}
+                            />
+                            {config.label}
+                          </DropdownMenuItem>
+                        );
+                      },
                     )}
-                  </div>
-                )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className={`${priorityConfig.color} text-xs`}
+                  style={{ minWidth: "65px", minHeight: "20px" }}
+                >
+                  <PriorityIcon className="w-3 h-3 mr-1" />
+                  {priorityConfig.label}
+                </Badge>
+              )}
 
-                {/* Avatar do Responsável */}
-                {isCollaborativeMode && task.assigned_name && (
-                  <div className="flex items-center gap-2 mt-2 pt-2 border-t">
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium text-white"
-                      style={{
-                        backgroundColor: getAvatarColor(task.assigned_to),
-                      }}
-                      title={task.assigned_name}
-                    >
-                      {getInitials(task.assigned_name)}
-                    </div>
-                    <span className="text-xs text-slate-600 truncate">
-                      {task.assigned_name}
-                    </span>
-                  </div>
-                )}
+              {temporalStatus && (isOverdue || isToday) && (
+                <Badge
+                  variant="outline"
+                  className={`${temporalStatus.color} text-xs font-medium`}
+                >
+                  {isOverdue && <AlertCircle className="w-3 h-3 mr-1" />}
+                  {temporalStatus.label}
+                </Badge>
+              )}
 
-                {/* Teletransporte: setas de navegação de status */}
-                {(() => {
-                  const ORDER = ["todo", "in_progress", "review", "done"];
-                  const currentCol = task.kanban_column || (task.status === "done" ? "done" : "todo");
-                  const normalizedCol = currentCol === "in_review" ? "review" : currentCol;
-                  const idx = ORDER.indexOf(normalizedCol);
-                  const prevCol = idx > 0 ? ORDER[idx - 1] : null;
-                  const nextCol = idx < ORDER.length - 1 ? ORDER[idx + 1] : null;
-                  const LABELS = { todo: "A Fazer", in_progress: "Em Progresso", review: "Em Revisão", done: "Concluído" };
-                  return (
-                    <div
-                      className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100"
-                      onClick={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        disabled={!prevCol}
-                        onClick={(e) => { e.stopPropagation(); if (prevCol) handleMoveTask(task, prevCol); }}
-                        className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
-                      >
-                        <ChevronLeft className="w-3 h-3" />
-                        {prevCol ? LABELS[prevCol] : null}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!nextCol}
-                        onClick={(e) => { e.stopPropagation(); if (nextCol) handleMoveTask(task, nextCol); }}
-                        className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
-                      >
-                        {nextCol ? LABELS[nextCol] : null}
-                        <ChevronRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              <DropdownMenu
-                open={longPressTask?.id === task.id}
-                onOpenChange={(open) => !open && setLongPressTask(null)}
-              >
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 md:opacity-0 md:group-hover:opacity-100"
-                    onClick={(e) => { e.stopPropagation(); setLongPressTask(task); }}
-                    onPointerDown={(e) => e.stopPropagation()}
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {Object.values(KANBAN_COLUMNS)
-                    .filter((col) => col.id !== columnId)
-                    .map((col) => (
-                      <DropdownMenuItem
-                        key={col.id}
-                        onClick={() => handleMoveTask(task, col.id)}
-                      >
-                        Mover para {col.title}
-                      </DropdownMenuItem>
-                    ))}
-
-                  <DropdownMenuItem onClick={() => handleDuplicateTask(task)}>
-                    Duplicar Tarefa
-                  </DropdownMenuItem>
-
-                  {isAdmin && isCollaborativeMode && (
-                    <>
-                      <DropdownMenuItem disabled className="font-semibold">
-                        Alterar Responsável
-                      </DropdownMenuItem>
-                      {allUsers.map((u) => (
-                        <DropdownMenuItem
-                          key={u.email}
-                          onClick={() => handleReassignTask(task, u.email)}
-                          disabled={u.email === task.assigned_to}
-                        >
-                          {u.full_name || u.email}
-                          {u.email === task.assigned_to && " (atual)"}
-                        </DropdownMenuItem>
-                      ))}
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
-          </motion.div>
-        )}
-      </Draggable>
+
+            <h4 className="font-medium text-slate-800 text-sm mb-1 break-words">
+              {task.title}
+            </h4>
+
+            {task.client_name && (
+              <p className="text-xs text-slate-500 truncate mb-1">
+                {task.client_name}
+              </p>
+            )}
+
+            {task.description && (
+              <p className="text-xs text-slate-600 mb-1 break-words line-clamp-2">
+                {task.description}
+              </p>
+            )}
+
+            {task.due_date && (
+              <div className="flex items-center gap-1 text-xs">
+                <Calendar className="w-3 h-3" />
+                <span
+                  className={
+                    temporalStatus
+                      ? isOverdue
+                        ? "text-red-700 font-medium"
+                        : isToday
+                          ? "text-orange-700 font-medium"
+                          : "text-slate-500"
+                      : "text-slate-500"
+                  }
+                >
+                  {format(new Date(task.due_date), "dd/MM/yy", {
+                    locale: ptBR,
+                  })}
+                </span>
+                {temporalStatus && !isOverdue && !isToday && (
+                  <span className="text-slate-400">
+                    • {temporalStatus.label}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Avatar do Responsável */}
+            {isCollaborativeMode && task.assigned_name && (
+              <div className="flex items-center gap-2 mt-2 pt-2 border-t">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium text-white"
+                  style={{
+                    backgroundColor: getAvatarColor(task.assigned_to),
+                  }}
+                  title={task.assigned_name}
+                >
+                  {getInitials(task.assigned_name)}
+                </div>
+                <span className="text-xs text-slate-600 truncate">
+                  {task.assigned_name}
+                </span>
+              </div>
+            )}
+
+            {/* Teletransporte: setas de navegação de status */}
+            {(() => {
+              const ORDER = ["todo", "in_progress", "review", "done"];
+              const currentCol = task.kanban_column || (task.status === "done" ? "done" : "todo");
+              const normalizedCol = currentCol === "in_review" ? "review" : currentCol;
+              const idx = ORDER.indexOf(normalizedCol);
+              const prevCol = idx > 0 ? ORDER[idx - 1] : null;
+              const nextCol = idx < ORDER.length - 1 ? ORDER[idx + 1] : null;
+              const LABELS = { todo: "A Fazer", in_progress: "Em Progresso", review: "Em Revisão", done: "Concluído" };
+              const nextDisabled = !nextCol || (isRestricted && nextCol === "done");
+              return (
+                <div
+                  className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    disabled={!prevCol}
+                    onClick={(e) => { e.stopPropagation(); if (prevCol) handleMoveTask(task, prevCol); }}
+                    className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                    {prevCol ? LABELS[prevCol] : null}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={nextDisabled}
+                    onClick={(e) => { e.stopPropagation(); if (!nextDisabled && nextCol) handleMoveTask(task, nextCol); }}
+                    className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+                    title={isRestricted && nextCol === "done" ? "Apenas admin pode concluir" : undefined}
+                  >
+                    {nextCol ? LABELS[nextCol] : null}
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+
+          <DropdownMenu
+            open={longPressTask?.id === task.id}
+            onOpenChange={(open) => !open && setLongPressTask(null)}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 md:opacity-0 md:group-hover:opacity-100"
+                onClick={(e) => { e.stopPropagation(); setLongPressTask(task); }}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {Object.values(KANBAN_COLUMNS)
+                .filter((col) => col.id !== columnId)
+                .map((col) => (
+                  <DropdownMenuItem
+                    key={col.id}
+                    onClick={() => handleMoveTask(task, col.id)}
+                  >
+                    Mover para {col.title}
+                  </DropdownMenuItem>
+                ))}
+
+              <DropdownMenuItem onClick={() => handleDuplicateTask(task)}>
+                Duplicar Tarefa
+              </DropdownMenuItem>
+
+              {isAdmin && isCollaborativeMode && (
+                <>
+                  <DropdownMenuItem disabled className="font-semibold">
+                    Alterar Responsável
+                  </DropdownMenuItem>
+                  {allUsers.map((u) => (
+                    <DropdownMenuItem
+                      key={u.email}
+                      onClick={() => handleReassignTask(task, u.email)}
+                      disabled={u.email === task.assigned_to}
+                    >
+                      {u.full_name || u.email}
+                      {u.email === task.assigned_to && " (atual)"}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </motion.div>
     );
   };
 
@@ -1413,7 +1264,7 @@ export default function TasksWidget() {
             </div>
           ) : (
             <>
-              <DragDropContext onDragEnd={handleDragEnd}>
+              <LayoutGroup>
                 <div className="flex gap-3 overflow-x-auto pb-4">
                   {Object.values(KANBAN_COLUMNS).map((column) => {
                     const columnTasks = tasksByColumn[column.id] || [];
@@ -1449,34 +1300,22 @@ export default function TasksWidget() {
                           </Badge>
                         </div>
 
-                        <Droppable droppableId={column.id}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.droppableProps}
-                              className={`min-h-[200px] transition-colors ${
-                                snapshot.isDraggingOver
-                                  ? "bg-slate-100 rounded-lg"
-                                  : ""
-                              }`}
-                            >
-                              {columnTasks.map((task, index) => (
-                                <KanbanCard
-                                  key={task.id}
-                                  task={task}
-                                  index={index}
-                                  columnId={column.id}
-                                />
-                              ))}
-                              {provided.placeholder}
-                            </div>
-                          )}
-                        </Droppable>
+                        <div className="min-h-[200px]">
+                          <AnimatePresence mode="popLayout">
+                            {columnTasks.map((task) => (
+                              <KanbanCard
+                                key={task.id}
+                                task={task}
+                                columnId={column.id}
+                              />
+                            ))}
+                          </AnimatePresence>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              </DragDropContext>
+              </LayoutGroup>
 
               <div className="flex items-center gap-3 pt-4 mt-4 border-t flex-wrap">
                 {!isSelectionMode ? (

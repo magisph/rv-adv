@@ -34,27 +34,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import TaskForm from "@/components/tasks/TaskForm";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/lib/AuthContext";
-
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  useDroppable,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 // Constants
 
@@ -79,42 +62,45 @@ const COLUMNS = [
   { id: "done", title: "Concluído", icon: CheckCircle2 },
 ];
 
-function SortableTaskCard({ task, urgency, onEdit, onDelete, onStatusChange }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({
-      id: task.id,
-      data: { type: "Task", task },
-    });
+const STATUS_LABELS = {
+  todo: "A Fazer",
+  in_progress: "Em Progresso",
+  review: "Em Revisão",
+  done: "Concluído",
+};
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
-
+function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole }) {
   const StatusIcon = STATUS_ICONS[task.status] || Circle;
 
-  // Render the original card contents but heavily structured for a vertical Kanban
+  const ORDER = ["todo", "in_progress", "review", "done"];
+  const idx = ORDER.indexOf(task.status);
+  const prevStatus = idx > 0 ? ORDER[idx - 1] : null;
+  const nextStatus = idx < ORDER.length - 1 ? ORDER[idx + 1] : null;
+
+  // RBAC: secretaria/assistente não pode mover para "done"
+  const isRestricted = userRole === "secretaria" || userRole === "assistente";
+  const nextDisabled = !nextStatus || (isRestricted && nextStatus === "done");
+
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none block">
-      <Card 
-        className={`border-0 shadow-sm hover:shadow-md transition-shadow relative cursor-pointer ${isDragging ? "ring-2 ring-blue-500/50" : ""}`}
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.2 }}
+    >
+      <Card
+        className="border-0 shadow-sm hover:shadow-md transition-shadow relative cursor-pointer"
         onClick={() => onEdit(task)}
       >
-        <CardContent className="p-3 leading-tight" onPointerDown={(e) => {
-          if (e.target.closest("button") || e.target.closest("[role='menuitem']")) {
-            // Dropdown triggers handled correctly without dragging issues
-          }
-        }}>
+        <CardContent className="p-3 leading-tight">
           <div className="flex items-start gap-2">
             <button
               type="button"
-              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
-                const order = ["todo", "in_progress", "review", "done"];
-                const nextStatus = order[(order.indexOf(task.status) + 1) % order.length];
-                onStatusChange(task, nextStatus);
+                const nextSt = ORDER[(ORDER.indexOf(task.status) + 1) % ORDER.length];
+                onStatusChange(task, nextSt);
               }}
               className="mt-0.5 shrink-0"
             >
@@ -174,7 +160,7 @@ function SortableTaskCard({ task, urgency, onEdit, onDelete, onStatusChange }) {
               </div>
             </div>
 
-            <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} className="shrink-0">
+            <div onClick={(e) => e.stopPropagation()} className="shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-6 w-6 -mr-1 -mt-1 hover:bg-slate-100 text-slate-400">
@@ -193,59 +179,44 @@ function SortableTaskCard({ task, urgency, onEdit, onDelete, onStatusChange }) {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+          </div>
 
-            {/* Teletransporte: setas de navegação de status */}
-            <div
-              className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
+          {/* Teletransporte: setas de navegação de status */}
+          <div
+            className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              disabled={!prevStatus}
+              onClick={(e) => { e.stopPropagation(); if (prevStatus) onStatusChange(task, prevStatus); }}
+              className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
             >
-              {(() => {
-                const ORDER = ["todo", "in_progress", "review", "done"];
-                const idx = ORDER.indexOf(task.status);
-                const prevStatus = idx > 0 ? ORDER[idx - 1] : null;
-                const nextStatus = idx < ORDER.length - 1 ? ORDER[idx + 1] : null;
-                return (
-                  <>
-                    <button
-                      type="button"
-                      disabled={!prevStatus}
-                      onClick={(e) => { e.stopPropagation(); if (prevStatus) onStatusChange(task, prevStatus); }}
-                      className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
-                    >
-                      <ChevronLeft className="w-3 h-3" />
-                      {prevStatus === "todo" ? "A Fazer" : prevStatus === "in_progress" ? "Em Progresso" : prevStatus === "review" ? "Em Revisão" : null}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!nextStatus}
-                      onClick={(e) => { e.stopPropagation(); if (nextStatus) onStatusChange(task, nextStatus); }}
-                      className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
-                    >
-                      {nextStatus === "in_progress" ? "Em Progresso" : nextStatus === "review" ? "Em Revisão" : nextStatus === "done" ? "Concluído" : null}
-                      <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </>
-                );
-              })()}
-            </div>
+              <ChevronLeft className="w-3 h-3" />
+              {prevStatus ? STATUS_LABELS[prevStatus] : null}
+            </button>
+            <button
+              type="button"
+              disabled={nextDisabled}
+              onClick={(e) => { e.stopPropagation(); if (!nextDisabled && nextStatus) onStatusChange(task, nextStatus); }}
+              className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+              title={isRestricted && nextStatus === "done" ? "Apenas admin pode concluir" : undefined}
+            >
+              {nextStatus ? STATUS_LABELS[nextStatus] : null}
+              <ChevronRight className="w-3 h-3" />
+            </button>
           </div>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 }
 
-function BoardColumn({ column, tasks, onEdit, onDelete, onStatusChange, getTaskUrgency }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: column.id,
-    data: { type: "Column", status: column.id },
-  });
-
+function BoardColumn({ column, tasks, onEdit, onDelete, onStatusChange, getTaskUrgency, userRole }) {
   const Icon = column.icon;
 
   return (
-    <div className={`flex flex-col bg-slate-50/50 border ${isOver ? 'border-blue-400 bg-blue-50/20' : 'border-slate-100'} rounded-xl p-3 w-full h-full min-h-[500px] transition-colors`}>
+    <div className="flex flex-col bg-slate-50/50 border border-slate-100 rounded-xl p-3 w-full h-full min-h-[500px]">
       <div className="flex items-center justify-between mb-4 px-1">
         <div className="flex items-center gap-2">
           <Icon
@@ -266,28 +237,20 @@ function BoardColumn({ column, tasks, onEdit, onDelete, onStatusChange, getTaskU
         </Badge>
       </div>
 
-      <div ref={setNodeRef} className="flex-1 flex flex-col gap-2.5">
-        <SortableContext id={column.id} items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          <AnimatePresence>
-            {tasks.map((task) => (
-              <motion.div
-                key={task.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-              >
-                <SortableTaskCard
-                  task={task}
-                  urgency={getTaskUrgency(task)}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onStatusChange={onStatusChange}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </SortableContext>
+      <div className="flex-1 flex flex-col gap-2.5">
+        <AnimatePresence mode="popLayout">
+          {tasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              urgency={getTaskUrgency(task)}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onStatusChange={onStatusChange}
+              userRole={userRole}
+            />
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -301,6 +264,7 @@ export default function Tasks() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const queryClient = useQueryClient();
+  const userRole = user?.role?.toLowerCase() || "";
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks"],
@@ -374,9 +338,8 @@ export default function Tasks() {
   };
 
   const handleStatusChange = (task, newStatus) => {
-    const role = user?.role?.toLowerCase() || "";
-    const isAssistant = role === "secretaria" || role === "assistente";
-    const isAdmin = role === "admin" || role === "dono";
+    const isAssistant = userRole === "secretaria" || userRole === "assistente";
+    const isAdmin = userRole === "admin" || userRole === "dono";
 
     if (isAssistant && !isAdmin) {
       if (task.assigned_to !== user?.email) {
@@ -395,55 +358,8 @@ export default function Tasks() {
     });
   };
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // Require 8px movement before drag starts
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeTask = active.data.current?.task;
-    let newStatus = over.data.current?.status; 
-    
-    if (!newStatus && over.data.current?.type === "Task") {
-      newStatus = over.data.current?.task?.status;
-    }
-
-    if (!activeTask || !newStatus || activeTask.status === newStatus) return;
-
-    const role = user?.role?.toLowerCase() || "";
-    const isAdmin = role === "admin" || role === "dono";
-    const isAssistant = role === "secretaria" || role === "assistente";
-
-    if (isAssistant && !isAdmin) {
-      if (activeTask.assigned_to !== user?.email) {
-        toast.error("Você só pode interagir com tarefas atribuídas a você.");
-        return;
-      }
-      if (newStatus === "done") {
-        toast.error("Apenas a advogada (admin) pode revisar e concluir as tarefas.");
-        return; // BLOQUEIO CRÍTICO
-      }
-    }
-
-    // Call update mutation
-    updateMutation.mutate({
-      id: activeTask.id,
-      data: { ...activeTask, status: newStatus },
-    });
-  };
-
   const filteredTasks = React.useMemo(() => {
-    const role = user?.role?.toLowerCase() || "";
-    const isTunnelVision = role === "secretaria" || role === "assistente";
+    const isTunnelVision = userRole === "secretaria" || userRole === "assistente";
 
     return tasks.filter((task) => {
       // RBAC: Visão de Túnel — secretária/assistente só vê suas tarefas
@@ -454,7 +370,7 @@ export default function Tasks() {
         task.description?.toLowerCase().includes(search.toLowerCase());
       return matchesSearch;
     });
-  }, [tasks, search, user]);
+  }, [tasks, search, user, userRole]);
 
   const getTaskUrgency = (task) => {
     if (!task.due_date || task.status === "done") return null;
@@ -510,15 +426,14 @@ export default function Tasks() {
               </CardContent>
             </Card>
         ) : (
-          <div className="flex gap-4 min-w-[1200px] h-[calc(100vh-220px)] mt-2">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <LayoutGroup>
+            <div className="flex gap-4 min-w-[1200px] h-[calc(100vh-220px)] mt-2">
               {COLUMNS.map((column) => (
                 <div key={column.id} className="w-[300px] shrink-0">
                   <BoardColumn
                     column={column}
                     tasks={filteredTasks.filter((t) => {
                       if (column.id === 'todo') {
-                        // Include todo and anything without a valid status mapped
                         return t.status === 'todo' || !['in_progress','review','done'].includes(t.status);
                       }
                       return t.status === column.id;
@@ -527,11 +442,12 @@ export default function Tasks() {
                     onDelete={handleDelete}
                     onStatusChange={handleStatusChange}
                     getTaskUrgency={getTaskUrgency}
+                    userRole={userRole}
                   />
                 </div>
               ))}
-            </DndContext>
-          </div>
+            </div>
+          </LayoutGroup>
         )}
       </div>
 
