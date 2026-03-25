@@ -358,7 +358,9 @@ export default function DiarioAtendimentosWidget() {
           <p className="text-sm text-slate-500 text-center py-4">Carregando atendimentos...</p>
         ) : (() => {
           const filteredAtendimentos = atendimentos.filter(a =>
-            a.nome_contato?.toLowerCase().includes(searchTerm.toLowerCase())
+            a.nome_contato && 
+            a.nome_contato.trim() !== "" &&
+            a.nome_contato.toLowerCase().includes(searchTerm.toLowerCase())
           );
           return filteredAtendimentos.length === 0 ? (
             <p className="text-sm text-slate-500 text-center py-4">
@@ -367,7 +369,7 @@ export default function DiarioAtendimentosWidget() {
           ) : (
           <div className="space-y-3 mt-2">
             {filteredAtendimentos.map(atendimento => (
-              <div key={atendimento.id} className="p-3 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => { if (atendimento.client_id) navigate(`/client-detail?id=${atendimento.client_id}&tab=atendimentos`); }}>
+              <div key={atendimento.id} className="p-3 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => { if (atendimento.client_id) navigate(`/ClientDetail?id=${atendimento.client_id}&tab=atendimentos`); }}>
                 <div className="flex justify-between items-start flex-col gap-2">
                   <div className="space-y-1.5 w-full">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
