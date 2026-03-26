@@ -31,6 +31,7 @@ import {
   BookOpen,
   PhoneCall,
   Trash2,
+  FileDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
@@ -41,6 +42,7 @@ import BeneficioModal from "@/components/beneficios/BeneficioModal";
 import BeneficioEditModal from "@/components/beneficios/BeneficioEditModal";
 import DocumentStatusCard from "@/components/clients/DocumentStatusCard";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import { generateClientPDF } from "@/components/clients/pdf/ClientPDFDocument";
 
 const BENEFIT_LABELS = {
   aposentadoria_idade_rural: "Aposentadoria por Idade Rural",
@@ -97,6 +99,21 @@ export default function ClientDetail() {
   const tabParam = urlParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabParam || "info");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!client) return;
+    setIsExportingPDF(true);
+    try {
+      await generateClientPDF(client, beneficios);
+      toast.success("PDF exportado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao exportar PDF:", error);
+      toast.error("Erro ao exportar PDF. Tente novamente.");
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
 
   useEffect(() => {
     if (tabParam) {
@@ -327,6 +344,14 @@ export default function ClientDetail() {
           </h1>
           <p className="text-slate-500">{client.cpf_cnpj}</p>
         </div>
+        <Button onClick={handleExportPDF} variant="outline" disabled={isExportingPDF}>
+          {isExportingPDF ? (
+            <div className="w-4 h-4 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin mr-2" />
+          ) : (
+            <FileDown className="w-4 h-4 mr-2" />
+          )}
+          Exportar PDF
+        </Button>
         <Button onClick={() => setShowEditForm(true)} variant="outline">
           <Edit className="w-4 h-4 mr-2" />
           Editar
