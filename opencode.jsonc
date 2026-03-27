@@ -15,10 +15,18 @@
         "chrome-devtools-mcp"
       ],
       "type": "local"
+    },
+    "context7": {
+      "type": "remote",
+      "enabled": true,
+      "url": "https://mcp.context7.com/mcp"
     }
   },
   "plugin": [
     "opencode-scheduler"
   ],
-  "model": "provider-auth-zai/glm-5"
+  "model": "zai/glm-5-turbo",
+  "compaction": {
+    "auto": false
+  }
 }

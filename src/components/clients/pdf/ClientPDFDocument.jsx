@@ -5,6 +5,7 @@ import {
   addHeader, 
   addSectionTitle, 
   addFooter,
+  addFieldMultiline,
   PAGE_CONFIG,
   SPACING
 } from '@/utils/pdfExporter';
@@ -133,18 +134,4 @@ export function generateClientPDF(client, beneficios = []) {
   return doc;
 }
 
-// Helper para manter compatibilidade
-function addFieldMultiline(doc, label, value, y) {
-  doc.setTextColor(100, 116, 139);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text(label, PAGE_CONFIG.MARGIN_LEFT, y);
-  
-  y += 4;
-  doc.setTextColor(30, 41, 59);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(String(value || '-').substring(0, 100), PAGE_CONFIG.MARGIN_LEFT, y);
-  
-  return y + 10;
-}
+

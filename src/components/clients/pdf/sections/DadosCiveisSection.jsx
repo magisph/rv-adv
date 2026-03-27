@@ -1,38 +1,33 @@
-import { COLORS, FONTS, addField, addFieldMultiline, addSectionTitle } from '@/utils/pdfExporter';
+import { 
+  addFieldRow,
+  addFieldMultiline,
+  addSectionTitle,
+  SPACING 
+} from '@/utils/pdfExporter';
 
 export function DadosCiveisSection(doc, dados, y) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const halfWidth = (pageWidth - 28) / 2;
+  y = addSectionTitle(doc, 'Dados do Processo Cível', y);
 
-  if (dados.parteAdversa) {
-    doc.setTextColor(...COLORS.primary);
-    doc.setFontSize(FONTS.section);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Parte Adversa', 16, y);
-    y += 6;
-
-    y = addField(doc, 'Nome', dados.parteAdversa.nome || '-', y, 16, halfWidth - 5);
-    y = addField(doc, 'CPF/CNPJ', dados.parteAdversa.cpfCnpj || '-', y - 8, 16 + halfWidth, halfWidth - 5);
-    y += 8;
-
-    y = addFieldMultiline(doc, 'Endereço', dados.parteAdversa.endereco || '-', y, 16, pageWidth - 30);
-    y += 4;
+  if (dados.parte_adversa) {
+    const pa = dados.parte_adversa;
+    y = addFieldMultiline(doc, 'Parte Adversa', pa.nome || '-', y);
+    y = addFieldRow(doc, 'CPF/CNPJ', pa.cpf_cnpj || '-', '', '', y);
+    if (pa.endereco) {
+      y = addFieldMultiline(doc, 'Endereço', pa.endereco, y);
+    }
   }
 
-  if (dados.fatosCronologia) {
-    y = addFieldMultiline(doc, 'Fatos e Cronologia', dados.fatosCronologia, y, 16, pageWidth - 30);
-    y += 4;
+  if (dados.fatos_cronologia) {
+    y = addFieldMultiline(doc, 'Fatos e Cronologia', dados.fatos_cronologia, y);
   }
 
-  if (dados.expectativaPedido) {
-    y = addFieldMultiline(doc, 'Expectativa/Pedido', dados.expectativaPedido, y, 16, pageWidth - 30);
-    y += 4;
+  if (dados.expectativa_pedido) {
+    y = addFieldMultiline(doc, 'Expectativa/Pedido', dados.expectativa_pedido, y);
   }
 
-  if (dados.urgenciasRiscos) {
-    y = addFieldMultiline(doc, 'Urgências e Riscos', dados.urgenciasRiscos, y, 16, pageWidth - 30);
-    y += 4;
+  if (dados.urgencias_riscos) {
+    y = addFieldMultiline(doc, 'Urgências/Riscos', dados.urgencias_riscos, y);
   }
 
-  return y + 4;
+  return y + SPACING.PARAGRAPH_SPACING;
 }

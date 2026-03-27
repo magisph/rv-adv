@@ -1,24 +1,22 @@
-import { COLORS, FONTS, addField, addFieldMultiline } from '@/utils/pdfExporter';
+import { 
+  addFieldRow,
+  addSectionTitle,
+  PAGE_CONFIG,
+  SPACING 
+} from '@/utils/pdfExporter';
 
 export function InfoPessoaisSection(doc, data, y) {
   const pageWidth = doc.internal.pageSize.getWidth();
-  const halfWidth = (pageWidth - 28) / 2;
+  const availableWidth = pageWidth - PAGE_CONFIG.MARGIN_LEFT - PAGE_CONFIG.MARGIN_RIGHT;
+  const halfWidth = availableWidth / 2 - 3;
 
-  y = addField(doc, 'Nome Completo', data.full_name, y, 16, halfWidth - 5);
-  y = addField(doc, 'CPF', data.cpf_cnpj, y - 8, 16 + halfWidth, halfWidth - 5);
-  y += 8;
+  y = addSectionTitle(doc, 'Informações Pessoais', y);
+  
+  y = addFieldRow(doc, 'Nome Completo', data.full_name || '-', 'CPF', data.cpf_cnpj || '-', y);
+  y = addFieldRow(doc, 'Data de Nascimento', data.data_nascimento || '-', 'Idade', data.idade || '-', y);
+  y = addFieldRow(doc, 'RG', data.rg || '-', 'Órgão Expedidor', data.orgao_expedidor || '-', y);
+  y = addFieldRow(doc, 'Estado Civil', data.estado_civil || '-', 'Escolaridade', data.grau_escolaridade || '-', y);
+  y = addFieldRow(doc, 'Profissão', data.profissao || '-', '', '', y);
 
-  y = addField(doc, 'Data de Nascimento', data.data_nascimento, y, 16, halfWidth - 5);
-  y = addField(doc, 'RG', data.rg || '-', y - 8, 16 + halfWidth, halfWidth - 5);
-  y += 8;
-
-  y = addField(doc, 'Órgão Expedidor', data.orgao_expedidor || '-', y, 16, halfWidth - 5);
-  y = addField(doc, 'Estado Civil', data.estado_civil || '-', y - 8, 16 + halfWidth, halfWidth - 5);
-  y += 8;
-
-  y = addField(doc, 'Escolaridade', data.grau_escolaridade || '-', y, 16, halfWidth - 5);
-  y = addField(doc, 'Profissão', data.profissao || '-', y - 8, 16 + halfWidth, halfWidth - 5);
-  y += 8;
-
-  return y + 4;
+  return y + SPACING.PARAGRAPH_SPACING;
 }
