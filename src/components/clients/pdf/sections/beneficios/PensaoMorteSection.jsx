@@ -9,13 +9,13 @@ import {
 
 export function PensaoMorteSection(doc, data, y, addHeaderFn = null, headerTitle = '') {
   // ═══ DADOS DO FALECIDO ═══
-  y = addSectionTitle(doc, 'Dados do Falecido', y);
+  y = addSectionTitle(doc, 'Dados do Falecido', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
   
   if (data.falecido) {
     const fal = data.falecido;
     
-    y = addField(doc, 'Nome', fal.nome, y);
-    y = addFieldRow(doc, 'Data do Óbito', fal.data_obito, 'Grau de Parentesco', fal.grau_parentesco, y);
+    y = addField(doc, 'Nome', fal.nome, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
+    y = addFieldRow(doc, 'Data do Óbito', fal.data_obito, 'Grau de Parentesco', fal.grau_parentesco, y, addHeaderFn, headerTitle);
     y += SPACING.PARAGRAPH_SPACING;
   }
 

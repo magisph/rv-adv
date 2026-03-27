@@ -11,13 +11,13 @@ import {
 
 export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, headerTitle = '') {
   // ═══ PATOLOGIA E CONDIÇÃO ═══
-  y = addSectionTitle(doc, 'Patologia e Condição', y);
+  y = addSectionTitle(doc, 'Patologia e Condição', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
   
   if (data.patologia) {
     const pat = data.patologia;
     
-    y = addFieldRow(doc, 'CID', pat.cid, 'Data Início Sintomas', pat.data_inicio, y);
-    y = addFieldRow(doc, 'Decorreu de Acidente', pat.decorreu_acidente, 'Pesquisa CID', pat.pesquisa_cid, y);
+    y = addFieldRow(doc, 'CID', pat.cid, 'Data Início Sintomas', pat.data_inicio, y, addHeaderFn, headerTitle);
+    y = addFieldRow(doc, 'Decorreu de Acidente', pat.decorreu_acidente, 'Pesquisa CID', pat.pesquisa_cid, y, addHeaderFn, headerTitle);
     
     if (pat.detalhes_acidente && pat.detalhes_acidente !== '-' && pat.detalhes_acidente !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Detalhes do Acidente', pat.detalhes_acidente, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
@@ -44,13 +44,14 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
   }
 
   // ═══ AFASTAMENTO E TRATAMENTO ═══
-  y = checkPageBreak(doc, y, 50, addHeaderFn, headerTitle);
-  y = addSectionTitle(doc, 'Afastamento e Tratamento', y);
+  const estimatedTreatmentHeight = SPACING.SECTION_SPACING + (SPACING.FIELD_SPACING * 7);
+  y = checkPageBreak(doc, y, estimatedTreatmentHeight, addHeaderFn, headerTitle);
+  y = addSectionTitle(doc, 'Afastamento e Tratamento', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
   
   if (data.afastamento) {
     const afs = data.afastamento;
     
-    y = addFieldRow(doc, 'Data Afastamento', afs.data_afastamento, 'Faz Tratamento', afs.faz_tratamento, y);
+    y = addFieldRow(doc, 'Data Afastamento', afs.data_afastamento, 'Faz Tratamento', afs.faz_tratamento, y, addHeaderFn, headerTitle);
     
     if (afs.tipos_tratamento && afs.tipos_tratamento !== '-' && afs.tipos_tratamento !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Tipos de Tratamento', afs.tipos_tratamento, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
@@ -59,7 +60,7 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
       y = addFieldValueOnly(doc, 'Outro Tratamento', afs.tratamento_outro, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
-    y = addFieldRow(doc, 'Possui Relatórios', afs.possui_relatorios, 'Toma Medicações', afs.toma_medicacoes, y);
+    y = addFieldRow(doc, 'Possui Relatórios', afs.possui_relatorios, 'Toma Medicações', afs.toma_medicacoes, y, addHeaderFn, headerTitle);
     
     if (afs.quais_medicacoes && afs.quais_medicacoes !== '-' && afs.quais_medicacoes !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Medicações', afs.quais_medicacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
@@ -72,8 +73,9 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
   }
 
   // ═══ DOCUMENTOS MÉDICOS ═══
-  y = checkPageBreak(doc, y, 40, addHeaderFn, headerTitle);
-  y = addSectionTitle(doc, 'Documentos Médicos', y);
+  const estimatedDocsHeight = SPACING.SECTION_SPACING + 10 + SPACING.PARAGRAPH_SPACING;
+  y = checkPageBreak(doc, y, estimatedDocsHeight, addHeaderFn, headerTitle);
+  y = addSectionTitle(doc, 'Documentos Médicos', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
   
   if (data.documentos_medicos && data.documentos_medicos.length > 0) {
     y = addTable(
@@ -90,16 +92,17 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
       headerTitle
     );
   } else {
-    y = addField(doc, 'Nenhum documento cadastrado', '-', y);
+    y = addField(doc, 'Nenhum documento cadastrado', '-', y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }
 
   // ═══ ATIVIDADE RURAL ═══
-  y = checkPageBreak(doc, y, 40, addHeaderFn, headerTitle);
-  y = addSectionTitle(doc, 'Atividade Rural', y);
+  const estimatedRuralHeight = SPACING.SECTION_SPACING + 10 + SPACING.PARAGRAPH_SPACING;
+  y = checkPageBreak(doc, y, estimatedRuralHeight, addHeaderFn, headerTitle);
+  y = addSectionTitle(doc, 'Atividade Rural', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
   
   if (data.atividade_rural) {
     const atv = data.atividade_rural;
-    y = addFieldRow(doc, 'Zona de Residência', atv.zona, 'Tempo Local', atv.tempo_local, y);
+    y = addFieldRow(doc, 'Zona de Residência', atv.zona, 'Tempo Local', atv.tempo_local, y, addHeaderFn, headerTitle);
     
     if (atv.propriedades && atv.propriedades.length > 0) {
       y = addTable(
@@ -119,19 +122,21 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
   }
 
   // ═══ DOCUMENTAÇÃO ═══
-  y = checkPageBreak(doc, y, 30, addHeaderFn, headerTitle);
-  y = addSectionTitle(doc, 'Documentação Rural', y);
+  const estimatedDocHeight = SPACING.SECTION_SPACING + (SPACING.FIELD_SPACING * 3);
+  y = checkPageBreak(doc, y, estimatedDocHeight, addHeaderFn, headerTitle);
+  y = addSectionTitle(doc, 'Documentação Rural', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
   
   if (data.documentacao) {
     const doc_ = data.documentacao;
-    y = addFieldRow(doc, 'Possui DAP', doc_.dap, 'Possui CAF', doc_.caf, y);
-    y = addFieldRow(doc, 'Filiado ao Sindicato', doc_.filiado_sindicato, 'Desde', doc_.filiado_desde, y);
+    y = addFieldRow(doc, 'Possui DAP', doc_.dap, 'Possui CAF', doc_.caf, y, addHeaderFn, headerTitle);
+    y = addFieldRow(doc, 'Filiado ao Sindicato', doc_.filiado_sindicato, 'Desde', doc_.filiado_desde, y, addHeaderFn, headerTitle);
     y += SPACING.PARAGRAPH_SPACING;
   }
 
   // ═══ TESTEMUNHAS ═══
-  y = checkPageBreak(doc, y, 30, addHeaderFn, headerTitle);
-  y = addSectionTitle(doc, 'Testemunhas', y);
+  const estimatedWitnessHeight = SPACING.SECTION_SPACING + 15 + SPACING.PARAGRAPH_SPACING;
+  y = checkPageBreak(doc, y, estimatedWitnessHeight, addHeaderFn, headerTitle);
+  y = addSectionTitle(doc, 'Testemunhas', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
   
   if (data.testemunhas && data.testemunhas.length > 0) {
     y = addTable(
@@ -150,7 +155,7 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
       headerTitle
     );
   } else {
-    y = addField(doc, 'Nenhuma testemunha cadastrada', '-', y);
+    y = addField(doc, 'Nenhuma testemunha cadastrada', '-', y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }
 
   // ═══ OBSERVAÇÕES ═══
