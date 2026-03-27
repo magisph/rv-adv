@@ -13,14 +13,15 @@ export function ContatoSection(doc, data, y, addHeaderFn = null, headerTitle = '
     y = addFieldMultiline(doc, 'E-mail', data.email, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }
   
-  y = addFieldRow(doc, 'Telefone', data.telefone, '', '', y);
+  // [FIX: Quebra de Página] Passar addHeaderFn/headerTitle para addFieldRow
+  y = addFieldRow(doc, 'Telefone', data.telefone, '', '', y, addHeaderFn, headerTitle);
   
   if (data.endereco) {
     y = addFieldMultiline(doc, 'Endereço', data.endereco, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }
   
-  y = addFieldRow(doc, 'CEP', data.cep, 'Cidade', data.cidade, y);
-  y = addFieldRow(doc, 'Estado', data.estado, '', '', y);
+  y = addFieldRow(doc, 'CEP', data.cep, 'Cidade', data.cidade, y, addHeaderFn, headerTitle);
+  y = addFieldRow(doc, 'Estado', data.estado, '', '', y, addHeaderFn, headerTitle);
 
   return y + SPACING.PARAGRAPH_SPACING;
 }

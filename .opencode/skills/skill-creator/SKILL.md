@@ -1,19 +1,42 @@
 ---
 name: skill-creator
-description: Create new OpenCode skills with the standard scaffold.
+description: Guide for creating effective skills. Use when users want to create
+  or update a skill that extends OpenCode with specialized knowledge, workflows,
+  or tool integrations.
 ---
 
-Skill creator helps create other skills that are self-buildable.
+# Skill Creator
 
-The best way to use it is after a user already executed a flow and says: create a skill for this. Alternatively, if the user asks for a skill to be created, suggest they do the task first and ask for skill creation at the end.
+This skill is a template + checklist for creating skills in a workspace.
 
-This should trigger this scaffold:
-- If the user needed to configure things, create a `.env.example` without credentials and include all required variables.
-- Ask the user if they want to store credentials. If yes, write them to a `.env` file in the skill, and suggest rotating keys later.
-- Always add a `.gitignore` in the skill that ignores `.env`, and verify `.env` is not tracked.
-- If the user needed to interact with an API and you created scripts, add reusable scripts under `scripts/`.
-- New skills should explain how to use the `scripts/` and that `.env.example` defines the minimum config.
-- Skills should state that they infer what they can do from the available config.
+## What is a skill?
+
+A skill is a folder under `.opencode/skills/<skill-name>/` or `.claude/skills/<skill-name>/` anchored by `SKILL.md`.
+
+## OpenWork behavior
+
+- In OpenWork, prefer creating the skill at `.opencode/skills/<skill-name>/SKILL.md`.
+- Use a file mutation tool (`write`, `edit`, or `apply_patch`) on the real skill path instead of pasting the whole skill into chat.
+- Writing the skill file lets OpenWork show the reload banner above the conversation so the user can activate the new skill immediately.
+
+## Design goals
+
+- Portable: safe to copy between machines
+- Reconstructable: can recreate any required local state
+- Self-building: can bootstrap its own config/state
+- Credential-safe: no secrets committed; graceful first-time setup
+
+## Recommended structure
+
+```
+.opencode/
+  skills/
+    my-skill/
+      SKILL.md
+      README.md
+      templates/
+      scripts/
+```
 
 ## Trigger phrases (critical)
 
@@ -47,55 +70,11 @@ description: |
 ---
 ```
 
-## Quick Usage (Already Configured)
+## Authoring checklist
 
-### Create a new skill folder
-```bash
-mkdir -p .opencode/skills/<skill-name>
-```
-
-### Minimum scaffold files
-- `SKILL.md`
-- `scripts/`
-- `.env`
-- `.env.example` (use this to guide the minimum config)
-- `.gitignore` (ignore `.env`)
-
-## .env (credentials + config)
-
-- Use `.env.example` to document required credentials or external setup.
-- Do not include any real credentials in `.env.example`.
-
-## Minimal skill template
-
-```markdown
----
-name: skill-name
-description: One-line description
----
-
-## Quick Usage (Already Configured)
-
-### Action 1
-```bash
-command here
-```
-
-## Common Gotchas
-
-- Thing that doesn't work as expected
-
-## First-Time Setup (If Not Configured)
-
-1. ...
-```
-
-## Notes from OpenCode docs
-
-- Skill folders live in `.opencode/skills/<name>/SKILL.md`.
-- `name` must be lowercase and match the folder.
-- Frontmatter requires `name` and `description`.
-
-## Reference
-
-Follow the official OpenCode skills docs: https://opencode.ai/docs/skills/
+1. Start with a clear purpose statement: when to use it + what it outputs.
+2. Specify inputs/outputs and any required permissions.
+3. Include “Setup” steps if the skill needs local tooling.
+4. Add examples: at least 2 realistic user prompts.
+5. Keep it safe: avoid destructive defaults; ask for confirmation.
+6. In OpenWork, finish by writing the final `SKILL.md` file to `.opencode/skills/<skill-name>/SKILL.md` so the reload banner can appear.
