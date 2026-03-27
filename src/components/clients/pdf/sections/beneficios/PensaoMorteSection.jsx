@@ -14,13 +14,13 @@ export function PensaoMorteSection(doc, data, y, addHeaderFn = null, headerTitle
   if (data.falecido) {
     const fal = data.falecido;
     
-    y = addField(doc, 'Nome', fal.nome || '-', y);
-    y = addFieldRow(doc, 'Data do Óbito', fal.data_obito || '-', 'Grau de Parentesco', fal.grau_parentesco || '-', y);
+    y = addField(doc, 'Nome', fal.nome, y);
+    y = addFieldRow(doc, 'Data do Óbito', fal.data_obito, 'Grau de Parentesco', fal.grau_parentesco, y);
     y += SPACING.PARAGRAPH_SPACING;
   }
 
   // ═══ INFORMAÇÕES ADICIONAIS ═══
-  if (data.outras_informacoes && data.outras_informacoes !== '-') {
+  if (data.outras_informacoes && data.outras_informacoes !== '-' && data.outras_informacoes !== '[NÃO INFORMADO]') {
     y = addFieldValueOnly(doc, 'Outras Informações', data.outras_informacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }
 

@@ -15,7 +15,7 @@ export function AposentadoriaRuralSection(doc, data, y, addHeaderFn = null, head
   
   if (data.residencia) {
     const res = data.residencia;
-    y = addFieldRow(doc, 'Zona', res.zona || '-', 'Tempo no Local', res.tempo_local || '-', y);
+    y = addFieldRow(doc, 'Zona', res.zona, 'Tempo no Local', res.tempo_local, y);
     y += SPACING.PARAGRAPH_SPACING;
   }
 
@@ -25,8 +25,8 @@ export function AposentadoriaRuralSection(doc, data, y, addHeaderFn = null, head
   
   if (data.atividade) {
     const atv = data.atividade;
-    y = addFieldRow(doc, 'Trabalha Exclusivamente', atv.trabalha_exclusivo || '-', 'Trabalha Desde', atv.trabalha_desde || '-', y);
-    y = addFieldRow(doc, 'Trabalha Atualmente', atv.trabalha_atualmente || '-', '', '', y);
+    y = addFieldRow(doc, 'Trabalha Exclusivamente', atv.trabalha_exclusivo, 'Trabalha Desde', atv.trabalha_desde, y);
+    y = addFieldRow(doc, 'Trabalha Atualmente', atv.trabalha_atualmente, '', '', y);
     y += SPACING.PARAGRAPH_SPACING;
   }
 
@@ -82,8 +82,8 @@ export function AposentadoriaRuralSection(doc, data, y, addHeaderFn = null, head
   
   if (data.documentacao) {
     const doc_ = data.documentacao;
-    y = addFieldRow(doc, 'Possui DAP', doc_.dap || '-', 'Possui CAF', doc_.caf || '-', y);
-    y = addFieldRow(doc, 'Filiado ao Sindicato', doc_.filiado_sindicato || '-', 'Desde', doc_.filiado_desde || '-', y);
+    y = addFieldRow(doc, 'Possui DAP', doc_.dap, 'Possui CAF', doc_.caf, y);
+    y = addFieldRow(doc, 'Filiado ao Sindicato', doc_.filiado_sindicato, 'Desde', doc_.filiado_desde, y);
     y += SPACING.PARAGRAPH_SPACING;
   }
 
@@ -112,7 +112,7 @@ export function AposentadoriaRuralSection(doc, data, y, addHeaderFn = null, head
   }
 
   // ═══ OBSERVAÇÕES ═══
-  if (data.observacoes && data.observacoes !== '-') {
+  if (data.observacoes && data.observacoes !== '-' && data.observacoes !== '[NÃO INFORMADO]') {
     y = checkPageBreak(doc, y, 20, addHeaderFn, headerTitle);
     y = addFieldValueOnly(doc, 'Observações', data.observacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }

@@ -556,3 +556,74 @@ Type `*help` to see all commands, or `*explain` to learn more.
 - **@github-devops (Gage)** - Pushes my commits
 
 ---
+
+Agora tenho uma visão clara. Vou criar o plano de refatoração:
+
+---
+
+## Plano de Refatoração do Sistema de Exportação PDF
+
+### Análise do Estado Atual
+
+O `pdfExporter.js` já possui uma boa estrutura base (PAGE_CONFIG, FONTS, COLORS), mas apresenta problemas críticos:
+
+| Problema | Localização | Solução |
+|----------|-------------|---------|
+| Truncamento com "..." | `pdfExporter.js:296` (addField) | Criar nova função `addFieldValueOnly` sem truncamento |
+| Falta checkPageBreak em multiline | `pdfExporter.js:322-348` (addFieldMultiline) | Adicionar verificação de quebra de página |
+| Falta addFieldRow no ClientPDFDocument | Linha 108 | Usar função utility existente |
+
+### Plano de Execução
+
+**1. Atualizar `src/utils/pdfExporter.js`:**
+
+- [ ] **Corrigir `addFieldMultiline`** (~linha 322): Adicionar chamada a `checkPageBreak` dentro do loop de linhas para quebrar página automaticamente quando necessário
+- [ ] **Adicionar `addFieldValueOnly`**: Nova função para campos que não devem ser truncados (diagnósticos, CIF)
+- [ ] **Melhorar `checkPageBreak`**: Retornar corretamente a posição Y após quebra de página
+- [ ] **Renomear `addFooter` para `finalizeDocument`**: Adicionar documentação clara
+
+**2. Refatorar `src/components/clients/pdf/sections/beneficios/BPCLoasSection.jsx`:**
+
+- [ ] Substituir `addField` (trunca) por `addFieldValueOnly` para campos longos (diagnósticos, CIF, medicamentos, etc.)
+- [ ] Garantir que cada `addFieldMultiline` seja usado corretamente
+
+**3. Atualizar `ClientPDFDocument.jsx`:**
+
+- [ ] Adicionar `checkPageBreak` antes de cada benefício (linha 64-65) para evitar órfãos
+- [ ] Remover lógica inline de texto (linhas 77-81) e usar funções do utilitário
+
+**4. Verificar outras seções:**
+
+- [ ] Aplicar mesmo padrão em: `AposentadoriaRuralSection`, `IncapacidadeRuralSection`, `PensaoMorteSection`, `SalarioMaternidadeRuralSection`
+
+---
+
+Refatoração concluída com sucesso. Os erros de typecheck são de arquivos pré-existentes (não relacionados à refatoração).
+
+---
+
+## ✅ Resumo da Refatoração
+
+### 1. `src/utils/pdfExporter.js` (Core)
+- ✅ **Corrigido `checkPageBreak`**: Agora retorna `PAGE_CONFIG.MARGIN_TOP` após quebra de página
+- ✅ **Adicionado `addFieldValueOnly`**: Nova função para campos longos SEM truncamento
+- ✅ **Corrigido `addFieldMultiline`**: Agora verifica quebra de página dentro do loop
+- ✅ **Adicionado `finalizeDocument`**: Função com documentação clara para rodapé/paginação
+
+### 2. Seções de Benefícios Refatoradas
+- ✅ **BPCLoasSection.jsx** - Campos longos (diagnósticos, CIF, medicamentos) agora usam `addFieldValueOnly`
+- ✅ **AposentadoriaRuralSection.jsx** - Observações com suporte completo
+- ✅ **IncapacidadeRuralSection.jsx** - Todos os campos longos atualizados
+- ✅ **PensaoMorteSection.jsx** - Informações adicionais corrigidas
+- ✅ **SalarioMaternidadeRuralSection.jsx** - Detalhes de complicações e observações
+
+### 3. `ClientPDFDocument.jsx`
+- ✅ Adicionado `checkPageBreak` antes de cada benefício (evita órfãos)
+- ✅ Substituída lógica inline por `addFieldValueOnly`
+- ✅ Observações do benefício com suporte a quebra de página
+
+### Problemas Resolvidos
+1. **Truncamento Arbitrário** → Textos longos agora aparecem completos
+2. **Layout Quebrado** → Sem mais "hacks" de posicionamento
+3. **Quebras de Página** → Verificação automática antes de desenhar
+4. **Valores Hardcoded** → Tudo usa constantes de `PAGE_CONFIG`, `FONTS`, `COLORS`

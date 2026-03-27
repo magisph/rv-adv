@@ -16,27 +16,27 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
   if (data.patologia) {
     const pat = data.patologia;
     
-    y = addFieldRow(doc, 'CID', pat.cid || '-', 'Data Início Sintomas', pat.data_inicio || '-', y);
-    y = addFieldRow(doc, 'Decorreu de Acidente', pat.decorreu_acidente || '-', 'Pesquisa CID', pat.pesquisa_cid || '-', y);
+    y = addFieldRow(doc, 'CID', pat.cid, 'Data Início Sintomas', pat.data_inicio, y);
+    y = addFieldRow(doc, 'Decorreu de Acidente', pat.decorreu_acidente, 'Pesquisa CID', pat.pesquisa_cid, y);
     
-    if (pat.detalhes_acidente && pat.detalhes_acidente !== '-') {
+    if (pat.detalhes_acidente && pat.detalhes_acidente !== '-' && pat.detalhes_acidente !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Detalhes do Acidente', pat.detalhes_acidente, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
-    if (pat.historico && pat.historico !== '-') {
+    if (pat.historico && pat.historico !== '-' && pat.historico !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Histórico dos Sintomas', pat.historico, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
-    if (pat.impacto_vida && pat.impacto_vida !== '-') {
+    if (pat.impacto_vida && pat.impacto_vida !== '-' && pat.impacto_vida !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Impacto na Vida', pat.impacto_vida, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
-    if (pat.impacto_labor && pat.impacto_labor !== '-') {
+    if (pat.impacto_labor && pat.impacto_labor !== '-' && pat.impacto_labor !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Impacto no Labor', pat.impacto_labor, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
-    if (pat.atividades_trabalho && pat.atividades_trabalho !== '-') {
+    if (pat.atividades_trabalho && pat.atividades_trabalho !== '-' && pat.atividades_trabalho !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Atividades de Trabalho', pat.atividades_trabalho, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
-    if (pat.saude_dificulta === 'Sim' && pat.como_dificulta && pat.como_dificulta !== '-') {
+    if (pat.saude_dificulta === 'Sim' && pat.como_dificulta && pat.como_dificulta !== '-' && pat.como_dificulta !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Como Dificulta', pat.como_dificulta, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
@@ -50,21 +50,21 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
   if (data.afastamento) {
     const afs = data.afastamento;
     
-    y = addFieldRow(doc, 'Data Afastamento', afs.data_afastamento || '-', 'Faz Tratamento', afs.faz_tratamento || '-', y);
+    y = addFieldRow(doc, 'Data Afastamento', afs.data_afastamento, 'Faz Tratamento', afs.faz_tratamento, y);
     
-    if (afs.tipos_tratamento && afs.tipos_tratamento !== '-') {
+    if (afs.tipos_tratamento && afs.tipos_tratamento !== '-' && afs.tipos_tratamento !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Tipos de Tratamento', afs.tipos_tratamento, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
-    if (afs.tratamento_outro && afs.tratamento_outro !== '-') {
+    if (afs.tratamento_outro && afs.tratamento_outro !== '-' && afs.tratamento_outro !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Outro Tratamento', afs.tratamento_outro, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
-    y = addFieldRow(doc, 'Possui Relatórios', afs.possui_relatorios || '-', 'Toma Medicações', afs.toma_medicacoes || '-', y);
+    y = addFieldRow(doc, 'Possui Relatórios', afs.possui_relatorios, 'Toma Medicações', afs.toma_medicacoes, y);
     
-    if (afs.quais_medicacoes && afs.quais_medicacoes !== '-') {
+    if (afs.quais_medicacoes && afs.quais_medicacoes !== '-' && afs.quais_medicacoes !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Medicações', afs.quais_medicacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
-    if (afs.medicacoes_efeitos === 'Sim' && afs.quais_efeitos && afs.quais_efeitos !== '-') {
+    if (afs.medicacoes_efeitos === 'Sim' && afs.quais_efeitos && afs.quais_efeitos !== '-' && afs.quais_efeitos !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Efeitos Colaterais', afs.quais_efeitos, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
@@ -99,16 +99,16 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
   
   if (data.atividade_rural) {
     const atv = data.atividade_rural;
-    y = addFieldRow(doc, 'Zona de Residência', atv.zona || '-', 'Tempo Local', atv.tempo_local || '-', y);
+    y = addFieldRow(doc, 'Zona de Residência', atv.zona, 'Tempo Local', atv.tempo_local, y);
     
     if (atv.propriedades && atv.propriedades.length > 0) {
       y = addTable(
         doc, 
         ['Propriedade', 'Proprietário', 'Período'], 
         atv.propriedades.map(p => [
-          p.nome || '-', 
-          p.proprietario || '-', 
-          p.periodo || '-'
+          p.nome, 
+          p.proprietario, 
+          p.periodo
         ]),
         y,
         PAGE_CONFIG.MARGIN_LEFT,
@@ -124,8 +124,8 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
   
   if (data.documentacao) {
     const doc_ = data.documentacao;
-    y = addFieldRow(doc, 'Possui DAP', doc_.dap || '-', 'Possui CAF', doc_.caf || '-', y);
-    y = addFieldRow(doc, 'Filiado ao Sindicato', doc_.filiado_sindicato || '-', 'Desde', doc_.filiado_desde || '-', y);
+    y = addFieldRow(doc, 'Possui DAP', doc_.dap, 'Possui CAF', doc_.caf, y);
+    y = addFieldRow(doc, 'Filiado ao Sindicato', doc_.filiado_sindicato, 'Desde', doc_.filiado_desde, y);
     y += SPACING.PARAGRAPH_SPACING;
   }
 
@@ -138,11 +138,11 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
       doc, 
       ['Nome', 'CPF', 'Telefone', 'Relação', 'Período'], 
       data.testemunhas.map(t => [
-        t.nome || '-', 
-        t.cpf || '-', 
-        t.telefone || '-', 
-        t.relacao || '-', 
-        t.periodo || '-'
+        t.nome, 
+        t.cpf, 
+        t.telefone, 
+        t.relacao, 
+        t.periodo
       ]),
       y,
       PAGE_CONFIG.MARGIN_LEFT,
@@ -154,7 +154,7 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
   }
 
   // ═══ OBSERVAÇÕES ═══
-  if (data.observacoes && data.observacoes !== '-') {
+  if (data.observacoes && data.observacoes !== '-' && data.observacoes !== '[NÃO INFORMADO]') {
     y = checkPageBreak(doc, y, 20, addHeaderFn, headerTitle);
     y = addFieldValueOnly(doc, 'Observações', data.observacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }

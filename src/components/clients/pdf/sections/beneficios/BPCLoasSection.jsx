@@ -11,8 +11,6 @@ import {
 
 export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '') {
   const pageWidth = doc.internal.pageSize.getWidth();
-  const availableWidth = pageWidth - PAGE_CONFIG.MARGIN_LEFT - PAGE_CONFIG.MARGIN_RIGHT;
-  const halfWidth = availableWidth / 2 - 3;
 
   // ═══ TRIAGEM DE ELEGIBILIDADE ═══
   y = addSectionTitle(doc, 'Triagem de Elegibilidade', y);
@@ -20,17 +18,17 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
   if (data.elegibilidade) {
     const elig = data.elegibilidade;
     
-    y = addFieldRow(doc, 'Reside no Brasil', elig.reside_brasil || '-', 'CPF/CadÚnico', elig.cpf_cadunico || '-', y);
-    y = addFieldRow(doc, 'Recebe Benefício', elig.recebe_beneficio || '-', 'Vínculo Ativo', elig.vinculo_ativo || '-', y);
+    y = addFieldRow(doc, 'Reside no Brasil', elig.reside_brasil, 'CPF/CadÚnico', elig.cpf_cadunico, y);
+    y = addFieldRow(doc, 'Recebe Benefício', elig.recebe_beneficio, 'Vínculo Ativo', elig.vinculo_ativo, y);
     
-    if (elig.diagnosticos && elig.diagnosticos !== '-') {
+    if (elig.diagnosticos && elig.diagnosticos !== '-' && elig.diagnosticos !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Diagnóstico (CID)', elig.diagnosticos, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
-    y = addFieldRow(doc, 'Médico Assistente', elig.medico_assistente || '-', 'Início dos Sintomas', elig.inicio_sintomas || '-', y);
-    y = addFieldRow(doc, 'Impedimento 2+ Anos', elig.impedimento_2_anos || '-', 'Natureza do Impedimento', elig.natureza_impedimento || '-', y);
+    y = addFieldRow(doc, 'Médico Assistente', elig.medico_assistente, 'Início dos Sintomas', elig.inicio_sintomas, y);
+    y = addFieldRow(doc, 'Impedimento 2+ Anos', elig.impedimento_2_anos, 'Natureza do Impedimento', elig.natureza_impedimento, y);
     
-    if (elig.tipos_impedimento && elig.tipos_impedimento !== '-') {
+    if (elig.tipos_impedimento && elig.tipos_impedimento !== '-' && elig.tipos_impedimento !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Tipos de Impedimento', elig.tipos_impedimento, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
@@ -44,26 +42,26 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
   if (data.cif) {
     const cif = data.cif;
     
-    if (cif.autocuidado && cif.autocuidado !== '-') {
+    if (cif.autocuidado && cif.autocuidado !== '-' && cif.autocuidado !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Autocuidado', cif.autocuidado, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
-    if (cif.mobilidade && cif.mobilidade !== '-') {
+    if (cif.mobilidade && cif.mobilidade !== '-' && cif.mobilidade !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Mobilidade', cif.mobilidade, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
-    y = addFieldRow(doc, 'Comunicação', cif.comunicacao || '-', 'Cognição', cif.cognicao || '-', y);
-    y = addFieldRow(doc, 'Interação Social', cif.interacao_social || '-', 'Capacidade Trabalho', cif.capacidade_trabalho || '-', y);
+    y = addFieldRow(doc, 'Comunicação', cif.comunicacao, 'Cognição', cif.cognicao, y);
+    y = addFieldRow(doc, 'Interação Social', cif.interacao_social, 'Capacidade Trabalho', cif.capacidade_trabalho, y);
     
-    if (cif.barreiras && cif.barreiras !== '-') {
+    if (cif.barreiras && cif.barreiras !== '-' && cif.barreiras !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Barreiras', cif.barreiras, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
-    y = addFieldRow(doc, 'Necessita Cuidador', cif.necessita_cuidador || '-', '', '', y);
+    y = addFieldRow(doc, 'Necessita Cuidador', cif.necessita_cuidador, '', '', y);
     
-    if (cif.tratamentos && cif.tratamentos !== '-') {
+    if (cif.tratamentos && cif.tratamentos !== '-' && cif.tratamentos !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Tratamentos em Curso', cif.tratamentos, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
-    if (cif.medicamentos && cif.medicamentos !== '-') {
+    if (cif.medicamentos && cif.medicamentos !== '-' && cif.medicamentos !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Medicamentos Contínuos', cif.medicamentos, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
@@ -100,12 +98,12 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
   
   if (data.situacao_habitacional) {
     const hab = data.situacao_habitacional;
-    y = addField(doc, 'Origem da Residência', hab.origem_residencia || '-', y);
+    y = addFieldRow(doc, 'Origem da Residência', hab.origem_residencia, '', '', y);
     
-    if (hab.condicoes_imovel && hab.condicoes_imovel !== '-') {
+    if (hab.condicoes_imovel && hab.condicoes_imovel !== '-' && hab.condicoes_imovel !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Condições do Imóvel', hab.condicoes_imovel, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
-    if (hab.observacoes && hab.observacoes !== '-') {
+    if (hab.observacoes && hab.observacoes !== '-' && hab.observacoes !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Observações', hab.observacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     y += SPACING.PARAGRAPH_SPACING;
@@ -118,15 +116,15 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
   if (data.estrategia) {
     const est = data.estrategia;
     
-    y = addFieldRow(doc, 'Viabilidade Adm.', est.viabilidade_adm || '-', 'Viabilidade Judicial', est.viabilidade_jud || '-', y);
+    y = addFieldRow(doc, 'Viabilidade Adm.', est.viabilidade_adm, 'Viabilidade Judicial', est.viabilidade_jud, y);
     
-    if (est.proxima_etapa && est.proxima_etapa !== '-') {
+    if (est.proxima_etapa && est.proxima_etapa !== '-' && est.proxima_etapa !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Próxima Etapa', est.proxima_etapa, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
-    if (est.pendencias && est.pendencias !== '-') {
+    if (est.pendencias && est.pendencias !== '-' && est.pendencias !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Pendências', est.pendencias, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
-    if (est.fundamentacao && est.fundamentacao !== '-') {
+    if (est.fundamentacao && est.fundamentacao !== '-' && est.fundamentacao !== '[NÃO INFORMADO]') {
       y = addFieldValueOnly(doc, 'Fundamentação', est.fundamentacao, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
   }

@@ -35,33 +35,29 @@ export function generateClientPDF(client, beneficios = []) {
 
   // ═══ PÁGINA 1: INFORMAÇÕES PESSOAIS ═══
   let y = addHeader(doc, clientData.client.full_name);
-  y = addSectionTitle(doc, '1. Informações Pessoais', y);
-  y = InfoPessoaisSection(doc, clientData.client, y);
+  y = InfoPessoaisSection(doc, clientData.client, y, addHeader, clientData.client.full_name);
 
   // ═══ PÁGINA 2: CONTATO E ENDEREÇO (+ Preliminares se não for Cível) ═══
   doc.addPage();
   y = addHeader(doc, clientData.client.full_name);
-  y = addSectionTitle(doc, '2. Contato e Endereço', y);
-  y = ContatoSection(doc, clientData.client, y);
+  y = ContatoSection(doc, clientData.client, y, addHeader, clientData.client.full_name);
 
   // Informações Preliminares (apenas para não-Cível)
   if (clientData.client.area_atuacao !== 'Cível') {
     y += SPACING.SECTION_SPACING;
-    y = addSectionTitle(doc, '3. Informações Preliminares', y);
-    y = InfoPreliminaresSection(doc, clientData.client, y);
+    y = InfoPreliminaresSection(doc, clientData.client, y, addHeader, clientData.client.full_name);
   }
 
   // Dados Cíveis (apenas para Cível)
   if (clientData.client.area_atuacao === 'Cível' && clientData.client.dados_civeis) {
     doc.addPage();
     y = addHeader(doc, clientData.client.full_name);
-    y = addSectionTitle(doc, '4. Dados do Processo Cível', y);
-    y = DadosCiveisSection(doc, clientData.client.dados_civeis, y);
+    y = DadosCiveisSection(doc, clientData.client.dados_civeis, y, addHeader, clientData.client.full_name);
   }
 
   // ═══ BENEFÍCIOS (páginas 3+) ═══
   if (clientData.beneficios && clientData.beneficios.length > 0) {
-    clientData.beneficios.forEach((beneficio, index) => {
+    clientData.beneficios.forEach((beneficio) => {
       // Verificar quebra de página antes de iniciar novo benefício (evitar órfãos)
       y = checkPageBreak(doc, y, 50, addHeader, clientData.client.full_name);
       
