@@ -77,26 +77,36 @@ export function generateClientPDF(client, beneficios = []) {
       doc.text(`Status: ${beneficio.status} | NB: ${beneficio.numero_beneficio || '-'} | Criado em: ${beneficio.created_at}`, 16, y);
       y += 8;
 
-      const tipo = beneficio.dados?.tipo || '';
-      switch (true) {
-        case tipo.includes('bpc_loas'):
+      const tipo = beneficio.tipo_beneficio || '';
+      switch (tipo) {
+        case 'bpc_loas_idoso':
+        case 'bpc_loas_pcd':
           y = BPCLoasSection(doc, beneficio.dados, y);
           break;
-        case tipo.includes('aposentadoria_idade_rural'):
+        case 'aposentadoria_idade_rural':
           y = AposentadoriaRuralSection(doc, beneficio.dados, y);
           break;
-        case tipo.includes('incapacidade_rural'):
+        case 'incapacidade_rural':
           y = IncapacidadeRuralSection(doc, beneficio.dados, y);
           break;
-        case tipo.includes('salario_maternidade_rural'):
+        case 'salario_maternidade_rural':
           y = SalarioMaternidadeRuralSection(doc, beneficio.dados, y);
           break;
-        case tipo.includes('pensao_morte'):
+        case 'pensao_morte_rural':
+        case 'pensao_morte_urbano':
           y = PensaoMorteSection(doc, beneficio.dados, y);
+          break;
+        case 'aposentadoria_idade_urbano':
+        case 'incapacidade_urbano':
+        case 'salario_maternidade_urbano':
+        case 'outros_urbano':
+          y = addFieldMultiline(doc, 'Informações:', beneficio.dados?.informacoes || 'Dados não disponíveis', y);
           break;
         default:
           doc.setTextColor(...COLORS.text);
           doc.setFontSize(FONTS.normal);
+          doc.text(`Tipo de benefício: ${tipo}`, 16, y);
+          y += 6;
           doc.text('Informações adicionais não disponíveis.', 16, y);
           y += 10;
       }

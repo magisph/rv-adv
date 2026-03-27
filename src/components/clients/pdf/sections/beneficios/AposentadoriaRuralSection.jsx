@@ -28,6 +28,9 @@ export function AposentadoriaRuralSection(doc, data, y) {
     y = addField(doc, 'Trabalha Exclusivamente', atv.trabalha_exclusivo || '-', y, 16, halfWidth - 5);
     y = addField(doc, 'Trabalha Desde', atv.trabalha_desde || '-', y - 8, 16 + halfWidth, halfWidth - 5);
     y += 8;
+    
+    y = addField(doc, 'Trabalha Atualmente', atv.trabalha_atualmente || '-', y, 16, halfWidth - 5);
+    y += 8;
   }
 
   if (data.membros_familia && data.membros_familia.length > 0) {
@@ -66,8 +69,12 @@ export function AposentadoriaRuralSection(doc, data, y) {
     doc.text('Documentação', 16, y);
     y += 6;
 
-    y = addField(doc, 'Possui DAP/CAF', doc_.dap_caf || '-', y, 16, halfWidth - 5);
-    y = addField(doc, 'Filiado ao Sindicato', doc_.filiado_sindicato || '-', y - 8, 16 + halfWidth, halfWidth - 5);
+    y = addField(doc, 'Possui DAP', doc_.dap || doc_.dap_caf || '-', y, 16, halfWidth - 5);
+    y = addField(doc, 'Possui CAF', doc_.caf || '-', y - 8, 16 + halfWidth, halfWidth - 5);
+    y += 8;
+
+    y = addField(doc, 'Filiado ao Sindicato', doc_.filiado_sindicato || '-', y, 16, halfWidth - 5);
+    y = addField(doc, 'Desde', doc_.filiado_desde || '-', y - 8, 16 + halfWidth, halfWidth - 5);
     y += 8;
   }
 
@@ -82,6 +89,11 @@ export function AposentadoriaRuralSection(doc, data, y) {
       data.testemunhas.map(t => [t.nome, t.cpf, t.telefone, t.relacao, t.periodo]),
       y
     );
+  }
+
+  if (data.observacoes && data.observacoes !== '-') {
+    y += 4;
+    y = addFieldMultiline(doc, 'Observações', data.observacoes, y, 16, pageWidth - 30);
   }
 
   return y + 4;

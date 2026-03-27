@@ -265,13 +265,26 @@ function extractIncapacidadeRuralData(dados) {
     patologia: {
       cid: dados.cid_patologia || '-',
       data_inicio: formatDate(dados.data_inicio_sintomas),
+      decorreu_acidente: formatBoolean(dados.decorreu_acidente),
+      detalhes_acidente: dados.detalhes_acidente || '-',
       historico: dados.historico_sintomas || '-',
-      impacto: dados.impacto_vida_labor || '-',
+      pesquisa_cid: dados.pesquisa_cid || '-',
+      impacto_vida: dados.impacto_vida || '-',
+      impacto_labor: dados.impacto_labor || '-',
+      atividades_trabalho: dados.atividades_trabalho || '-',
+      saude_dificulta: formatBoolean(dados.saude_dificulta_atividades),
+      como_dificulta: dados.como_dificulta || '-',
     },
     afastamento: {
       data_afastamento: formatDate(dados.data_afastamento),
-      tratamentos: dados.tratamentos || '-',
-      medicacoes: dados.medicacoes || '-',
+      faz_tratamento: formatBoolean(dados.faz_tratamento),
+      tipos_tratamento: Array.isArray(dados.tipos_tratamento) ? dados.tipos_tratamento.join(', ') : dados.tipos_tratamento || '-',
+      tratamento_outro: dados.tratamento_outro || '-',
+      possui_relatorios: formatBoolean(dados.possui_relatorios_tratamento),
+      toma_medicacoes: formatBoolean(dados.toma_medicacoes),
+      quais_medicacoes: dados.quais_medicacoes || '-',
+      medicacoes_efeitos: dados.medicacoes_efeitos_colaterais || '-',
+      quais_efeitos: dados.quais_efeitos_colaterais || '-',
     },
     documentos_medicos: documentos.map(d => ({
       tipo: d.tipo || '-',
@@ -280,21 +293,28 @@ function extractIncapacidadeRuralData(dados) {
     })),
     atividade_rural: {
       zona: dados.reside_zona || '-',
+      tempo_local: dados.tempo_residencia_local || '-',
       propriedades: propriedades.map(p => ({
         nome: p.nome_localizacao || '-',
+        proprietario: p.proprietario || '-',
         periodo: p.periodo_inicio ? `${p.periodo_inicio} a ${p.periodo_fim || 'atual'}` : '-',
+        atividades: p.atividades || '-',
       })),
     },
     documentacao: {
-      dap_caf: formatBoolean(dados.possui_dap),
+      dap: formatBoolean(dados.possui_dap),
+      caf: formatBoolean(dados.possui_caf),
       filiado_sindicato: formatBoolean(dados.filiado_sindicato),
+      filiado_desde: dados.filiado_sindicato_desde || '-',
     },
     testemunhas: testemunhas.map(t => ({
       nome: t.nome || '-',
       cpf: t.cpf || '-',
       telefone: t.telefone || '-',
       relacao: t.relacao || '-',
+      periodo: t.periodo_inicio ? `${t.periodo_inicio} a ${t.periodo_fim || 'atual'}` : '-',
     })),
+    observacoes: dados.observacoes_gerais || '-',
   };
 }
 
@@ -307,12 +327,36 @@ function extractSalarioMaternidadeRuralData(dados) {
   return {
     maternidade: {
       tipo_evento: dados.tipo_evento || '-',
-      data_parto: formatDate(dados.data_parto),
-      gestante: dados.gestante || '-',
+      data_parto_evento: formatDate(dados.data_parto_evento),
+      data_prevista_parto: formatDate(dados.data_prevista_parto),
+      gestante_atualmente: formatBoolean(dados.gestante_atualmente),
+      semanas_gestacao: dados.semanas_gestacao || '-',
       tipo_parto: dados.tipo_parto || '-',
-      filhos: dados.num_filhos || '-',
-      complicacoes: dados.complicacoes || '-',
-      afastamento_gestacao: dados.afastamento_gestacao || '-',
+      numero_filhos: dados.numero_filhos_parto || dados.num_filhos || '-',
+      filhos_adotados: filhos.map(f => ({
+        nome: f.nome || '-',
+        cpf: f.cpf || '-',
+        data_nascimento: formatDate(f.data_nascimento),
+        certidao: f.certidao_nascimento || '-',
+        dnv: f.dnv || '-',
+      })),
+      primeiro_filho: formatBoolean(dados.primeiro_filho),
+      quantidade_filhos: dados.quantidade_filhos || '-',
+      ja_recebeu: formatBoolean(dados.recebeu_salario_maternidade),
+      detalhes_recebimento: dados.detalhes_salario_anterior || '-',
+      complicacoes_gestacao: formatBoolean(dados.complicacoes_gestacao),
+      detalhes_complicacoes: dados.detalhes_complicacoes || '-',
+      afastou_gestacao: formatBoolean(dados.afastou_trabalho_gestacao),
+      periodo_afastamento: dados.periodo_afastamento_inicio ? `${dados.periodo_afastamento_inicio} a ${dados.periodo_afastamento_fim || 'atual'}` : '-',
+      trabalha_carencia: dados.trabalha_no_periodo_carencia || '-',
+      afastou_apos_parto: formatBoolean(dados.afastou_apos_parto),
+      data_afastamento_parto: formatDate(dados.data_afastamento_parto),
+    },
+    conjuge: {
+      nome: dados.nome_conjuge || '-',
+      cpf: dados.cpf_conjuge || '-',
+      trabalha_rural: formatBoolean(dados.conjuge_trabalha_rural),
+      vinculo_urbano: dados.conjuge_vinculo_urbano || '-',
     },
     atividade_rural: {
       zona: dados.reside_zona || '-',
@@ -320,19 +364,29 @@ function extractSalarioMaternidadeRuralData(dados) {
       trabalha_desde: dados.trabalha_agricultura_desde || '-',
       propriedades: propriedades.map(p => ({
         nome: p.nome_localizacao || '-',
+        proprietario: p.proprietario || '-',
         periodo: p.periodo_inicio ? `${p.periodo_inicio} a ${p.periodo_fim || 'atual'}` : '-',
       })),
     },
+    membros_familia: membros.map(m => ({
+      nome: m.nome || '-',
+      cpf: m.cpf || '-',
+      parentesco: m.parentesco || '-',
+    })),
     documentacao: {
-      dap_caf: formatBoolean(dados.possui_dap),
+      dap: formatBoolean(dados.possui_dap),
+      caf: formatBoolean(dados.possui_caf),
       filiado_sindicato: formatBoolean(dados.filiado_sindicato),
+      filiado_desde: dados.filiado_sindicato_desde || '-',
     },
     testemunhas: testemunhas.map(t => ({
       nome: t.nome || '-',
       cpf: t.cpf || '-',
       telefone: t.telefone || '-',
       relacao: t.relacao || '-',
+      periodo: t.periodo_inicio ? `${t.periodo_inicio} a ${t.periodo_fim || 'atual'}` : '-',
     })),
+    observacoes: dados.observacoes_maternidade || dados.observacoes_gerais || '-',
   };
 }
 
