@@ -122,7 +122,8 @@ function extractBeneficioData(beneficio) {
 
   const extracted = {
     id: beneficio.id,
-    tipo_beneficio: TIPO_BENEFICIO_LABELS[tipo] || tipo,
+    tipo_beneficio_original: tipo, // Mantém o valor original para o switch
+    tipo_beneficio: TIPO_BENEFICIO_LABELS[tipo] || tipo, // Label formatado para exibição
     categoria: beneficio.categoria || '',
     status: STATUS_LABELS[beneficio.status] || beneficio.status || '',
     numero_beneficio: beneficio.numero_beneficio || '',

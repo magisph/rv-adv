@@ -77,7 +77,7 @@ export function generateClientPDF(client, beneficios = []) {
       doc.text(`Status: ${beneficio.status} | NB: ${beneficio.numero_beneficio || '-'} | Criado em: ${beneficio.created_at}`, 16, y);
       y += 8;
 
-      const tipo = beneficio.tipo_beneficio || '';
+      const tipo = beneficio.tipo_beneficio_original || '';
       switch (tipo) {
         case 'bpc_loas_idoso':
         case 'bpc_loas_pcd':
