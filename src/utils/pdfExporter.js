@@ -94,9 +94,10 @@ export function createPDF() {
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
+    compress: true,
   });
 
-  doc.setAutoPageBreak(true, 15);
+  // jsPDF handles page breaks automatically
   return doc;
 }
 

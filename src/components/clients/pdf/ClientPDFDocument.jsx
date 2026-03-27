@@ -26,10 +26,9 @@ export function generateClientPDF(client, beneficios = []) {
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
+    compress: true,
   });
 
-  doc.setAutoPageBreak(true, 15);
-  
   const pageWidth = doc.internal.pageSize.getWidth();
   const rightMargin = pageWidth - 14;
   let y = 0;
