@@ -2,14 +2,11 @@ import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { extractClientData } from '@/utils/clientDataExtractor';
 import { 
-  COLORS, 
-  FONTS, 
   addHeader, 
   addSectionTitle, 
-  addField, 
-  addFieldMultiline, 
-  addTable,
-  addFooter 
+  addFooter,
+  PAGE_CONFIG,
+  SPACING
 } from '@/utils/pdfExporter';
 import { InfoPessoaisSection } from './sections/InfoPessoaisSection';
 import { ContatoSection } from './sections/ContatoSection';
@@ -29,35 +26,30 @@ export function generateClientPDF(client, beneficios = []) {
     compress: true,
   });
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const rightMargin = pageWidth - 14;
-  let y = 0;
-
   const clientData = extractClientData(client, beneficios);
   if (!clientData) {
     throw new Error('Dados do cliente não disponíveis');
   }
 
-  doc.addFont('helvetica', 'normal', 'normal');
-  doc.addFont('helvetica', 'bold', 'bold');
-
-  y = addHeader(doc, clientData.client.full_name);
-
+  // ═══ PÁGINA 1: INFORMAÇÕES PESSOAIS ═══
+  let y = addHeader(doc, clientData.client.full_name);
   y = addSectionTitle(doc, '1. Informações Pessoais', y);
   y = InfoPessoaisSection(doc, clientData.client, y);
 
+  // ═══ PÁGINA 2: CONTATO E ENDEREÇO (+ Preliminares se não for Cível) ═══
   doc.addPage();
   y = addHeader(doc, clientData.client.full_name);
-
   y = addSectionTitle(doc, '2. Contato e Endereço', y);
   y = ContatoSection(doc, clientData.client, y);
 
+  // Informações Preliminares (apenas para não-Cível)
   if (clientData.client.area_atuacao !== 'Cível') {
-    y += 6;
+    y += SPACING.SECTION_SPACING;
     y = addSectionTitle(doc, '3. Informações Preliminares', y);
     y = InfoPreliminaresSection(doc, clientData.client, y);
   }
 
+  // Dados Cíveis (apenas para Cível)
   if (clientData.client.area_atuacao === 'Cível' && clientData.client.dados_civeis) {
     doc.addPage();
     y = addHeader(doc, clientData.client.full_name);
@@ -65,36 +57,48 @@ export function generateClientPDF(client, beneficios = []) {
     y = DadosCiveisSection(doc, clientData.client.dados_civeis, y);
   }
 
+  // ═══ BENEFÍCIOS (páginas 3+) ═══
   if (clientData.beneficios && clientData.beneficios.length > 0) {
     clientData.beneficios.forEach((beneficio, index) => {
+      // Nova página para cada benefício
       doc.addPage();
       y = addHeader(doc, clientData.client.full_name);
-      y = addSectionTitle(doc, `4. Benefício: ${beneficio.tipo_beneficio}`, y);
+      y = addSectionTitle(doc, `Benefício: ${beneficio.tipo_beneficio}`, y);
 
-      doc.setTextColor(...COLORS.textLight);
-      doc.setFontSize(FONTS.small);
+      // Subtítulo com status e informações
+      const infoLine = [
+        `Status: ${beneficio.status}`,
+        `NB: ${beneficio.numero_beneficio || '-'}`,
+        `Criado em: ${beneficio.created_at}`
+      ].join(' | ');
+      
+      // Adicionar info usando função do doc diretamente
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Status: ${beneficio.status} | NB: ${beneficio.numero_beneficio || '-'} | Criado em: ${beneficio.created_at}`, 16, y);
-      y += 8;
+      doc.text(infoLine, PAGE_CONFIG.MARGIN_LEFT, y);
+      y += 10;
 
+      // Renderizar seção específica conforme tipo
       const tipo = beneficio.tipo_beneficio_original || '';
+      
       switch (tipo) {
         case 'bpc_loas_idoso':
         case 'bpc_loas_pcd':
-          y = BPCLoasSection(doc, beneficio.dados, y);
+          y = BPCLoasSection(doc, beneficio.dados, y, addHeader, clientData.client.full_name);
           break;
         case 'aposentadoria_idade_rural':
-          y = AposentadoriaRuralSection(doc, beneficio.dados, y);
+          y = AposentadoriaRuralSection(doc, beneficio.dados, y, addHeader, clientData.client.full_name);
           break;
         case 'incapacidade_rural':
-          y = IncapacidadeRuralSection(doc, beneficio.dados, y);
+          y = IncapacidadeRuralSection(doc, beneficio.dados, y, addHeader, clientData.client.full_name);
           break;
         case 'salario_maternidade_rural':
-          y = SalarioMaternidadeRuralSection(doc, beneficio.dados, y);
+          y = SalarioMaternidadeRuralSection(doc, beneficio.dados, y, addHeader, clientData.client.full_name);
           break;
         case 'pensao_morte_rural':
         case 'pensao_morte_urbano':
-          y = PensaoMorteSection(doc, beneficio.dados, y);
+          y = PensaoMorteSection(doc, beneficio.dados, y, addHeader, clientData.client.full_name);
           break;
         case 'aposentadoria_idade_urbano':
         case 'incapacidade_urbano':
@@ -103,14 +107,15 @@ export function generateClientPDF(client, beneficios = []) {
           y = addFieldMultiline(doc, 'Informações:', beneficio.dados?.informacoes || 'Dados não disponíveis', y);
           break;
         default:
-          doc.setTextColor(...COLORS.text);
-          doc.setFontSize(FONTS.normal);
-          doc.text(`Tipo de benefício: ${tipo}`, 16, y);
+          doc.setTextColor(30, 41, 59);
+          doc.setFontSize(10);
+          doc.text(`Tipo de benefício: ${tipo}`, PAGE_CONFIG.MARGIN_LEFT, y);
           y += 6;
-          doc.text('Informações adicionais não disponíveis.', 16, y);
+          doc.text('Informações adicionais não disponíveis.', PAGE_CONFIG.MARGIN_LEFT, y);
           y += 10;
       }
 
+      // Observações do benefício
       if (beneficio.observacoes) {
         y += 4;
         y = addFieldMultiline(doc, 'Observações:', beneficio.observacoes, y);
@@ -118,10 +123,28 @@ export function generateClientPDF(client, beneficios = []) {
     });
   }
 
+  // ═══ RODAPÉ ═══
   addFooter(doc);
 
+  // ═══ DOWNLOAD ═══
   const filename = `ficha_cliente_${clientData.client.full_name?.replace(/\s+/g, '_') || 'cliente'}_${format(new Date(), 'yyyyMMdd')}.pdf`;
   doc.save(filename);
 
   return doc;
+}
+
+// Helper para manter compatibilidade
+function addFieldMultiline(doc, label, value, y) {
+  doc.setTextColor(100, 116, 139);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(label, PAGE_CONFIG.MARGIN_LEFT, y);
+  
+  y += 4;
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(String(value || '-').substring(0, 100), PAGE_CONFIG.MARGIN_LEFT, y);
+  
+  return y + 10;
 }

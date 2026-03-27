@@ -1,6 +1,22 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              CONSTANTES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const PAGE_CONFIG = {
+  WIDTH: 210, // A4 width in mm
+  HEIGHT: 297, // A4 height in mm
+  MARGIN_LEFT: 14,
+  MARGIN_RIGHT: 14,
+  MARGIN_TOP: 30, // After header
+  MARGIN_BOTTOM: 20,
+  HEADER_HEIGHT: 25,
+  FOOTER_HEIGHT: 10,
+  AVAILABLE_HEIGHT: 297 - 30 - 20 - 25, // ~242mm per page
+};
+
 export const COLORS = {
   primary: [30, 58, 95],
   secondary: [100, 116, 139],
@@ -17,10 +33,21 @@ export const COLORS = {
 export const FONTS = {
   title: 18,
   subtitle: 14,
-  section: 12,
+  section: 11,
   normal: 10,
   small: 8,
 };
+
+export const SPACING = {
+  LINE_HEIGHT: 5,
+  FIELD_SPACING: 7,
+  SECTION_SPACING: 12,
+  PARAGRAPH_SPACING: 6,
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export function formatDate(date) {
   if (!date) return '-';
@@ -64,10 +91,56 @@ export function formatLabel(key) {
     .trim();
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              PAGE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Verifica se precisa de quebra de página e a executa se necessário
+ * @param {jsPDF} doc - Instância do documento
+ * @param {number} y - Posição Y atual
+ * @param {number} neededSpace - Espaço necessário em mm
+ * @param {Function} headerFn - Função para adicionar header na nova página
+ * @param {string} headerTitle - Título para o header
+ * @returns {number} Nova posição Y após quebra (se houver)
+ */
+export function checkPageBreak(doc, y, neededSpace = 20, headerFn = null, headerTitle = '') {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const maxY = pageHeight - PAGE_CONFIG.MARGIN_BOTTOM;
+  
+  if (y + neededSpace > maxY) {
+    if (headerFn) {
+      doc.addPage();
+      return headerFn(doc, headerTitle);
+    }
+    return y;
+  }
+  return y;
+}
+
+/**
+ * Quebra página explicitamente
+ */
+export function newPage(doc, headerFn = null, headerTitle = '') {
+  doc.addPage();
+  if (headerFn) {
+    return headerFn(doc, headerTitle);
+  }
+  return PAGE_CONFIG.MARGIN_TOP;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              TEXT UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Quebra texto em linhas baseado na largura máxima
+ */
 export function wrapText(text, maxWidth, doc) {
   if (!text) return [''];
+  
   const lines = [];
-  const words = String(text).split(' ');
+  const words = String(text).split(/\s+/);
   let currentLine = '';
 
   for (const word of words) {
@@ -89,6 +162,40 @@ export function wrapText(text, maxWidth, doc) {
   return lines.length > 0 ? lines : [''];
 }
 
+/**
+ * Trunca texto com ellipsis se necessário
+ */
+export function truncateText(text, maxWidth, doc) {
+  if (!text) return '-';
+  
+  const str = String(text);
+  const fullWidth = doc.getTextWidth(str);
+  
+  if (fullWidth <= maxWidth) {
+    return str;
+  }
+  
+  // Binary search for max chars
+  let low = 0;
+  let high = str.length;
+  
+  while (low < high) {
+    const mid = Math.floor((low + high + 1) / 2);
+    const testStr = str.substring(0, mid) + '...';
+    if (doc.getTextWidth(testStr) <= maxWidth) {
+      low = mid;
+    } else {
+      high = mid - 1;
+    }
+  }
+  
+  return str.substring(0, low) + '...';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              PDF CREATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export function createPDF() {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -96,123 +203,209 @@ export function createPDF() {
     format: 'a4',
     compress: true,
   });
-
-  // jsPDF handles page breaks automatically
   return doc;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              HEADER & FOOTER
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export function addHeader(doc, title) {
   const pageWidth = doc.internal.pageSize.getWidth();
   
+  // Header background
   doc.setFillColor(...COLORS.primary);
-  doc.rect(0, 0, pageWidth, 25, 'F');
+  doc.rect(0, 0, pageWidth, PAGE_CONFIG.HEADER_HEIGHT, 'F');
 
+  // Title
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(FONTS.subtitle);
   doc.setFont('helvetica', 'bold');
-  doc.text('FICHA DO CLIENTE', 14, 10);
+  doc.text('FICHA DO CLIENTE', PAGE_CONFIG.MARGIN_LEFT, 10);
 
+  // Client name
   doc.setFontSize(FONTS.small);
   doc.setFont('helvetica', 'normal');
-  doc.text(title || '', 14, 17);
+  doc.text(title || '', PAGE_CONFIG.MARGIN_LEFT, 17);
 
-  doc.setTextColor(...COLORS.textLight);
+  // Date
+  doc.setTextColor(...COLORS.white);
   doc.setFontSize(FONTS.small);
-  doc.text(`Emitido em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - 14, 17, { align: 'right' });
+  doc.text(
+    `Emitido em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 
+    pageWidth - PAGE_CONFIG.MARGIN_RIGHT, 
+    17, 
+    { align: 'right' }
+  );
 
-  return 25;
+  return PAGE_CONFIG.HEADER_HEIGHT + 5;
 }
 
-export function addSectionTitle(doc, title, y) {
-  doc.setFillColor(...COLORS.background);
-  doc.rect(14, y, doc.internal.pageSize.getWidth() - 28, 8, 'F');
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              SECTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
 
+export function addSectionTitle(doc, title, y) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  // Background bar
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(PAGE_CONFIG.MARGIN_LEFT, y, pageWidth - PAGE_CONFIG.MARGIN_LEFT - PAGE_CONFIG.MARGIN_RIGHT, 6, 'F');
+
+  // Title text
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(FONTS.section);
+  doc.setFont('helvetica', 'bold');
+  doc.text(title.toUpperCase(), PAGE_CONFIG.MARGIN_LEFT + 2, y + 4.5);
+
+  return y + SPACING.SECTION_SPACING;
+}
+
+export function addSubSectionTitle(doc, title, y) {
   doc.setTextColor(...COLORS.primary);
   doc.setFontSize(FONTS.section);
   doc.setFont('helvetica', 'bold');
-  doc.text(title.toUpperCase(), 16, y + 5.5);
-
-  return y + 10;
+  doc.text(title, PAGE_CONFIG.MARGIN_LEFT, y);
+  return y + SPACING.PARAGRAPH_SPACING;
 }
 
-export function addField(doc, label, value, y, x = 14, width = 90) {
-  const pageWidth = doc.internal.pageSize.getWidth();
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              FIELDS
+// ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Adiciona campo simples (label + valor)
+ */
+export function addField(doc, label, value, y, x = PAGE_CONFIG.MARGIN_LEFT, width = null) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const maxWidth = width || (pageWidth - PAGE_CONFIG.MARGIN_LEFT - PAGE_CONFIG.MARGIN_RIGHT);
+  
+  // Label
   doc.setTextColor(...COLORS.textLight);
   doc.setFontSize(FONTS.small);
   doc.setFont('helvetica', 'normal');
   doc.text(label, x, y);
 
+  // Value
   doc.setTextColor(...COLORS.text);
   doc.setFontSize(FONTS.normal);
   doc.setFont('helvetica', 'bold');
+  
   const displayValue = value ?? '-';
-  doc.text(String(displayValue).substring(0, 50), x, y + 4);
+  const textWidth = maxWidth - 2;
+  const truncated = truncateText(displayValue, textWidth, doc);
+  doc.text(truncated, x, y + SPACING.LINE_HEIGHT);
 
-  return y + 8;
+  return y + SPACING.FIELD_SPACING;
 }
 
-export function addFieldMultiline(doc, label, value, y, x = 14, width = 180) {
+/**
+ * Adiciona dois campos lado a lado (duas colunas)
+ */
+export function addFieldRow(doc, leftLabel, leftValue, rightLabel, rightValue, y) {
   const pageWidth = doc.internal.pageSize.getWidth();
-  const rightMargin = pageWidth - 14;
+  const availableWidth = pageWidth - PAGE_CONFIG.MARGIN_LEFT - PAGE_CONFIG.MARGIN_RIGHT;
+  const colWidth = availableWidth / 2 - 3;
+  
+  // Left field
+  let y1 = addField(doc, leftLabel, leftValue, y, PAGE_CONFIG.MARGIN_LEFT, colWidth);
+  
+  // Right field
+  let y2 = addField(doc, rightLabel, rightValue, y, PAGE_CONFIG.MARGIN_LEFT + colWidth + 6, colWidth);
+  
+  return Math.max(y1, y2);
+}
 
+/**
+ * Adiciona campo multilinha (label + texto longo)
+ */
+export function addFieldMultiline(doc, label, value, y, x = PAGE_CONFIG.MARGIN_LEFT, width = null) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const maxWidth = width || (pageWidth - PAGE_CONFIG.MARGIN_LEFT - PAGE_CONFIG.MARGIN_RIGHT);
+  
+  // Label
   doc.setTextColor(...COLORS.textLight);
   doc.setFontSize(FONTS.small);
   doc.setFont('helvetica', 'normal');
   doc.text(label, x, y);
-
+  
   y += 4;
+  
+  // Value
   doc.setTextColor(...COLORS.text);
   doc.setFontSize(FONTS.normal);
-
+  doc.setFont('helvetica', 'normal');
+  
   const text = value || '-';
-  const lines = wrapText(text, width, doc);
-
+  const lines = wrapText(text, maxWidth, doc);
+  
   for (const line of lines) {
-    doc.setFont('helvetica', 'normal');
     doc.text(line, x, y);
-    y += 4;
+    y += SPACING.LINE_HEIGHT;
   }
-
-  return y + 4;
+  
+  return y + SPACING.PARAGRAPH_SPACING;
 }
 
-export function addTable(doc, headers, rows, y, startX = 14) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const colWidth = (pageWidth - 28) / headers.length;
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              TABLES
+// ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Adiciona tabela com headers e linhas
+ */
+export function addTable(doc, headers, rows, y, startX = PAGE_CONFIG.MARGIN_LEFT, headerFn = null, headerTitle = '') {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const tableWidth = pageWidth - startX - PAGE_CONFIG.MARGIN_RIGHT;
+  const colWidth = tableWidth / headers.length;
+  const rowHeight = 6;
+  
+  // Header row
   doc.setFillColor(...COLORS.primary);
-  doc.rect(startX, y, pageWidth - 28, 6, 'F');
+  doc.rect(startX, y, tableWidth, rowHeight, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(FONTS.small);
   doc.setFont('helvetica', 'bold');
 
   headers.forEach((header, i) => {
-    doc.text(header.substring(0, 20), startX + (i * colWidth) + 2, y + 4);
+    const truncated = truncateText(header, colWidth - 4, doc);
+    doc.text(truncated, startX + (i * colWidth) + 2, y + 4);
   });
 
-  y += 6;
+  y += rowHeight;
+
+  // Data rows
+  doc.setTextColor(...COLORS.text);
+  doc.setFontSize(FONTS.small);
+  doc.setFont('helvetica', 'normal');
 
   rows.forEach((row, rowIndex) => {
+    // Check page break before drawing row
+    y = checkPageBreak(doc, y, rowHeight, headerFn, headerTitle);
+    
+    // Alternating row background
     if (rowIndex % 2 === 0) {
       doc.setFillColor(...COLORS.background);
-      doc.rect(startX, y, pageWidth - 28, 6, 'F');
+      doc.rect(startX, y, tableWidth, rowHeight, 'F');
     }
 
     doc.setTextColor(...COLORS.text);
-    doc.setFontSize(FONTS.small);
-    doc.setFont('helvetica', 'normal');
-
+    
     row.forEach((cell, i) => {
-      doc.text(String(cell || '-').substring(0, 25), startX + (i * colWidth) + 2, y + 4);
+      const truncated = truncateText(String(cell || '-'), colWidth - 4, doc);
+      doc.text(truncated, startX + (i * colWidth) + 2, y + 4);
     });
 
-    y += 6;
+    y += rowHeight;
   });
 
-  return y + 4;
+  return y + SPACING.PARAGRAPH_SPACING;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              FOOTER
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export function addFooter(doc) {
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -228,10 +421,18 @@ export function addFooter(doc) {
     doc.text(
       `Página ${i} de ${pageCount}`,
       pageWidth / 2,
-      pageHeight - 10,
+      pageHeight - PAGE_CONFIG.FOOTER_HEIGHT,
       { align: 'center' }
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                              UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function addSpacing(doc, y, space = SPACING.SECTION_SPACING) {
+  return y + space;
 }
 
 export async function generatePDF(data, title = 'Cliente') {

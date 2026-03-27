@@ -1,22 +1,28 @@
-import { COLORS, FONTS, addField } from '@/utils/pdfExporter';
+import { 
+  addField, 
+  addFieldMultiline,
+  addFieldRow,
+  addSectionTitle,
+  PAGE_CONFIG,
+  SPACING 
+} from '@/utils/pdfExporter';
 
-export function PensaoMorteSection(doc, data, y) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const halfWidth = (pageWidth - 28) / 2;
-
+export function PensaoMorteSection(doc, data, y, addHeaderFn = null, headerTitle = '') {
+  // ═══ DADOS DO FALECIDO ═══
+  y = addSectionTitle(doc, 'Dados do Falecido', y);
+  
   if (data.falecido) {
     const fal = data.falecido;
-    doc.setTextColor(...COLORS.primary);
-    doc.setFontSize(FONTS.section);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Dados do Falecido', 16, y);
-    y += 6;
-
-    y = addField(doc, 'Nome', fal.nome || '-', y, 16, pageWidth - 30);
-    y = addField(doc, 'Data do Óbito', fal.data_obito || '-', y, 16, halfWidth - 5);
-    y = addField(doc, 'Grau de Parentesco', fal.grau_parentesco || '-', y - 8, 16 + halfWidth, halfWidth - 5);
-    y += 8;
+    
+    y = addField(doc, 'Nome', fal.nome || '-', y);
+    y = addFieldRow(doc, 'Data do Óbito', fal.data_obito || '-', 'Grau de Parentesco', fal.grau_parentesco || '-', y);
+    y += SPACING.PARAGRAPH_SPACING;
   }
 
-  return y + 4;
+  // ═══ INFORMAÇÕES ADICIONAIS ═══
+  if (data.outras_informacoes && data.outras_informacoes !== '-') {
+    y = addFieldMultiline(doc, 'Outras Informações', data.outras_informacoes, y);
+  }
+
+  return y + SPACING.PARAGRAPH_SPACING;
 }
