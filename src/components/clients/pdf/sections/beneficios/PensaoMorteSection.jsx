@@ -1,6 +1,6 @@
 import { 
   addField, 
-  addFieldMultiline,
+  addFieldValueOnly,
   addFieldRow,
   addSectionTitle,
   PAGE_CONFIG,
@@ -21,7 +21,7 @@ export function PensaoMorteSection(doc, data, y, addHeaderFn = null, headerTitle
 
   // ═══ INFORMAÇÕES ADICIONAIS ═══
   if (data.outras_informacoes && data.outras_informacoes !== '-') {
-    y = addFieldMultiline(doc, 'Outras Informações', data.outras_informacoes, y);
+    y = addFieldValueOnly(doc, 'Outras Informações', data.outras_informacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }
 
   return y + SPACING.PARAGRAPH_SPACING;

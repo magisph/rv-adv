@@ -1,6 +1,6 @@
 import { 
   addField, 
-  addFieldMultiline,
+  addFieldValueOnly,
   addFieldRow,
   addTable, 
   addSectionTitle,
@@ -20,24 +20,24 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
     y = addFieldRow(doc, 'Decorreu de Acidente', pat.decorreu_acidente || '-', 'Pesquisa CID', pat.pesquisa_cid || '-', y);
     
     if (pat.detalhes_acidente && pat.detalhes_acidente !== '-') {
-      y = addFieldMultiline(doc, 'Detalhes do Acidente', pat.detalhes_acidente, y);
+      y = addFieldValueOnly(doc, 'Detalhes do Acidente', pat.detalhes_acidente, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     if (pat.historico && pat.historico !== '-') {
-      y = addFieldMultiline(doc, 'Histórico dos Sintomas', pat.historico, y);
+      y = addFieldValueOnly(doc, 'Histórico dos Sintomas', pat.historico, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     if (pat.impacto_vida && pat.impacto_vida !== '-') {
-      y = addFieldMultiline(doc, 'Impacto na Vida', pat.impacto_vida, y);
+      y = addFieldValueOnly(doc, 'Impacto na Vida', pat.impacto_vida, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     if (pat.impacto_labor && pat.impacto_labor !== '-') {
-      y = addFieldMultiline(doc, 'Impacto no Labor', pat.impacto_labor, y);
+      y = addFieldValueOnly(doc, 'Impacto no Labor', pat.impacto_labor, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     if (pat.atividades_trabalho && pat.atividades_trabalho !== '-') {
-      y = addFieldMultiline(doc, 'Atividades de Trabalho', pat.atividades_trabalho, y);
+      y = addFieldValueOnly(doc, 'Atividades de Trabalho', pat.atividades_trabalho, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     if (pat.saude_dificulta === 'Sim' && pat.como_dificulta && pat.como_dificulta !== '-') {
-      y = addFieldMultiline(doc, 'Como Dificulta', pat.como_dificulta, y);
+      y = addFieldValueOnly(doc, 'Como Dificulta', pat.como_dificulta, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     y += SPACING.PARAGRAPH_SPACING;
@@ -53,19 +53,19 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
     y = addFieldRow(doc, 'Data Afastamento', afs.data_afastamento || '-', 'Faz Tratamento', afs.faz_tratamento || '-', y);
     
     if (afs.tipos_tratamento && afs.tipos_tratamento !== '-') {
-      y = addFieldMultiline(doc, 'Tipos de Tratamento', afs.tipos_tratamento, y);
+      y = addFieldValueOnly(doc, 'Tipos de Tratamento', afs.tipos_tratamento, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     if (afs.tratamento_outro && afs.tratamento_outro !== '-') {
-      y = addFieldMultiline(doc, 'Outro Tratamento', afs.tratamento_outro, y);
+      y = addFieldValueOnly(doc, 'Outro Tratamento', afs.tratamento_outro, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     y = addFieldRow(doc, 'Possui Relatórios', afs.possui_relatorios || '-', 'Toma Medicações', afs.toma_medicacoes || '-', y);
     
     if (afs.quais_medicacoes && afs.quais_medicacoes !== '-') {
-      y = addFieldMultiline(doc, 'Medicações', afs.quais_medicacoes, y);
+      y = addFieldValueOnly(doc, 'Medicações', afs.quais_medicacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     if (afs.medicacoes_efeitos === 'Sim' && afs.quais_efeitos && afs.quais_efeitos !== '-') {
-      y = addFieldMultiline(doc, 'Efeitos Colaterais', afs.quais_efeitos, y);
+      y = addFieldValueOnly(doc, 'Efeitos Colaterais', afs.quais_efeitos, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     y += SPACING.PARAGRAPH_SPACING;
@@ -156,7 +156,7 @@ export function IncapacidadeRuralSection(doc, data, y, addHeaderFn = null, heade
   // ═══ OBSERVAÇÕES ═══
   if (data.observacoes && data.observacoes !== '-') {
     y = checkPageBreak(doc, y, 20, addHeaderFn, headerTitle);
-    y = addFieldMultiline(doc, 'Observações', data.observacoes, y);
+    y = addFieldValueOnly(doc, 'Observações', data.observacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }
 
   return y + SPACING.PARAGRAPH_SPACING;

@@ -1,6 +1,6 @@
 import { 
   addField, 
-  addFieldMultiline,
+  addFieldValueOnly,
   addFieldRow,
   addTable, 
   addSectionTitle,
@@ -27,12 +27,12 @@ export function SalarioMaternidadeRuralSection(doc, data, y, addHeaderFn = null,
     y = addFieldRow(doc, 'Nº Filhos', mat.numero_filhos || '-', 'Já Recebeu Salário-Mat.', mat.ja_recebeu || '-', y);
     
     if (mat.detalhes_recebimento && mat.detalhes_recebimento !== '-') {
-      y = addFieldMultiline(doc, 'Detalhes Recebimento Anterior', mat.detalhes_recebimento, y);
+      y = addFieldValueOnly(doc, 'Detalhes Recebimento Anterior', mat.detalhes_recebimento, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     y = addFieldRow(doc, 'Complicações na Gestação', mat.complicacoes_gestacao || '-', '', '', y);
     if (mat.detalhes_complicacoes && mat.detalhes_complicacoes !== '-') {
-      y = addFieldMultiline(doc, 'Detalhes Complicações', mat.detalhes_complicacoes, y);
+      y = addFieldValueOnly(doc, 'Detalhes Complicações', mat.detalhes_complicacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     y = addFieldRow(doc, 'Afastou Durante Gestação', mat.afastou_gestacao || '-', 'Período Afastamento', mat.periodo_afastamento || '-', y);
@@ -160,7 +160,7 @@ export function SalarioMaternidadeRuralSection(doc, data, y, addHeaderFn = null,
   // ═══ OBSERVAÇÕES ═══
   if (data.observacoes && data.observacoes !== '-') {
     y = checkPageBreak(doc, y, 20, addHeaderFn, headerTitle);
-    y = addFieldMultiline(doc, 'Observações', data.observacoes, y);
+    y = addFieldValueOnly(doc, 'Observações', data.observacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }
 
   return y + SPACING.PARAGRAPH_SPACING;

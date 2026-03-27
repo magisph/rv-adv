@@ -1,12 +1,9 @@
 import { 
-  COLORS, 
-  FONTS, 
   addField, 
-  addFieldMultiline, 
+  addFieldValueOnly,
   addFieldRow,
   addTable, 
   addSectionTitle,
-  addSubSectionTitle,
   checkPageBreak,
   PAGE_CONFIG,
   SPACING 
@@ -27,14 +24,14 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
     y = addFieldRow(doc, 'Recebe Benefício', elig.recebe_beneficio || '-', 'Vínculo Ativo', elig.vinculo_ativo || '-', y);
     
     if (elig.diagnosticos && elig.diagnosticos !== '-') {
-      y = addFieldMultiline(doc, 'Diagnóstico (CID)', elig.diagnosticos, y);
+      y = addFieldValueOnly(doc, 'Diagnóstico (CID)', elig.diagnosticos, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     y = addFieldRow(doc, 'Médico Assistente', elig.medico_assistente || '-', 'Início dos Sintomas', elig.inicio_sintomas || '-', y);
     y = addFieldRow(doc, 'Impedimento 2+ Anos', elig.impedimento_2_anos || '-', 'Natureza do Impedimento', elig.natureza_impedimento || '-', y);
     
     if (elig.tipos_impedimento && elig.tipos_impedimento !== '-') {
-      y = addFieldMultiline(doc, 'Tipos de Impedimento', elig.tipos_impedimento, y);
+      y = addFieldValueOnly(doc, 'Tipos de Impedimento', elig.tipos_impedimento, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     y += SPACING.PARAGRAPH_SPACING;
@@ -48,26 +45,26 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
     const cif = data.cif;
     
     if (cif.autocuidado && cif.autocuidado !== '-') {
-      y = addFieldMultiline(doc, 'Autocuidado', cif.autocuidado, y);
+      y = addFieldValueOnly(doc, 'Autocuidado', cif.autocuidado, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     if (cif.mobilidade && cif.mobilidade !== '-') {
-      y = addFieldMultiline(doc, 'Mobilidade', cif.mobilidade, y);
+      y = addFieldValueOnly(doc, 'Mobilidade', cif.mobilidade, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     y = addFieldRow(doc, 'Comunicação', cif.comunicacao || '-', 'Cognição', cif.cognicao || '-', y);
     y = addFieldRow(doc, 'Interação Social', cif.interacao_social || '-', 'Capacidade Trabalho', cif.capacidade_trabalho || '-', y);
     
     if (cif.barreiras && cif.barreiras !== '-') {
-      y = addFieldMultiline(doc, 'Barreiras', cif.barreiras, y);
+      y = addFieldValueOnly(doc, 'Barreiras', cif.barreiras, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     y = addFieldRow(doc, 'Necessita Cuidador', cif.necessita_cuidador || '-', '', '', y);
     
     if (cif.tratamentos && cif.tratamentos !== '-') {
-      y = addFieldMultiline(doc, 'Tratamentos em Curso', cif.tratamentos, y);
+      y = addFieldValueOnly(doc, 'Tratamentos em Curso', cif.tratamentos, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     if (cif.medicamentos && cif.medicamentos !== '-') {
-      y = addFieldMultiline(doc, 'Medicamentos Contínuos', cif.medicamentos, y);
+      y = addFieldValueOnly(doc, 'Medicamentos Contínuos', cif.medicamentos, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     
     y += SPACING.PARAGRAPH_SPACING;
@@ -106,10 +103,10 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
     y = addField(doc, 'Origem da Residência', hab.origem_residencia || '-', y);
     
     if (hab.condicoes_imovel && hab.condicoes_imovel !== '-') {
-      y = addFieldMultiline(doc, 'Condições do Imóvel', hab.condicoes_imovel, y);
+      y = addFieldValueOnly(doc, 'Condições do Imóvel', hab.condicoes_imovel, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     if (hab.observacoes && hab.observacoes !== '-') {
-      y = addFieldMultiline(doc, 'Observações', hab.observacoes, y);
+      y = addFieldValueOnly(doc, 'Observações', hab.observacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     y += SPACING.PARAGRAPH_SPACING;
   }
@@ -124,13 +121,13 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
     y = addFieldRow(doc, 'Viabilidade Adm.', est.viabilidade_adm || '-', 'Viabilidade Judicial', est.viabilidade_jud || '-', y);
     
     if (est.proxima_etapa && est.proxima_etapa !== '-') {
-      y = addFieldMultiline(doc, 'Próxima Etapa', est.proxima_etapa, y);
+      y = addFieldValueOnly(doc, 'Próxima Etapa', est.proxima_etapa, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     if (est.pendencias && est.pendencias !== '-') {
-      y = addFieldMultiline(doc, 'Pendências', est.pendencias, y);
+      y = addFieldValueOnly(doc, 'Pendências', est.pendencias, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
     if (est.fundamentacao && est.fundamentacao !== '-') {
-      y = addFieldMultiline(doc, 'Fundamentação', est.fundamentacao, y);
+      y = addFieldValueOnly(doc, 'Fundamentação', est.fundamentacao, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
     }
   }
 

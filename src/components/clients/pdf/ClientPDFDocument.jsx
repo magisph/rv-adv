@@ -5,7 +5,8 @@ import {
   addHeader, 
   addSectionTitle, 
   addFooter,
-  addFieldMultiline,
+  addFieldValueOnly,
+  checkPageBreak,
   PAGE_CONFIG,
   SPACING
 } from '@/utils/pdfExporter';
@@ -61,24 +62,22 @@ export function generateClientPDF(client, beneficios = []) {
   // ═══ BENEFÍCIOS (páginas 3+) ═══
   if (clientData.beneficios && clientData.beneficios.length > 0) {
     clientData.beneficios.forEach((beneficio, index) => {
+      // Verificar quebra de página antes de iniciar novo benefício (evitar órfãos)
+      y = checkPageBreak(doc, y, 50, addHeader, clientData.client.full_name);
+      
       // Nova página para cada benefício
       doc.addPage();
       y = addHeader(doc, clientData.client.full_name);
       y = addSectionTitle(doc, `Benefício: ${beneficio.tipo_beneficio}`, y);
 
-      // Subtítulo com status e informações
+      // Subtítulo com status e informações usando addFieldValueOnly
       const infoLine = [
         `Status: ${beneficio.status}`,
         `NB: ${beneficio.numero_beneficio || '-'}`,
         `Criado em: ${beneficio.created_at}`
       ].join(' | ');
       
-      // Adicionar info usando função do doc diretamente
-      doc.setTextColor(100, 116, 139);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text(infoLine, PAGE_CONFIG.MARGIN_LEFT, y);
-      y += 10;
+      y = addFieldValueOnly(doc, '', infoLine, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeader, clientData.client.full_name);
 
       // Renderizar seção específica conforme tipo
       const tipo = beneficio.tipo_beneficio_original || '';
@@ -105,7 +104,7 @@ export function generateClientPDF(client, beneficios = []) {
         case 'incapacidade_urbano':
         case 'salario_maternidade_urbano':
         case 'outros_urbano':
-          y = addFieldMultiline(doc, 'Informações:', beneficio.dados?.informacoes || 'Dados não disponíveis', y);
+          y = addFieldValueOnly(doc, 'Informações:', beneficio.dados?.informacoes || 'Dados não disponíveis', y, PAGE_CONFIG.MARGIN_LEFT, null, addHeader, clientData.client.full_name);
           break;
         default:
           doc.setTextColor(30, 41, 59);
@@ -119,7 +118,8 @@ export function generateClientPDF(client, beneficios = []) {
       // Observações do benefício
       if (beneficio.observacoes) {
         y += 4;
-        y = addFieldMultiline(doc, 'Observações:', beneficio.observacoes, y);
+        y = checkPageBreak(doc, y, 20, addHeader, clientData.client.full_name);
+        y = addFieldValueOnly(doc, 'Observações:', beneficio.observacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeader, clientData.client.full_name);
       }
     });
   }

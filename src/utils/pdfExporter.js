@@ -109,11 +109,11 @@ export function checkPageBreak(doc, y, neededSpace = 20, headerFn = null, header
   const maxY = pageHeight - PAGE_CONFIG.MARGIN_BOTTOM;
   
   if (y + neededSpace > maxY) {
+    doc.addPage();
     if (headerFn) {
-      doc.addPage();
       return headerFn(doc, headerTitle);
     }
-    return y;
+    return PAGE_CONFIG.MARGIN_TOP;
   }
   return y;
 }
@@ -274,7 +274,7 @@ export function addSubSectionTitle(doc, title, y) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Adiciona campo simples (label + valor)
+ * Adiciona campo simples (label + valor) - COM truncamento
  */
 export function addField(doc, label, value, y, x = PAGE_CONFIG.MARGIN_LEFT, width = null) {
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -300,6 +300,41 @@ export function addField(doc, label, value, y, x = PAGE_CONFIG.MARGIN_LEFT, widt
 }
 
 /**
+ * Adiciona campo simples (label + valor) - SEM truncamento para textos longos
+ * Ideal para diagnósticos, CIF, descrições médicas, etc.
+ */
+export function addFieldValueOnly(doc, label, value, y, x = PAGE_CONFIG.MARGIN_LEFT, width = null, headerFn = null, headerTitle = '') {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const maxWidth = width || (pageWidth - PAGE_CONFIG.MARGIN_LEFT - PAGE_CONFIG.MARGIN_RIGHT);
+  
+  // Label
+  doc.setTextColor(...COLORS.textLight);
+  doc.setFontSize(FONTS.small);
+  doc.setFont('helvetica', 'normal');
+  doc.text(label, x, y);
+
+  // Value - sem truncamento
+  doc.setTextColor(...COLORS.text);
+  doc.setFontSize(FONTS.normal);
+  doc.setFont('helvetica', 'bold');
+  
+  const displayValue = value ?? '-';
+  const lines = wrapText(displayValue, maxWidth - 2, doc);
+  
+  // Calcular espaço necessário para todas as linhas
+  const neededSpace = lines.length * SPACING.LINE_HEIGHT + SPACING.FIELD_SPACING;
+  y = checkPageBreak(doc, y, neededSpace, headerFn, headerTitle);
+  
+  let currentY = y + SPACING.LINE_HEIGHT;
+  for (const line of lines) {
+    doc.text(line, x, currentY);
+    currentY += SPACING.LINE_HEIGHT;
+  }
+
+  return currentY + SPACING.PARAGRAPH_SPACING;
+}
+
+/**
  * Adiciona dois campos lado a lado (duas colunas)
  */
 export function addFieldRow(doc, leftLabel, leftValue, rightLabel, rightValue, y) {
@@ -317,9 +352,18 @@ export function addFieldRow(doc, leftLabel, leftValue, rightLabel, rightValue, y
 }
 
 /**
- * Adiciona campo multilinha (label + texto longo)
+ * Adiciona campo multilinha (label + texto longo) com quebra de página automática
+ * @param {jsPDF} doc - Instância do documento
+ * @param {string} label - Rótulo do campo
+ * @param {string} value - Valor do campo
+ * @param {number} y - Posição Y atual
+ * @param {number} x - Posição X (margem)
+ * @param {number} width - Largura máxima do texto
+ * @param {Function} headerFn - Função de header para nova página
+ * @param {string} headerTitle - Título do header
+ * @returns {number} Nova posição Y
  */
-export function addFieldMultiline(doc, label, value, y, x = PAGE_CONFIG.MARGIN_LEFT, width = null) {
+export function addFieldMultiline(doc, label, value, y, x = PAGE_CONFIG.MARGIN_LEFT, width = null, headerFn = null, headerTitle = '') {
   const pageWidth = doc.internal.pageSize.getWidth();
   const maxWidth = width || (pageWidth - PAGE_CONFIG.MARGIN_LEFT - PAGE_CONFIG.MARGIN_RIGHT);
   
@@ -339,12 +383,21 @@ export function addFieldMultiline(doc, label, value, y, x = PAGE_CONFIG.MARGIN_L
   const text = value || '-';
   const lines = wrapText(text, maxWidth, doc);
   
+  // Verificar espaço total antes de desenhar
+  const neededSpace = lines.length * SPACING.LINE_HEIGHT + SPACING.PARAGRAPH_SPACING;
+  y = checkPageBreak(doc, y, neededSpace, headerFn, headerTitle);
+  
+  // Recalcular após possível quebra de página
+  let currentY = y;
+  
   for (const line of lines) {
-    doc.text(line, x, y);
-    y += SPACING.LINE_HEIGHT;
+    // Verificar quebra de página para cada linha
+    currentY = checkPageBreak(doc, currentY, SPACING.LINE_HEIGHT, headerFn, headerTitle);
+    doc.text(line, x, currentY);
+    currentY += SPACING.LINE_HEIGHT;
   }
   
-  return y + SPACING.PARAGRAPH_SPACING;
+  return currentY + SPACING.PARAGRAPH_SPACING;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -404,10 +457,23 @@ export function addTable(doc, headers, rows, y, startX = PAGE_CONFIG.MARGIN_LEFT
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//                              FOOTER
+//                              FOOTER / PAGINATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Adiciona numeração de páginas (rodapé) a todas as páginas do documento
+ * @param {jsPDF} doc - Instância do documento
+ */
 export function addFooter(doc) {
+  finalizeDocument(doc);
+}
+
+/**
+ * Finaliza o documento adicionando rodapé com numeração de páginas
+ * Deve ser chamado após todo o conteúdo ser adicionado
+ * @param {jsPDF} doc - Instância do documento
+ */
+export function finalizeDocument(doc) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 

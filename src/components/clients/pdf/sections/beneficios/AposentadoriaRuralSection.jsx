@@ -1,6 +1,6 @@
 import { 
   addField, 
-  addFieldMultiline,
+  addFieldValueOnly,
   addFieldRow,
   addTable, 
   addSectionTitle,
@@ -114,7 +114,7 @@ export function AposentadoriaRuralSection(doc, data, y, addHeaderFn = null, head
   // ═══ OBSERVAÇÕES ═══
   if (data.observacoes && data.observacoes !== '-') {
     y = checkPageBreak(doc, y, 20, addHeaderFn, headerTitle);
-    y = addFieldMultiline(doc, 'Observações', data.observacoes, y);
+    y = addFieldValueOnly(doc, 'Observações', data.observacoes, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
   }
 
   return y + SPACING.PARAGRAPH_SPACING;
