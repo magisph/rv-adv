@@ -4,12 +4,17 @@
     "workspace": "C:/Users/Junior do Titico/Desktop/PROJETOS/Proj_RV_Adv",
     "agents": {
         "enabled": true,
-        "directory": ".antigravity\\agents",
+        "directory": ".antigravity/agents",
         "default": "aiox-master"
     },
     "rules": {
         "enabled": true,
-        "file": ".antigravity\\rules.md"
+        "file": ".antigravity/rules.md"
+    },
+    "skills": {
+        "enabled": true,
+        "directory": ".antigravity/skills",
+        "customPaths": [".antigravity/skills", "skills"]
     },
     "features": {
         "storyDrivenDevelopment": true,

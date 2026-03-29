@@ -1,0 +1,125 @@
+commit f6f7e71e5d10e93d93e1ff9d10ea8434002bfbeb (HEAD -> master, origin/master)
+Author: magisph <phdtemiranda@gmail.com>
+Date:   Fri Mar 27 18:13:15 2026 -0300
+
+    fix(clientes): refatora exportacao de arquivos PDF
+
+diff --git a/src/components/clients/pdf/sections/beneficios/BPCLoasSection.jsx b/src/components/clients/pdf/sections/beneficios/BPCLoasSection.jsx
+index 9e56006..49f0c79 100644
+--- a/src/components/clients/pdf/sections/beneficios/BPCLoasSection.jsx
++++ b/src/components/clients/pdf/sections/beneficios/BPCLoasSection.jsx
+@@ -13,20 +13,21 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
+   const pageWidth = doc.internal.pageSize.getWidth();
+
+   // ═══ TRIAGEM DE ELEGIBILIDADE ═══
+-  y = addSectionTitle(doc, 'Triagem de Elegibilidade', y);
++  y = addSectionTitle(doc, 'Triagem de Elegibilidade', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
+
+   if (data.elegibilidade) {
+     const elig = data.elegibilidade;
+
+-    y = addFieldRow(doc, 'Reside no Brasil', elig.reside_brasil, 'CPF/CadÚnico', elig.cpf_cadunico, y);
+-    y = addFieldRow(doc, 'Recebe Benefício', elig.recebe_beneficio, 'Vínculo Ativo', elig.vinculo_ativo, y);
++    // [FIX: Quebra de Página + Espaçamento] Passar addHeaderFn/headerTitle para addFieldRow
++    y = addFieldRow(doc, 'Reside no Brasil', elig.reside_brasil, 'CPF/CadÚnico', elig.cpf_cadunico, y, addHeaderFn, headerTitle);
++    y = addFieldRow(doc, 'Recebe Benefício', elig.recebe_beneficio, 'Vínculo Ativo', elig.vinculo_ativo, y, addHeaderFn, headerTitle);
+
+     if (elig.diagnosticos && elig.diagnosticos !== '-' && elig.diagnosticos !== '[NÃO INFORMADO]') {
+       y = addFieldValueOnly(doc, 'Diagnóstico (CID)', elig.diagnosticos, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
+     }
+
+-    y = addFieldRow(doc, 'Médico Assistente', elig.medico_assistente, 'Início dos Sintomas', elig.inicio_sintomas, y);
+-    y = addFieldRow(doc, 'Impedimento 2+ Anos', elig.impedimento_2_anos, 'Natureza do Impedimento', elig.natureza_impedimento, y);
++    y = addFieldRow(doc, 'Médico Assistente', elig.medico_assistente, 'Início dos Sintomas', elig.inicio_sintomas, y, addHeaderFn, headerTitle);
++    y = addFieldRow(doc, 'Impedimento 2+ Anos', elig.impedimento_2_anos, 'Natureza do Impedimento', elig.natureza_impedimento, y, addHeaderFn, headerTitle);
+
+     if (elig.tipos_impedimento && elig.tipos_impedimento !== '-' && elig.tipos_impedimento !== '[NÃO INFORMADO]') {
+       y = addFieldValueOnly(doc, 'Tipos de Impedimento', elig.tipos_impedimento, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
+@@ -36,8 +37,10 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
+   }
+
+   // ═══ CIF - CLASSIFICAÇÃO INTERNACIONAL DE FUNCIONALIDADE ═══
+-  y = checkPageBreak(doc, y, 50, addHeaderFn, headerTitle);
+-  y = addSectionTitle(doc, 'Classificação Internacional de Funcionalidade (CIF)', y);
++  // [FIX: Quebra de Página] Estimar altura da seção CIF (título + ~7 campos)
++  const estimatedCifHeight = SPACING.SECTION_SPACING + (SPACING.FIELD_SPACING * 7);
++  y = checkPageBreak(doc, y, estimatedCifHeight, addHeaderFn, headerTitle);
++  y = addSectionTitle(doc, 'Classificação Internacional de Funcionalidade (CIF)', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
+
+   if (data.cif) {
+     const cif = data.cif;
+@@ -49,14 +52,16 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
+       y = addFieldValueOnly(doc, 'Mobilidade', cif.mobilidade, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
+     }
+
+-    y = addFieldRow(doc, 'Comunicação', cif.comunicacao, 'Cognição', cif.cognicao, y);
+-    y = addFieldRow(doc, 'Interação Social', cif.interacao_social, 'Capacidade Trabalho', cif.capacidade_trabalho, y);
++    // [FIX: Overflow/Truncamento + Quebra de Página] Passar addHeaderFn para addFieldRow
++    // Campos CIF como Comunicação e Interação Social podem ter textos longos
++    y = addFieldRow(doc, 'Comunicação', cif.comunicacao, 'Cognição', cif.cognicao, y, addHeaderFn, headerTitle);
++    y = addFieldRow(doc, 'Interação Social', cif.interacao_social, 'Capacidade Trabalho', cif.capacidade_trabalho, y, addHeaderFn, headerTitle);
+
+     if (cif.barreiras && cif.barreiras !== '-' && cif.barreiras !== '[NÃO INFORMADO]') {
+       y = addFieldValueOnly(doc, 'Barreiras', cif.barreiras, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
+     }
+
+-    y = addFieldRow(doc, 'Necessita Cuidador', cif.necessita_cuidador, '', '', y);
++    y = addFieldRow(doc, 'Necessita Cuidador', cif.necessita_cuidador, '', '', y, addHeaderFn, headerTitle);
+
+     if (cif.tratamentos && cif.tratamentos !== '-' && cif.tratamentos !== '[NÃO INFORMADO]') {
+       y = addFieldValueOnly(doc, 'Tratamentos em Curso', cif.tratamentos, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
+@@ -69,8 +74,10 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
+   }
+
+   // ═══ GRUPO FAMILIAR ═══
+-  y = checkPageBreak(doc, y, 40, addHeaderFn, headerTitle);
+-  y = addSectionTitle(doc, 'Grupo Familiar', y);
++  // [FIX: Quebra de Página] Estimar altura da seção Grupo Familiar
++  const estimatedFamilyHeight = SPACING.SECTION_SPACING + 12 + SPACING.PARAGRAPH_SPACING;
++  y = checkPageBreak(doc, y, estimatedFamilyHeight, addHeaderFn, headerTitle);
++  y = addSectionTitle(doc, 'Grupo Familiar', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
+
+   if (data.grupo_familiar && data.grupo_familiar.length > 0) {
+     y = addTable(
+@@ -89,16 +96,18 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
+       headerTitle
+     );
+   } else {
+-    y = addField(doc, 'Nenhum membro cadastrado', '-', y);
++    y = addField(doc, 'Nenhum membro cadastrado', '-', y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
+   }
+
+   // ═══ SITUAÇÃO HABITACIONAL ═══
+-  y = checkPageBreak(doc, y, 30, addHeaderFn, headerTitle);
+-  y = addSectionTitle(doc, 'Situação Habitacional', y);
++  // [FIX: Quebra de Página] Estimar altura da seção Situação Habitacional
++  const estimatedHousingHeight = SPACING.SECTION_SPACING + (SPACING.FIELD_SPACING * 3);
++  y = checkPageBreak(doc, y, estimatedHousingHeight, addHeaderFn, headerTitle);
++  y = addSectionTitle(doc, 'Situação Habitacional', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
+
+   if (data.situacao_habitacional) {
+     const hab = data.situacao_habitacional;
+-    y = addFieldRow(doc, 'Origem da Residência', hab.origem_residencia, '', '', y);
++    y = addFieldRow(doc, 'Origem da Residência', hab.origem_residencia, '', '', y, addHeaderFn, headerTitle);
+
+     if (hab.condicoes_imovel && hab.condicoes_imovel !== '-' && hab.condicoes_imovel !== '[NÃO INFORMADO]') {
+       y = addFieldValueOnly(doc, 'Condições do Imóvel', hab.condicoes_imovel, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
+@@ -110,13 +119,15 @@ export function BPCLoasSection(doc, data, y, addHeaderFn = null, headerTitle = '
+   }
+
+   // ═══ ESTRATÉGIA ═══
+-  y = checkPageBreak(doc, y, 40, addHeaderFn, headerTitle);
+-  y = addSectionTitle(doc, 'Estratégia', y);
++  // [FIX: Quebra de Página] Estimar altura da seção Estratégia
++  const estimatedStrategyHeight = SPACING.SECTION_SPACING + (SPACING.FIELD_SPACING * 5);
++  y = checkPageBreak(doc, y, estimatedStrategyHeight, addHeaderFn, headerTitle);
++  y = addSectionTitle(doc, 'Estratégia', y, PAGE_CONFIG.MARGIN_LEFT, addHeaderFn, headerTitle);
+
+   if (data.estrategia) {
+     const est = data.estrategia;
+
+-    y = addFieldRow(doc, 'Viabilidade Adm.', est.viabilidade_adm, 'Viabilidade Judicial', est.viabilidade_jud, y);
++    y = addFieldRow(doc, 'Viabilidade Adm.', est.viabilidade_adm, 'Viabilidade Judicial', est.viabilidade_jud, y, addHeaderFn, headerTitle);
+
+     if (est.proxima_etapa && est.proxima_etapa !== '-' && est.proxima_etapa !== '[NÃO INFORMADO]') {
+       y = addFieldValueOnly(doc, 'Próxima Etapa', est.proxima_etapa, y, PAGE_CONFIG.MARGIN_LEFT, null, addHeaderFn, headerTitle);
