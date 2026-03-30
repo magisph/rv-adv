@@ -321,7 +321,7 @@ export default function ClientDetail() {
   if (!client) {
     return (
       <div className="text-center py-12">
-        <p className="text-slate-500">Cliente não encontrado</p>
+        <p className="text-slate-600">Cliente não encontrado</p>
         <Link to={createPageUrl("Clients")}>
           <Button variant="link">Voltar para lista</Button>
         </Link>
@@ -342,7 +342,7 @@ export default function ClientDetail() {
           <h1 className="text-2xl font-bold text-slate-800">
             {client.full_name}
           </h1>
-          <p className="text-slate-500">{client.cpf_cnpj}</p>
+          <p className="text-slate-600">{client.cpf_cnpj}</p>
         </div>
         <Button onClick={handleExportPDF} variant="outline" disabled={isExportingPDF}>
           {isExportingPDF ? (
@@ -399,14 +399,14 @@ export default function ClientDetail() {
               <Card className="border-0 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <User className="w-5 h-5 text-[#1e3a5f]" />
+                    <User className="w-5 h-5 text-legal-blue" />
                     Informações Pessoais
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between py-2 border-b">
-                      <span className="text-slate-500 text-sm">
+                      <span className="text-slate-600 text-sm">
                         Nome Completo
                       </span>
                       <span className="font-medium text-slate-800">
@@ -414,14 +414,14 @@ export default function ClientDetail() {
                       </span>
                     </div>
                     <div className="flex justify-between py-2 border-b">
-                      <span className="text-slate-500 text-sm">CPF</span>
+                      <span className="text-slate-600 text-sm">CPF</span>
                       <span className="font-medium text-slate-800">
                         {client.cpf_cnpj}
                       </span>
                     </div>
                     {client.data_nascimento && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-slate-500 text-sm">
+                        <span className="text-slate-600 text-sm">
                           Data de Nascimento | Idade
                         </span>
                         <span className="font-medium text-slate-800">
@@ -449,7 +449,7 @@ export default function ClientDetail() {
                       client.data_emissao_rg ||
                       client.orgao_expedidor) && (
                         <div className="flex justify-between py-2 border-b">
-                          <span className="text-slate-500 text-sm">
+                          <span className="text-slate-600 text-sm">
                             RG | Data Emissão | Órgão
                           </span>
                           <span className="font-medium text-slate-800 text-right">
@@ -463,7 +463,7 @@ export default function ClientDetail() {
                       )}
                     {client.estado_civil && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-slate-500 text-sm">
+                        <span className="text-slate-600 text-sm">
                           Estado Civil
                         </span>
                         <span className="font-medium text-slate-800 capitalize">
@@ -473,7 +473,7 @@ export default function ClientDetail() {
                     )}
                     {client.grau_escolaridade && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-slate-500 text-sm">
+                        <span className="text-slate-600 text-sm">
                           Escolaridade
                         </span>
                         <span className="font-medium text-slate-800 capitalize">
@@ -483,7 +483,7 @@ export default function ClientDetail() {
                     )}
                     {client.profissao && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-slate-500 text-sm">
+                        <span className="text-slate-600 text-sm">
                           Profissão
                         </span>
                         <span className="font-medium text-slate-800">
@@ -499,7 +499,7 @@ export default function ClientDetail() {
               <Card className="border-0 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-[#1e3a5f]" />
+                    <MapPin className="w-5 h-5 text-legal-blue" />
                     Contato e Endereço
                   </CardTitle>
                 </CardHeader>
@@ -507,7 +507,7 @@ export default function ClientDetail() {
                   <div className="space-y-3">
                     {client.email && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-slate-500 text-sm">E-mail</span>
+                        <span className="text-slate-600 text-sm">E-mail</span>
                         <span className="font-medium text-slate-800">
                           {client.email}
                         </span>
@@ -515,7 +515,7 @@ export default function ClientDetail() {
                     )}
                     {client.phone && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-slate-500 text-sm">Telefone</span>
+                        <span className="text-slate-600 text-sm">Telefone</span>
                         <span className="font-medium text-slate-800">
                           {client.phone}
                         </span>
@@ -523,7 +523,7 @@ export default function ClientDetail() {
                     )}
                     {client.address && (
                       <div className="py-2 border-b">
-                        <span className="text-slate-500 text-sm block mb-1">
+                        <span className="text-slate-600 text-sm block mb-1">
                           Endereço Completo
                         </span>
                         <span className="font-medium text-slate-800">
@@ -533,7 +533,7 @@ export default function ClientDetail() {
                     )}
                     {(client.zip_code || client.city || client.state) && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-slate-500 text-sm">
+                        <span className="text-slate-600 text-sm">
                           CEP | Cidade | Estado
                         </span>
                         <span className="font-medium text-slate-800 text-right">
@@ -550,7 +550,7 @@ export default function ClientDetail() {
               <Card className="border-0 shadow-sm lg:col-span-2">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-[#1e3a5f]" />
+                    <FileText className="w-5 h-5 text-legal-blue" />
                     Informações Preliminares
                   </CardTitle>
                 </CardHeader>
@@ -558,7 +558,7 @@ export default function ClientDetail() {
                   <div className="space-y-3">
                     {client.senha_meu_inss && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-slate-500 text-sm">
+                        <span className="text-slate-600 text-sm">
                           Senha do MEU INSS
                         </span>
                         <span className="font-medium text-slate-800 font-mono">
@@ -567,7 +567,7 @@ export default function ClientDetail() {
                       </div>
                     )}
                     <div className="flex justify-between py-2 border-b">
-                      <span className="text-slate-500 text-sm">
+                      <span className="text-slate-600 text-sm">
                         Inscrito no Cadastro Único?
                       </span>
                       <Badge
@@ -582,7 +582,7 @@ export default function ClientDetail() {
                       </Badge>
                     </div>
                     <div className="flex justify-between py-2 border-b">
-                      <span className="text-slate-500 text-sm">
+                      <span className="text-slate-600 text-sm">
                         Possui a senha GOV?
                       </span>
                       <Badge
@@ -598,7 +598,7 @@ export default function ClientDetail() {
                     </div>
                     {client.possui_senha_gov && client.senha_gov && (
                       <div className="flex justify-between py-2 border-b">
-                        <span className="text-slate-500 text-sm">
+                        <span className="text-slate-600 text-sm">
                           Senha GOV
                         </span>
                         <span className="font-medium text-slate-800 font-mono">
@@ -607,7 +607,7 @@ export default function ClientDetail() {
                       </div>
                     )}
                     <div className="flex justify-between py-2 border-b">
-                      <span className="text-slate-500 text-sm">
+                      <span className="text-slate-600 text-sm">
                         Já possui biometria?
                       </span>
                       <Badge
@@ -622,7 +622,7 @@ export default function ClientDetail() {
                       </Badge>
                     </div>
                     <div className="flex justify-between py-2 border-b">
-                      <span className="text-slate-500 text-sm">
+                      <span className="text-slate-600 text-sm">
                         Pedido anterior INSS/Judicial?
                       </span>
                       <Badge
@@ -640,7 +640,7 @@ export default function ClientDetail() {
                       <>
                         {client.numero_processo_administrativo && (
                           <div className="flex justify-between py-2 border-b">
-                            <span className="text-slate-500 text-sm">
+                            <span className="text-slate-600 text-sm">
                               Processo Administrativo (NB)
                             </span>
                             <span className="font-medium text-slate-800 font-mono">
@@ -650,7 +650,7 @@ export default function ClientDetail() {
                         )}
                         {client.numero_processo_judicial && (
                           <div className="flex justify-between py-2 border-b">
-                            <span className="text-slate-500 text-sm">
+                            <span className="text-slate-600 text-sm">
                               Processo Judicial
                             </span>
                             <span className="font-medium text-slate-800 font-mono">
@@ -660,7 +660,7 @@ export default function ClientDetail() {
                         )}
                         {client.observacoes_processos_anteriores && (
                           <div className="py-2">
-                            <span className="text-slate-500 text-sm block mb-2">
+                            <span className="text-slate-600 text-sm block mb-2">
                               Observações sobre processos anteriores
                             </span>
                             <p className="text-slate-700 text-sm bg-slate-50 p-3 rounded">
@@ -680,7 +680,7 @@ export default function ClientDetail() {
               <Card className="border-0 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-[#1e3a5f]" />
+                    <BookOpen className="w-5 h-5 text-legal-blue" />
                     Dados do Processo Cível
                   </CardTitle>
                 </CardHeader>
@@ -690,9 +690,9 @@ export default function ClientDetail() {
                       <div className="pb-3 border-b">
                         <h4 className="font-semibold text-slate-800 mb-2">Parte Adversa</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-700">
-                          <div><span className="text-slate-500">Nome:</span> {client.dados_civeis.parteAdversa.nome || "-"}</div>
-                          <div><span className="text-slate-500">CPF/CNPJ:</span> {client.dados_civeis.parteAdversa.cpfCnpj || "-"}</div>
-                          <div className="sm:col-span-2"><span className="text-slate-500">Endereço:</span> {client.dados_civeis.parteAdversa.endereco || "-"}</div>
+                          <div><span className="text-slate-600">Nome:</span> {client.dados_civeis.parteAdversa.nome || "-"}</div>
+                          <div><span className="text-slate-600">CPF/CNPJ:</span> {client.dados_civeis.parteAdversa.cpfCnpj || "-"}</div>
+                          <div className="sm:col-span-2"><span className="text-slate-600">Endereço:</span> {client.dados_civeis.parteAdversa.endereco || "-"}</div>
                         </div>
                       </div>
                     )}
@@ -746,7 +746,7 @@ export default function ClientDetail() {
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[#1e3a5f]" />
+                <BookOpen className="w-5 h-5 text-legal-blue" />
                 Histórico de Atendimentos
               </CardTitle>
             </CardHeader>
@@ -756,7 +756,7 @@ export default function ClientDetail() {
                   <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
                 </div>
               ) : atendimentos.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-12 text-slate-600">
                   <BookOpen className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                   <p>Nenhum atendimento registrado pela recepção para este cliente.</p>
                 </div>
@@ -765,11 +765,11 @@ export default function ClientDetail() {
                   {atendimentos.map((atendimento) => (
                     <Card key={atendimento.id} className="overflow-hidden border-slate-200 hover:shadow-sm transition-shadow">
                       <div className="p-4 bg-white relative">
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#1e3a5f]" />
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-legal-blue" />
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-3">
                           <div className="pl-3">
                             <h3 className="font-semibold text-slate-800">{atendimento.nome_contato}</h3>
-                            <div className="flex items-center gap-3 text-sm text-slate-500 mt-1">
+                            <div className="flex items-center gap-3 text-sm text-slate-600 mt-1">
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-3.5 h-3.5" />
                                 {format(new Date(atendimento.created_at), "dd/MM/yyyy HH:mm")}
@@ -831,12 +831,12 @@ export default function ClientDetail() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-[#1e3a5f]" />
+                  <FileText className="w-5 h-5 text-legal-blue" />
                   Documentos e Benefícios
                 </CardTitle>
                 <Button
                   onClick={() => setShowBeneficioModal(true)}
-                  className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+                  className="bg-legal-blue hover:bg-legal-blue-light"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Adicionar Benefício
@@ -845,7 +845,7 @@ export default function ClientDetail() {
             </CardHeader>
             <CardContent>
               {beneficios.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-12 text-slate-600">
                   <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                   <p>Nenhum benefício cadastrado</p>
                   <Button
@@ -927,7 +927,7 @@ export default function ClientDetail() {
                                       ?.replace(/_/g, " ")
                                       .toUpperCase()}
                                 </p>
-                                <p className="text-xs text-slate-500 mt-1">
+                                <p className="text-xs text-slate-600 mt-1">
                                   Categoria:{" "}
                                   {CATEGORIA_LABELS[beneficio.categoria] ||
                                     beneficio.categoria
@@ -961,12 +961,12 @@ export default function ClientDetail() {
 
                             {beneficio.numero_beneficio && (
                               <p className="text-sm text-slate-600">
-                                <span className="text-slate-500">NB:</span>{" "}
+                                <span className="text-slate-600">NB:</span>{" "}
                                 {beneficio.numero_beneficio}
                               </p>
                             )}
 
-                            <div className="flex items-center gap-4 text-xs text-slate-500">
+                            <div className="flex items-center gap-4 text-xs text-slate-600">
                               {beneficio.data_protocolo && (
                                 <span>
                                   Protocolo:{" "}
@@ -1022,11 +1022,11 @@ export default function ClientDetail() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <FolderOpen className="w-5 h-5 text-[#1e3a5f]" />
+                  <FolderOpen className="w-5 h-5 text-legal-blue" />
                   Processos ({processes.length})
                 </CardTitle>
                 <Link to={createPageUrl(`Processes?client_id=${clientId}`)}>
-                  <Button size="sm" className="bg-[#1e3a5f] hover:bg-[#2d5a87]">
+                  <Button size="sm" className="bg-legal-blue hover:bg-legal-blue-light">
                     <Plus className="w-4 h-4 mr-2" />
                     Novo Processo
                   </Button>
@@ -1035,7 +1035,7 @@ export default function ClientDetail() {
             </CardHeader>
             <CardContent>
               {processes.length === 0 ? (
-                <p className="text-center text-slate-500 py-8">
+                <p className="text-center text-slate-600 py-8">
                   Nenhum processo vinculado a este cliente
                 </p>
               ) : (
@@ -1046,18 +1046,18 @@ export default function ClientDetail() {
                       to={createPageUrl(`ProcessDetail?id=${process.id}`)}
                       className="block"
                     >
-                      <Card className="hover:shadow-md transition-all hover:border-[#1e3a5f]/30">
+                      <Card className="hover:shadow-md transition-all hover:border-legal-blue-300">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between">
                             <div>
                               <p className="font-mono font-medium text-sm">
                                 {process.process_number}
                               </p>
-                              <p className="text-sm text-slate-500 mt-1">
+                              <p className="text-sm text-slate-600 mt-1">
                                 {process.court}
                               </p>
                               {process.subject && (
-                                <p className="text-xs text-slate-400 mt-2">
+                                <p className="text-xs text-slate-600 mt-2">
                                   {process.subject}
                                 </p>
                               )}
@@ -1089,7 +1089,7 @@ export default function ClientDetail() {
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Mail className="w-5 h-5 text-[#1e3a5f]" />
+                <Mail className="w-5 h-5 text-legal-blue" />
                 E-mails do INSS
               </CardTitle>
             </CardHeader>
@@ -1099,7 +1099,7 @@ export default function ClientDetail() {
                   <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
                 </div>
               ) : clientEmails.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-12 text-slate-600">
                   <Mail className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                   <p>Nenhum e-mail recebido</p>
                 </div>
@@ -1111,7 +1111,7 @@ export default function ClientDetail() {
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-2">
                           <div>
                             <h3 className="font-semibold text-slate-800">{email.subject}</h3>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-slate-600">
                               Recebido em: {format(new Date(email.created_at), "dd/MM/yyyy HH:mm")}
                             </p>
                           </div>
@@ -1156,7 +1156,7 @@ export default function ClientDetail() {
                         )}
 
                         <div className="mt-4 pt-4 border-t border-slate-100">
-                          <p className="text-xs text-slate-500 font-medium mb-2 uppercase tracking-wider">Corpo do E-mail</p>
+                          <p className="text-xs text-slate-600 font-medium mb-2 uppercase tracking-wider">Corpo do E-mail</p>
                           <div className="bg-slate-50 p-4 rounded text-sm text-slate-700 whitespace-pre-wrap font-mono min-h-[100px] border border-slate-100">
                             {email.body_text || "Corpo do texto indisponível."}
                           </div>

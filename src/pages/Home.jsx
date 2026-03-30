@@ -63,7 +63,7 @@ export default function Home() {
           <h1 className="text-2xl lg:text-3xl font-bold text-slate-800">
             Sistema RV Advocacia
           </h1>
-          <p className="text-slate-500 mt-1">Visão geral do seu escritório</p>
+          <p className="text-slate-600 mt-1">Visão geral do seu escritório</p>
         </div>
         {urgentDeadlines > 0 && (
           <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg">

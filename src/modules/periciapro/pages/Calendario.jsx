@@ -346,7 +346,7 @@ END:VEVENT
               </CardHeader>
               <CardContent className="p-4">
                 {eventosNoDiaSelecionado.length === 0 ? (
-                  <div className="text-center py-8 text-slate-500">
+                  <div className="text-center py-8 text-slate-600">
                     <CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p className="text-sm">
                       {selectedDate
@@ -391,7 +391,7 @@ END:VEVENT
                           <p className="text-xs text-slate-600">
                             {evento.descricao}
                           </p>
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <div className="flex items-center gap-2 text-xs text-slate-600">
                             <Clock className="w-3 h-3" />
                             <span>
                               {format(evento.data, "dd/MM/yyyy", {

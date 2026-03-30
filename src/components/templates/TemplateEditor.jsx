@@ -55,7 +55,7 @@ export default function TemplateEditor({ template, onClose }) {
           <CardTitle className="text-lg">
             Gerar Documento a partir do Molde
           </CardTitle>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-600">
             Você está utilizando o template: <strong>{template?.name}</strong>.
             As variáveis do arquivo '.docx' serão preenchidas com as
             informações do cliente selecionado abaixo.
@@ -92,7 +92,7 @@ export default function TemplateEditor({ template, onClose }) {
             <Button
               onClick={handleGenerate}
               disabled={isGenerating || !selectedClientId}
-              className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+              className="bg-legal-blue hover:bg-legal-blue-light"
             >
               {isGenerating ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

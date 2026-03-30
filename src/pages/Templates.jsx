@@ -130,7 +130,7 @@ export default function Templates() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Templates</h1>
-          <p className="text-slate-500">
+          <p className="text-slate-600">
             {templates.length} modelos disponíveis
           </p>
         </div>
@@ -139,7 +139,7 @@ export default function Templates() {
             setEditingTemplate(null);
             setShowForm(true);
           }}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           <Plus className="w-4 h-4 mr-2" />
           Novo Template
@@ -150,7 +150,7 @@ export default function Templates() {
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
             <Input
               placeholder="Buscar templates..."
               value={search}
@@ -175,7 +175,7 @@ export default function Templates() {
         <Card className="border-0 shadow-sm">
           <CardContent className="py-12 text-center">
             <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-            <p className="text-slate-500">Nenhum template encontrado</p>
+            <p className="text-slate-600">Nenhum template encontrado</p>
           </CardContent>
         </Card>
       ) : (
@@ -195,7 +195,7 @@ export default function Templates() {
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1e3a5f] to-[#2d5a87] flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-legal-blue to-legal-blue-light flex items-center justify-center">
                         <FileText className="w-6 h-6 text-white" />
                       </div>
                       <DropdownMenu>
@@ -247,7 +247,7 @@ export default function Templates() {
                       {template.name}
                     </h3>
                     {template.description && (
-                      <p className="text-sm text-slate-500 mb-4 line-clamp-2">
+                      <p className="text-sm text-slate-600 mb-4 line-clamp-2">
                         {template.description}
                       </p>
                     )}

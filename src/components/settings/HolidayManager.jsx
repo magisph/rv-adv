@@ -107,7 +107,7 @@ export default function HolidayManager() {
               </Select>
             </div>
             <div className="lg:col-span-1">
-              <Button type="submit" disabled={createMutation.isPending} className="w-full bg-[#1e3a5f] hover:bg-[#2d5a87]">
+              <Button type="submit" disabled={createMutation.isPending} className="w-full bg-legal-blue hover:bg-legal-blue-light">
                 {createMutation.isPending ? 'Salvando...' : (
                   <>
                     <Plus className="w-4 h-4 mr-2" />
@@ -152,9 +152,9 @@ export default function HolidayManager() {
           </h3>
           <ScrollArea className="h-[300px] border rounded-md p-4">
             {isLoading ? (
-               <div className="text-center text-sm text-slate-500 py-4">Carregando...</div>
+               <div className="text-center text-sm text-slate-600 py-4">Carregando...</div>
             ) : holidays.length === 0 ? (
-               <div className="text-center text-sm text-slate-500 py-4">Nenhum feriado cadastrado.</div>
+               <div className="text-center text-sm text-slate-600 py-4">Nenhum feriado cadastrado.</div>
             ) : (
               <div className="space-y-2">
                 {holidays.map((h) => (

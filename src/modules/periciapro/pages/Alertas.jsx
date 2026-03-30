@@ -265,7 +265,7 @@ export default function Alertas() {
           {alertas.length === 0 ? (
             <Card className="border-none shadow-lg bg-white/90 backdrop-blur-sm">
               <CardContent className="py-12">
-                <div className="flex flex-col items-center gap-4 text-slate-500">
+                <div className="flex flex-col items-center gap-4 text-slate-600">
                   <CheckCircle className="w-16 h-16 text-green-500" />
                   <div className="text-center">
                     <h3 className="text-xl font-semibold text-slate-900 mb-2">
@@ -307,18 +307,18 @@ export default function Alertas() {
                 <CardContent className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-slate-400" />
+                      <User className="w-4 h-4 text-slate-600" />
                       <div>
-                        <p className="text-xs text-slate-500">Cliente</p>
+                        <p className="text-xs text-slate-600">Cliente</p>
                         <p className="font-semibold text-slate-900">
                           {alerta.cliente}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-slate-400" />
+                      <Calendar className="w-4 h-4 text-slate-600" />
                       <div>
-                        <p className="text-xs text-slate-500">Data</p>
+                        <p className="text-xs text-slate-600">Data</p>
                         <p className="font-semibold text-slate-900">
                           {format(new Date(alerta.data), "dd/MM/yyyy", {
                             locale: ptBR,
@@ -328,9 +328,9 @@ export default function Alertas() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-slate-400" />
+                      <Clock className="w-4 h-4 text-slate-600" />
                       <div>
-                        <p className="text-xs text-slate-500">Dias Restantes</p>
+                        <p className="text-xs text-slate-600">Dias Restantes</p>
                         <p className="font-semibold text-slate-900">
                           {alerta.diasRestantes}{" "}
                           {alerta.diasRestantes === 1 ? "dia" : "dias"}

@@ -102,7 +102,7 @@ export default function Layout({ children, currentPageName }) {
       meta.name = 'theme-color';
       document.head.appendChild(meta);
     }
-    meta.content = '#1e3a5f';
+    meta.content = '--legal-blue';
   }, []);
 
   const handleNavHover = (pageName) => {
@@ -129,7 +129,7 @@ export default function Layout({ children, currentPageName }) {
     <>
       <div className="min-h-screen bg-slate-50">
         {/* Mobile Header */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#1e3a5f] text-white h-16 flex items-center justify-between px-4 shadow-lg">
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-legal-blue text-white h-16 flex items-center justify-between px-4 shadow-lg">
           <Button
             variant="ghost"
             size="icon"
@@ -143,7 +143,7 @@ export default function Layout({ children, currentPageName }) {
             )}
           </Button>
           <div className="flex items-center gap-2">
-            <Scale className="w-6 h-6 text-[#c9a227]" />
+            <Scale className="w-6 h-6 text-legal-gold" aria-hidden="true" />
             <span className="font-semibold text-lg">RVAdvocacia</span>
           </div>
           <NotificationBell user={user} />
@@ -152,7 +152,7 @@ export default function Layout({ children, currentPageName }) {
         {/* Sidebar */}
         <aside
           className={`
-        fixed top-0 left-0 z-40 h-full w-64 bg-[#1e3a5f] text-white transform transition-transform duration-300 ease-in-out
+        fixed top-0 left-0 z-40 h-full w-64 bg-legal-blue text-white transform transition-transform duration-300 ease-in-out
         lg:translate-x-0
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}
@@ -161,8 +161,8 @@ export default function Layout({ children, currentPageName }) {
             {/* Logo */}
             <div className="h-20 flex items-center justify-center border-b border-white/10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#c9a227] rounded-lg flex items-center justify-center">
-                  <Scale className="w-6 h-6 text-[#1e3a5f]" />
+                <div className="w-10 h-10 bg-legal-gold rounded-lg flex items-center justify-center">
+                  <Scale className="w-6 h-6 text-legal-blue" aria-hidden="true" />
                 </div>
                 <div>
                   <h1 className="font-bold text-xl tracking-tight">
@@ -196,7 +196,7 @@ export default function Layout({ children, currentPageName }) {
                     `}
                     >
                       <item.icon
-                        className={`w-5 h-5 ${isActive ? "text-[#c9a227]" : ""}`}
+                        className={`w-5 h-5 ${isActive ? "text-legal-gold" : ""}`}
                       />
                       <span className="font-medium">{item.name}</span>
                     </Link>
@@ -218,7 +218,7 @@ export default function Layout({ children, currentPageName }) {
                   `}
                 >
                   <Stethoscope
-                    className={`w-5 h-5 ${currentPageName?.startsWith("pericias-") ? "text-[#c9a227]" : ""}`}
+                    className={`w-5 h-5 ${currentPageName?.startsWith("pericias-") ? "text-legal-gold" : ""}`}
                   />
                   <span className="font-medium flex-1 text-left">Perícias</span>
                   {periciasOpen ? (
@@ -251,7 +251,7 @@ export default function Layout({ children, currentPageName }) {
                           `}
                         >
                           <item.icon
-                            className={`w-4 h-4 ${isActive ? "text-[#c9a227]" : ""}`}
+                            className={`w-4 h-4 ${isActive ? "text-legal-gold" : ""}`}
                           />
                           <span>{item.name}</span>
                         </Link>
@@ -268,7 +268,7 @@ export default function Layout({ children, currentPageName }) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-[#c9a227] flex items-center justify-center text-[#1e3a5f] font-bold">
+                      <div className="w-10 h-10 rounded-full bg-legal-gold flex items-center justify-center text-legal-blue font-bold">
                         {user.full_name?.charAt(0) ||
                           user.email?.charAt(0)?.toUpperCase()}
                       </div>
@@ -276,11 +276,11 @@ export default function Layout({ children, currentPageName }) {
                         <p className="text-sm font-medium truncate">
                           {user.full_name || "Usuário"}
                         </p>
-                        <p className="text-xs text-slate-400 truncate">
+                        <p className="text-xs text-slate-600 truncate">
                           {user.email}
                         </p>
                       </div>
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                      <ChevronDown className="w-4 h-4 text-slate-600" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
@@ -357,7 +357,7 @@ export default function Layout({ children, currentPageName }) {
               <NotificationBell user={user} />
               {user && (
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white font-medium">
+                  <div className="w-9 h-9 rounded-full bg-legal-blue flex items-center justify-center text-white font-medium">
                     {user.full_name?.charAt(0) ||
                       user.email?.charAt(0)?.toUpperCase()}
                   </div>

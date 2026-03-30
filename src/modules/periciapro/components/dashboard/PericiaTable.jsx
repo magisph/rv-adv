@@ -73,7 +73,7 @@ export default function PericiaTable({
         return (
           <div className="flex flex-col">
             <span className="font-medium">{dateFormatted}</span>
-            <span className="text-xs text-slate-500">{timeString}</span>
+            <span className="text-xs text-slate-600">{timeString}</span>
           </div>
         );
       }
@@ -224,7 +224,7 @@ export default function PericiaTable({
               ) : pericias.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={11} className="text-center py-12">
-                    <div className="flex flex-col items-center gap-3 text-slate-500">
+                    <div className="flex flex-col items-center gap-3 text-slate-600">
                       <FileText className="w-12 h-12 opacity-50" />
                       <p className="text-lg font-medium">
                         Nenhuma perícia cadastrada

@@ -89,7 +89,7 @@ export default function DocumentUpload({
             <FileText className="w-8 h-8 text-blue-500" />
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{file.name}</p>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-600">
                 {(file.size / 1024 / 1024).toFixed(2)} MB
               </p>
             </div>
@@ -111,11 +111,11 @@ export default function DocumentUpload({
               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
             />
             <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-slate-50 transition-colors">
-              <Upload className="w-8 h-8 text-slate-400 mb-2" />
+              <Upload className="w-8 h-8 text-slate-600 mb-2" />
               <p className="text-sm text-slate-600">
                 Clique ou arraste um arquivo
               </p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-600 mt-1">
                 PDF, DOC, DOCX, JPG, PNG
               </p>
             </div>
@@ -156,7 +156,7 @@ export default function DocumentUpload({
         <Button
           type="submit"
           disabled={!file || uploadMutation.isPending}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           {uploadMutation.isPending ? (
             <>

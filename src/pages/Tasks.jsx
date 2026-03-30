@@ -114,7 +114,7 @@ function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole })
                     ? "text-purple-600"
                     : task.status === "in_progress"
                     ? "text-blue-600"
-                    : "text-slate-400"
+                    : "text-slate-600"
                 }`}
               />
             </button>
@@ -122,7 +122,7 @@ function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole })
             <div className="flex-1 min-w-0">
               <h3
                 className={`font-semibold text-sm mb-1.5 ${
-                  task.status === "done" ? "line-through text-slate-500" : "text-slate-800"
+                  task.status === "done" ? "line-through text-slate-600" : "text-slate-800"
                 }`}
               >
                 {task.title}
@@ -145,12 +145,12 @@ function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole })
               </div>
 
               {task.description && (
-                <p className="text-xs text-slate-500 mb-2 line-clamp-2">
+                <p className="text-xs text-slate-600 mb-2 line-clamp-2">
                   {task.description}
                 </p>
               )}
 
-              <div className="flex flex-col gap-0.5 text-[10px] text-slate-400">
+              <div className="flex flex-col gap-0.5 text-[10px] text-slate-600">
                 {task.due_date && (
                   <span className="flex items-center gap-1">
                     Vencimento: {format(new Date(task.due_date), "dd/MM/yyyy")}
@@ -165,7 +165,7 @@ function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole })
             <div onClick={(e) => e.stopPropagation()} className="shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 -mr-1 -mt-1 hover:bg-slate-100 text-slate-400">
+                  <Button variant="ghost" size="icon" className="h-6 w-6 -mr-1 -mt-1 hover:bg-slate-100 text-slate-600">
                     <MoreVertical className="w-3.5 h-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -192,7 +192,7 @@ function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole })
               type="button"
               disabled={!prevStatus}
               onClick={(e) => { e.stopPropagation(); if (prevStatus) onStatusChange(task, prevStatus); }}
-              className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+              className="flex items-center gap-0.5 text-[10px] text-slate-600 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
             >
               <ChevronLeft className="w-3 h-3" />
               {prevStatus ? STATUS_LABELS[prevStatus] : null}
@@ -201,7 +201,7 @@ function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole })
               type="button"
               disabled={nextDisabled}
               onClick={(e) => { e.stopPropagation(); if (!nextDisabled && nextStatus) onStatusChange(task, nextStatus); }}
-              className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+              className="flex items-center gap-0.5 text-[10px] text-slate-600 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
               title={isRestricted && nextStatus === "done" ? "Apenas admin pode concluir" : undefined}
             >
               {nextStatus ? STATUS_LABELS[nextStatus] : null}
@@ -229,12 +229,12 @@ function BoardColumn({ column, tasks, onEdit, onDelete, onStatusChange, getTaskU
                 ? "text-purple-600"
                 : column.id === "in_progress"
                 ? "text-blue-600"
-                : "text-slate-500"
+                : "text-slate-600"
             }`}
           />
           <h3 className="font-semibold text-sm text-slate-700 tracking-tight">{column.title}</h3>
         </div>
-        <Badge variant="secondary" className="bg-white hover:bg-white text-slate-500 text-xs shadow-sm border border-slate-200">
+        <Badge variant="secondary" className="bg-white hover:bg-white text-slate-600 text-xs shadow-sm border border-slate-200">
           {tasks.length}
         </Badge>
       </div>
@@ -390,12 +390,12 @@ export default function Tasks() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Quadro de Tarefas</h1>
-          <p className="text-sm text-slate-500">{tasks.length} tarefas no sistema</p>
+          <p className="text-sm text-slate-600">{tasks.length} tarefas no sistema</p>
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           <div className="relative flex-1 w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
             <Input
               placeholder="Buscar tarefas..."
               value={search}
@@ -408,7 +408,7 @@ export default function Tasks() {
               setEditingTask(null);
               setShowForm(true);
             }}
-            className="bg-[#1e3a5f] hover:bg-[#2d5a87] h-10 w-full sm:w-auto shadow-sm"
+            className="bg-legal-blue hover:bg-legal-blue-light h-10 w-full sm:w-auto shadow-sm"
           >
             <Plus className="w-4 h-4 mr-2" />
             Nova Tarefa
@@ -424,7 +424,7 @@ export default function Tasks() {
           </div>
         ) : filteredTasks.length === 0 && !search ? (
            <Card className="border-0 shadow-sm mt-4">
-              <CardContent className="p-16 text-center text-slate-500">
+              <CardContent className="p-16 text-center text-slate-600">
                 <Circle className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                 <p>Nenhuma tarefa no sistema. Crie a primeira tarefa!</p>
               </CardContent>

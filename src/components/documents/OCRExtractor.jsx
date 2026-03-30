@@ -247,7 +247,7 @@ export default function OCRExtractor({
                       className="h-9"
                     />
                     {key === "cpf_cnpj" && editedData[key] && (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-600">
                         {validarCPF(editedData[key].replace(/[^\d]/g, "")) ? (
                           <span className="text-green-600">✓ CPF válido</span>
                         ) : validarCNPJ(

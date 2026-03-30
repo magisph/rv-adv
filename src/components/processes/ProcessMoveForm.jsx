@@ -110,7 +110,7 @@ export default function ProcessMoveForm({
         <Button
           type="submit"
           disabled={createMutation.isPending}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           {createMutation.isPending ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

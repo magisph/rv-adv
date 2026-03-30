@@ -121,7 +121,7 @@ export default function CalendarWidget({ user }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[#1e3a5f]" />
+            <Calendar className="w-5 h-5 text-legal-blue" />
             Próximos Eventos
             {upcomingEvents.length > 0 && (
               <Badge variant="outline">{upcomingEvents.length}</Badge>
@@ -136,7 +136,7 @@ export default function CalendarWidget({ user }) {
       </CardHeader>
       <CardContent>
         {upcomingEvents.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
+          <div className="text-center py-8 text-slate-600">
             <Calendar className="w-12 h-12 mx-auto mb-3 text-slate-300" />
             <p className="text-sm">Nenhum evento nos próximos dias</p>
           </div>

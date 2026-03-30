@@ -90,7 +90,7 @@ export default function InstallButton() {
         <Button
           onClick={handleInstallClick}
           disabled={isInstalling}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87] text-white shadow-2xl h-12 px-6 text-base font-medium"
+          className="bg-legal-blue hover:bg-legal-blue-light text-white shadow-2xl h-12 px-6 text-base font-medium"
           size="lg"
         >
           {isInstalling ? (

@@ -50,10 +50,10 @@ export default function IOSInstallPrompt() {
         exit={{ opacity: 0, y: 50 }}
         className="fixed bottom-6 left-6 right-6 z-50 max-w-md mx-auto"
       >
-        <Card className="border-2 border-[#1e3a5f] shadow-2xl">
+        <Card className="border-2 border-legal-blue shadow-2xl">
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-3">
-              <h3 className="font-bold text-[#1e3a5f] text-lg">
+              <h3 className="font-bold text-legal-blue text-lg">
                 Instalar LegalFlow
               </h3>
               <Button

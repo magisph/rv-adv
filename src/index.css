@@ -15,7 +15,7 @@
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted-foreground: 215 20% 35%; /* Elevado para WCAG AA - era 45.1% */
     --accent: 0 0% 96.1%;
     --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
@@ -37,10 +37,11 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
-    --legal-blue: #1e3a5f;
-    --legal-blue-light: #2d5a87;
-    --legal-gold: #c9a227;
-    --legal-gray: #64748b;
+    /* Design System Legal Tokens */
+    --legal-blue: 215 48% 22%; /* #1e3a5f em HSL */
+    --legal-blue-light: 211 54% 37%; /* #2d5a87 em HSL */
+    --legal-gold: 45 65% 47%; /* #c9a227 em HSL */
+    --legal-gray: 215 15% 46%; /* #64748b em HSL */
   }
 
   .dark {
@@ -55,7 +56,7 @@
     --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted-foreground: 215 15% 65%; /* Elevado para WCAG AA - era 63.9% */
     --accent: 0 0% 14.9%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
@@ -76,6 +77,11 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Design System Legal Tokens - Dark Mode */
+    --legal-blue: 215 48% 22%;
+    --legal-blue-light: 211 54% 37%;
+    --legal-gold: 45 65% 47%;
+    --legal-gray: 215 15% 55%;
   }
 }
 

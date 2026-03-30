@@ -156,7 +156,7 @@ export default function DocumentsTab({ pericia, onUpdate }) {
       return <FileText className="w-8 h-8 text-red-500" />;
     if (mimeType?.includes("word") || mimeType?.includes("doc"))
       return <FileText className="w-8 h-8 text-blue-500" />;
-    return <File className="w-8 h-8 text-slate-400" />;
+    return <File className="w-8 h-8 text-slate-600" />;
   };
 
   const isImage = (mimeType) => mimeType?.startsWith("image/");
@@ -218,7 +218,7 @@ export default function DocumentsTab({ pericia, onUpdate }) {
       {/* Filter Section */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-600" />
           <Input
             placeholder="Buscar por nome..."
             value={searchTerm}
@@ -230,7 +230,7 @@ export default function DocumentsTab({ pericia, onUpdate }) {
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger>
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-slate-500" />
+                <Filter className="w-4 h-4 text-slate-600" />
                 <SelectValue placeholder="Filtrar por categoria" />
               </div>
             </SelectTrigger>
@@ -249,7 +249,7 @@ export default function DocumentsTab({ pericia, onUpdate }) {
       {/* Results Section */}
       {filteredDocs.length === 0 ? (
         <Card className="border-dashed">
-          <CardContent className="py-12 text-center text-slate-500">
+          <CardContent className="py-12 text-center text-slate-600">
             <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
             <p>Nenhum documento encontrado.</p>
             {searchTerm || categoryFilter !== "all" ? (
@@ -327,7 +327,7 @@ export default function DocumentsTab({ pericia, onUpdate }) {
                     >
                       {doc.categoria || "Outros"}
                     </Badge>
-                    <span className="text-[10px] text-slate-400 flex-shrink-0">
+                    <span className="text-[10px] text-slate-600 flex-shrink-0">
                       {doc.data_upload
                         ? format(new Date(doc.data_upload), "dd/MM/yy", {
                             locale: ptBR,

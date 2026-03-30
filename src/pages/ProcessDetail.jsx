@@ -207,7 +207,7 @@ export default function ProcessDetail() {
   if (!process) {
     return (
       <div className="text-center py-12">
-        <p className="text-slate-500">Processo não encontrado</p>
+        <p className="text-slate-600">Processo não encontrado</p>
         <Link to={createPageUrl("Processes")}>
           <Button variant="link">Voltar para lista</Button>
         </Link>
@@ -228,7 +228,7 @@ export default function ProcessDetail() {
           <h1 className="text-xl lg:text-2xl font-bold text-slate-800 font-mono">
             {process.process_number}
           </h1>
-          <p className="text-slate-500">{process.client_name}</p>
+          <p className="text-slate-600">{process.client_name}</p>
         </div>
         <Badge
           variant="outline"
@@ -247,7 +247,7 @@ export default function ProcessDetail() {
                 <User className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Cliente</p>
+                <p className="text-xs text-slate-600">Cliente</p>
                 <Link
                   to={createPageUrl(`ClientDetail?id=${process.client_id}`)}
                   className="font-medium text-slate-800 hover:text-blue-600"
@@ -265,7 +265,7 @@ export default function ProcessDetail() {
                 <Building className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Tribunal</p>
+                <p className="text-xs text-slate-600">Tribunal</p>
                 <p className="font-medium text-slate-800 text-sm">
                   {process.court || "-"}
                 </p>
@@ -280,7 +280,7 @@ export default function ProcessDetail() {
                 <DollarSign className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Valor da Causa</p>
+                <p className="text-xs text-slate-600">Valor da Causa</p>
                 <p className="font-medium text-slate-800">
                   {process.case_value
                     ? `R$ ${process.case_value.toLocaleString("pt-BR")}`
@@ -297,7 +297,7 @@ export default function ProcessDetail() {
                 <Calendar className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Distribuição</p>
+                <p className="text-xs text-slate-600">Distribuição</p>
                 <p className="font-medium text-slate-800">
                   {process.distribution_date
                     ? format(new Date(process.distribution_date), "dd/MM/yyyy")
@@ -332,7 +332,7 @@ export default function ProcessDetail() {
             </Button>
             <Button
               onClick={() => setShowMoveForm(true)}
-              className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+              className="bg-legal-blue hover:bg-legal-blue-light"
             >
               <Plus className="w-4 h-4 mr-2" />
               Nova Movimentação
@@ -345,10 +345,10 @@ export default function ProcessDetail() {
             <CardContent className="p-6">
               {loadingMoves ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                  <Loader2 className="w-6 h-6 animate-spin text-slate-600" />
                 </div>
               ) : sortedMoves.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-12 text-slate-600">
                   <Clock className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                   <p>Nenhuma movimentação registrada</p>
                 </div>
@@ -364,7 +364,7 @@ export default function ProcessDetail() {
                         transition={{ delay: index * 0.1 }}
                         className="relative flex gap-4 pl-12"
                       >
-                        <div className="absolute left-4 w-5 h-5 rounded-full bg-white border-2 border-[#1e3a5f] flex items-center justify-center text-xs">
+                        <div className="absolute left-4 w-5 h-5 rounded-full bg-white border-2 border-legal-blue flex items-center justify-center text-xs">
                           {MOVE_TYPE_ICONS[move.move_type] || "📌"}
                         </div>
                         <div className="flex-1 bg-slate-50 rounded-lg p-4">
@@ -373,7 +373,7 @@ export default function ProcessDetail() {
                               <p className="font-medium text-slate-800">
                                 {move.description}
                               </p>
-                              <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
+                              <div className="flex items-center gap-3 mt-2 text-sm text-slate-600">
                                 <span>
                                   {format(new Date(move.date), "dd/MM/yyyy", {
                                     locale: ptBR,
@@ -413,7 +413,7 @@ export default function ProcessDetail() {
             </CardHeader>
             <CardContent>
               {documents.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-12 text-slate-600">
                   <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                   <p>Nenhum documento anexado</p>
                 </div>
@@ -430,7 +430,7 @@ export default function ProcessDetail() {
                       <FileText className="w-8 h-8 text-blue-500" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{doc.name}</p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-slate-600">
                           {doc.document_type}
                         </p>
                       </div>
@@ -448,7 +448,7 @@ export default function ProcessDetail() {
               <div className="flex items-center justify-between">
                 <CardTitle>Prazos do Processo</CardTitle>
                 <Link to={createPageUrl(`Deadlines?process_id=${processId}`)}>
-                  <Button size="sm" className="bg-[#1e3a5f] hover:bg-[#2d5a87]">
+                  <Button size="sm" className="bg-legal-blue hover:bg-legal-blue-light">
                     <Plus className="w-4 h-4 mr-2" />
                     Novo Prazo
                   </Button>
@@ -457,7 +457,7 @@ export default function ProcessDetail() {
             </CardHeader>
             <CardContent>
               {deadlines.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-12 text-slate-600">
                   <Calendar className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                   <p>Nenhum prazo cadastrado</p>
                 </div>
@@ -470,7 +470,7 @@ export default function ProcessDetail() {
                     >
                       <div className="flex-1">
                         <p className="font-medium">{deadline.description}</p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-slate-600">
                           {format(new Date(deadline.due_date), "dd/MM/yyyy")}
                         </p>
                       </div>

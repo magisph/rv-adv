@@ -744,7 +744,7 @@ export default function BeneficioChecklist({
           <span className="text-sm font-medium text-slate-700">
             Documentos Necessários
           </span>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-slate-600">
             {completedDocs}/{totalDocs} documentos
           </span>
         </div>
@@ -796,7 +796,7 @@ export default function BeneficioChecklist({
           ))}
 
           {totalDocs === 0 && (
-            <p className="text-center text-slate-500 py-4">
+            <p className="text-center text-slate-600 py-4">
               Nenhum documento específico definido para este tipo de benefício.
             </p>
           )}

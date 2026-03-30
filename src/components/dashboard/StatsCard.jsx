@@ -29,7 +29,7 @@ export default function StatsCard({
         <div className="p-6">
           <div className="flex items-start justify-between">
             <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">
+              <p className="text-sm font-medium text-slate-600 uppercase tracking-wide">
                 {title}
               </p>
               <p className="text-3xl font-bold text-slate-800">{value}</p>

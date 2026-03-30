@@ -170,7 +170,7 @@ export default function TemplateForm({ template, onSave, onCancel, isSaving }) {
 
       <div className="space-y-3">
         <Label>Variáveis</Label>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-600">
           Use a sintaxe {"{{variavel}}"} no conteúdo do template
         </p>
 
@@ -241,7 +241,7 @@ export default function TemplateForm({ template, onSave, onCancel, isSaving }) {
             </span>
           )}
         </div>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-600">
           Faça upload de um arquivo Word (.docx) contendo as variáveis desejadas.
         </p>
       </div>
@@ -254,7 +254,7 @@ export default function TemplateForm({ template, onSave, onCancel, isSaving }) {
         <Button
           type="submit"
           disabled={isSaving || isUploading}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           {isUploading ? <UploadCloud className="w-4 h-4 mr-2 animate-bounce" /> : <Save className="w-4 h-4 mr-2" />}
           {isSaving || isUploading ? "Salvando..." : "Salvar"}

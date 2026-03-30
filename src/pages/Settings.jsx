@@ -77,7 +77,7 @@ export default function Settings() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Configurações</h1>
-        <p className="text-slate-500">Gerencie suas preferências</p>
+        <p className="text-slate-600">Gerencie suas preferências</p>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
@@ -205,7 +205,7 @@ export default function Settings() {
                 <Button
                   onClick={handleSaveProfile}
                   disabled={updateMutation.isPending}
-                  className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+                  className="bg-legal-blue hover:bg-legal-blue-light"
                 >
                   {updateMutation.isPending ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -232,7 +232,7 @@ export default function Settings() {
                 <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                   <div>
                     <p className="font-medium">Alertas de Prazos</p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-600">
                       Notificações quando prazos estiverem próximos
                     </p>
                   </div>
@@ -247,7 +247,7 @@ export default function Settings() {
                 <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                   <div>
                     <p className="font-medium">Alertas de Movimentações</p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-600">
                       Notificações quando novas movimentações forem importadas
                     </p>
                   </div>
@@ -262,7 +262,7 @@ export default function Settings() {
                 <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                   <div>
                     <p className="font-medium">Notificações por E-mail</p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-600">
                       Receber alertas também por e-mail
                     </p>
                   </div>
@@ -282,7 +282,7 @@ export default function Settings() {
                 <Button
                   onClick={handleSaveNotifications}
                   disabled={updateMutation.isPending}
-                  className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+                  className="bg-legal-blue hover:bg-legal-blue-light"
                 >
                   {updateMutation.isPending ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

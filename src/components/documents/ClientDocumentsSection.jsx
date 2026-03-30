@@ -622,7 +622,7 @@ function DocumentTypeCard({
               <CardTitle className="text-lg" style={{ color: category.color }}>
                 {category.name}
               </CardTitle>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-600 mt-0.5">
                 {docsCount} documento(s)
               </p>
             </div>
@@ -635,9 +635,9 @@ function DocumentTypeCard({
               {docsCount}
             </Badge>
             {expanded ? (
-              <ChevronUp className="w-5 h-5 text-slate-400" />
+              <ChevronUp className="w-5 h-5 text-slate-600" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-slate-400" />
+              <ChevronDown className="w-5 h-5 text-slate-600" />
             )}
           </div>
         </div>
@@ -704,7 +704,7 @@ function DocumentTypeCard({
                           {type.label}
                         </label>
                         {type.subtitle && (
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-slate-600">
                             {type.subtitle}
                           </p>
                         )}
@@ -727,7 +727,7 @@ function DocumentTypeCard({
                             <span className="text-slate-600 flex-1 truncate">
                               📎 {doc.name}
                             </span>
-                            <span className="text-slate-400">
+                            <span className="text-slate-600">
                               ({(doc.file_size / 1024).toFixed(1)} KB)
                             </span>
                             <div className="flex items-center gap-1">
@@ -969,13 +969,13 @@ export default function ClientDocumentsSection({
         <div>
           <h2 className="text-xl font-bold text-slate-800">Documentos do Cliente</h2>
           {clientName && (
-            <p className="text-sm text-slate-500">{clientName}</p>
+            <p className="text-sm text-slate-600">{clientName}</p>
           )}
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="gap-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white"
+          className="gap-2 border-legal-blue text-legal-blue hover:bg-legal-blue hover:text-white"
           onClick={handleDownloadAll}
           disabled={isBulkDownloadingAll || documents.filter((d) => d.is_active !== false).length === 0}
         >

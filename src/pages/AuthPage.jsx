@@ -74,11 +74,11 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
       <div className="mb-8 text-center flex flex-col items-center">
-        <div className="w-16 h-16 bg-[#1e3a5f] rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+        <div className="w-16 h-16 bg-legal-blue rounded-2xl flex items-center justify-center mb-4 shadow-lg">
           <Scale className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-3xl font-bold text-slate-800">RV-Adv</h1>
-        <p className="text-slate-500 mt-2">Sistema de Gestão Jurídica</p>
+        <p className="text-slate-600 mt-2">Sistema de Gestão Jurídica</p>
       </div>
 
       <Card className="w-full max-w-md shadow-lg border-0">
@@ -126,7 +126,7 @@ export default function AuthPage() {
                 </div>
                 <Button 
                   type="submit" 
-                  className="w-full bg-[#1e3a5f] hover:bg-[#2d5a87]" 
+                  className="w-full bg-legal-blue hover:bg-legal-blue-light" 
                   disabled={loading}
                 >
                   {loading ? "Entrando..." : "Entrar"}
@@ -169,7 +169,7 @@ export default function AuthPage() {
                 </div>
                 <Button 
                   type="submit" 
-                  className="w-full bg-[#1e3a5f] hover:bg-[#2d5a87]" 
+                  className="w-full bg-legal-blue hover:bg-legal-blue-light" 
                   disabled={loading}
                 >
                   {loading ? "Criando conta..." : "Criar Conta"}
@@ -180,7 +180,7 @@ export default function AuthPage() {
         </Tabs>
       </Card>
       
-      <p className="text-sm text-slate-400 mt-8">
+      <p className="text-sm text-slate-600 mt-8">
         &copy; {new Date().getFullYear()} RV-Advocacia. Todos os direitos reservados.
       </p>
     </div>

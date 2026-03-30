@@ -133,7 +133,7 @@ export default function RemindersTab({ reminders, periciaId, onUpdate }) {
 
       <div className="space-y-3">
         {reminders.length === 0 ? (
-          <p className="text-center text-slate-500 py-8">
+          <p className="text-center text-slate-600 py-8">
             Nenhum lembrete para este caso.
           </p>
         ) : (
@@ -154,11 +154,11 @@ export default function RemindersTab({ reminders, periciaId, onUpdate }) {
                 </button>
                 <div className="flex-1">
                   <p
-                    className={`font-medium ${reminder.concluido ? "text-slate-500 line-through" : "text-slate-900"}`}
+                    className={`font-medium ${reminder.concluido ? "text-slate-600 line-through" : "text-slate-900"}`}
                   >
                     {reminder.titulo}
                   </p>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                  <div className="flex items-center gap-2 mt-1 text-xs text-slate-600">
                     <Calendar className="w-3 h-3" />
                     {format(new Date(reminder.data_lembrete + "T00:00:00"), "dd 'de' MMMM", {
                       locale: ptBR,
@@ -170,7 +170,7 @@ export default function RemindersTab({ reminders, periciaId, onUpdate }) {
                   size="icon"
                   onClick={() => handleDelete(reminder.id)}
                 >
-                  <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
+                  <Trash2 className="w-4 h-4 text-slate-600 hover:text-red-500" />
                 </Button>
               </CardContent>
             </Card>

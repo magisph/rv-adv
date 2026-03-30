@@ -56,7 +56,7 @@ const PRIORITY_COLORS = {
 const STATUS_COLORS = {
   pendente: "bg-amber-100 text-amber-700",
   concluido: "bg-green-100 text-green-700",
-  cancelado: "bg-slate-100 text-slate-500",
+  cancelado: "bg-slate-100 text-slate-600",
 };
 
 export default function Deadlines() {
@@ -143,7 +143,7 @@ export default function Deadlines() {
       return { label: "Hoje", icon: Clock, color: "text-orange-600" };
     if (diff <= 2)
       return { label: `${diff}d`, icon: Clock, color: "text-amber-600" };
-    return { label: `${diff}d`, icon: Calendar, color: "text-slate-500" };
+    return { label: `${diff}d`, icon: Calendar, color: "text-slate-600" };
   };
 
   const filteredDeadlines = deadlines
@@ -165,7 +165,7 @@ export default function Deadlines() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Prazos</h1>
-          <p className="text-slate-500">
+          <p className="text-slate-600">
             {deadlines.filter((d) => d.status === "pendente").length} prazos
             pendentes
           </p>
@@ -175,7 +175,7 @@ export default function Deadlines() {
             setEditingDeadline(null);
             setShowForm(true);
           }}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           <Plus className="w-4 h-4 mr-2" />
           Novo Prazo
@@ -187,7 +187,7 @@ export default function Deadlines() {
         <CardContent className="p-4">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
               <Input
                 placeholder="Buscar prazos..."
                 value={search}
@@ -238,7 +238,7 @@ export default function Deadlines() {
           <Card className="border-0 shadow-sm">
             <CardContent className="py-12 text-center">
               <Calendar className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p className="text-slate-500">Nenhum prazo encontrado</p>
+              <p className="text-slate-600">Nenhum prazo encontrado</p>
             </CardContent>
           </Card>
         ) : (
@@ -283,11 +283,11 @@ export default function Deadlines() {
 
                         <div className="flex-1 min-w-0">
                           <p
-                            className={`font-medium ${deadline.status === "concluido" ? "line-through text-slate-400" : "text-slate-800"}`}
+                            className={`font-medium ${deadline.status === "concluido" ? "line-through text-slate-600" : "text-slate-800"}`}
                           >
                             {deadline.description}
                           </p>
-                          <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
+                          <div className="flex items-center gap-3 mt-1 text-sm text-slate-600">
                             <Link
                               to={createPageUrl(
                                 `ProcessDetail?id=${deadline.process_id}`,
@@ -311,7 +311,7 @@ export default function Deadlines() {
                                 {status.label}
                               </span>
                             </div>
-                            <p className="text-xs text-slate-400 mt-1">
+                            <p className="text-xs text-slate-600 mt-1">
                               {format(
                                 parseISO(deadline.due_date),
                                 "dd/MM/yyyy",

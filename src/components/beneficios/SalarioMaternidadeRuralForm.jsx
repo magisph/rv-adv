@@ -891,7 +891,7 @@ export default function SalarioMaternidadeRuralForm({ dados, onChange }) {
           <CardTitle className="text-base">
             Comprovação de Atividade Rural
           </CardTitle>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-600">
             Informações sobre atividade agrícola nos 10 meses anteriores ao
             evento
           </p>

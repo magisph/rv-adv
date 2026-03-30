@@ -145,7 +145,7 @@ export default function DeadlineForm({
       <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
         <div>
           <Label htmlFor="alert_active">Alerta Ativo</Label>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-600">
             Receber notificação antes do vencimento
           </p>
         </div>
@@ -164,7 +164,7 @@ export default function DeadlineForm({
         <Button
           type="submit"
           disabled={isSaving}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           {isSaving ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

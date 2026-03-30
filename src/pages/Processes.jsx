@@ -174,7 +174,7 @@ export default function Processes() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Processos</h1>
-          <p className="text-slate-500">
+          <p className="text-slate-600">
             {processes.length} processos cadastrados
           </p>
         </div>
@@ -199,7 +199,7 @@ export default function Processes() {
               setEditingProcess(null);
               setShowForm(true);
             }}
-            className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+            className="bg-legal-blue hover:bg-legal-blue-light"
           >
             <Plus className="w-4 h-4 mr-2" />
             Novo Processo
@@ -212,7 +212,7 @@ export default function Processes() {
         <CardContent className="p-4">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
               <Input
                 placeholder="Buscar por número, cliente ou tribunal..."
                 value={search}
@@ -279,7 +279,7 @@ export default function Processes() {
                 <TableRow>
                   <TableCell
                     colSpan={6}
-                    className="text-center py-12 text-slate-500"
+                    className="text-center py-12 text-slate-600"
                   >
                     <FolderOpen className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                     <p>Nenhum processo encontrado</p>
@@ -305,7 +305,7 @@ export default function Processes() {
                               {process.process_number}
                             </p>
                             {process.distribution_date && (
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-slate-600">
                                 Dist:{" "}
                                 {format(
                                   new Date(process.distribution_date),

@@ -87,7 +87,7 @@ export default function ClientFinancialSection({ clientId, clientName }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-[#1e3a5f]" />
+            <DollarSign className="w-5 h-5 text-legal-blue" />
             Financeiro
           </CardTitle>
           <Button size="sm" onClick={() => setShowForm(true)}>
@@ -168,9 +168,9 @@ export default function ClientFinancialSection({ clientId, clientName }) {
 
         {/* Lista de Transações */}
         {isLoading ? (
-          <div className="py-8 text-center text-slate-500">Carregando...</div>
+          <div className="py-8 text-center text-slate-600">Carregando...</div>
         ) : filteredTransactions.length === 0 ? (
-          <div className="py-8 text-center text-slate-500">
+          <div className="py-8 text-center text-slate-600">
             <DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-300" />
             <p>Nenhuma transação encontrada</p>
           </div>
@@ -197,7 +197,7 @@ export default function ClientFinancialSection({ clientId, clientName }) {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-slate-600">
                         {format(new Date(transaction.date), "dd/MM/yyyy")}
                       </span>
                       <Badge variant="outline" className="text-xs">

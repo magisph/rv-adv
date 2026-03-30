@@ -131,7 +131,7 @@ export default function Clients() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Clientes</h1>
-          <p className="text-slate-500">
+          <p className="text-slate-600">
             {clients.length} clientes cadastrados
           </p>
         </div>
@@ -140,7 +140,7 @@ export default function Clients() {
             setEditingClient(null);
             setShowForm(true);
           }}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           <Plus className="w-4 h-4 mr-2" />
           Novo Cliente
@@ -151,7 +151,7 @@ export default function Clients() {
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
             <Input
               placeholder="Buscar por nome, CPF/CNPJ ou e-mail..."
               value={search}
@@ -191,7 +191,7 @@ export default function Clients() {
                 <TableRow>
                   <TableCell
                     colSpan={5}
-                    className="text-center py-12 text-slate-500"
+                    className="text-center py-12 text-slate-600"
                   >
                     <User className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                     <p>Nenhum cliente encontrado</p>
@@ -212,14 +212,14 @@ export default function Clients() {
                           to={createPageUrl(`ClientDetail?id=${client.id}`)}
                           className="flex items-center gap-3"
                         >
-                          <div className="w-10 h-10 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white font-medium">
+                          <div className="w-10 h-10 rounded-full bg-legal-blue flex items-center justify-center text-white font-medium" aria-label={`Avatar de ${client.full_name}`}>
                             {client.full_name?.charAt(0)?.toUpperCase()}
                           </div>
                           <div>
                             <p className="font-medium text-slate-800">
                               {client.full_name}
                             </p>
-                            <p className="text-sm text-slate-500 md:hidden">
+                            <p className="text-sm text-slate-600 md:hidden">
                               {client.cpf_cnpj}
                             </p>
                           </div>
@@ -234,7 +234,7 @@ export default function Clients() {
                             {client.senha_meu_inss}
                           </span>
                         ) : (
-                          <span className="text-sm text-slate-400 italic">
+                          <span className="text-sm text-slate-600 italic">
                             Não informada
                           </span>
                         )}

@@ -90,10 +90,10 @@ export default function DocumentEditModal({ document, onSuccess, onCancel }) {
       {/* Info do arquivo (não editável) */}
       <div className="p-4 bg-slate-50 rounded-lg">
         <div className="flex items-center gap-3">
-          <FileText className="w-10 h-10 text-slate-400" />
+          <FileText className="w-10 h-10 text-slate-600" />
           <div>
             <p className="font-medium">{document.name}</p>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-600">
               Enviado em {format(new Date(document.created_at), "dd/MM/yyyy")}{" "}
               •
               {document.file_size
@@ -226,7 +226,7 @@ export default function DocumentEditModal({ document, onSuccess, onCancel }) {
         <Button
           type="submit"
           disabled={updateMutation.isPending}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           {updateMutation.isPending ? (
             <>

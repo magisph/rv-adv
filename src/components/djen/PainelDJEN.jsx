@@ -159,14 +159,14 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
               </span>
             )}
             {tribunal && (
-              <span className="text-slate-400"> · <span className="font-semibold text-[#1e3a5f]">{tribunal}</span></span>
+              <span className="text-slate-600"> · <span className="font-semibold text-legal-blue">{tribunal}</span></span>
             )}
-            <span className="text-slate-400"> · </span>
+            <span className="text-slate-600"> · </span>
             <span className={`font-mono text-xs bg-white/60 px-1.5 py-0.5 rounded border ${isLida ? 'border-emerald-300' : 'border-amber-200'}`}>
               {numeroFormatado}
             </span>
-            <span className="text-slate-400"> · </span>
-            <Badge className="bg-[#1e3a5f]/10 text-[#1e3a5f] text-xs hover:bg-[#1e3a5f]/15 font-medium">
+            <span className="text-slate-600"> · </span>
+            <Badge className="bg-legal-blue-50 text-legal-blue text-xs hover:bg-legal-blue-100 font-medium">
               {tipoAto}
             </Badge>
           </p>
@@ -179,14 +179,14 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
                   onClick={() => setIsCalculadoraOpen(true)}
                   className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 bg-white border-slate-200"
                 >
-                  <Calculator className="w-4 h-4 text-[#c9a227]" />
+                  <Calculator className="w-4 h-4 text-legal-gold" />
                   Calcular Prazo CPC
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => toggleLida(cardId)}
-                  className="flex items-center gap-1.5 text-xs font-medium transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                  className="flex items-center gap-1.5 text-xs font-medium transition-colors text-slate-600 hover:text-slate-600 hover:bg-slate-100"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Marcar como Lida
@@ -226,20 +226,20 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
       <CardContent className="p-5 space-y-5">
         {/* Órgão Julgador */}
         <div className="flex items-center gap-2">
-          <Gavel className="w-5 h-5 text-[#c9a227] flex-shrink-0" />
+          <Gavel className="w-5 h-5 text-legal-gold flex-shrink-0" />
           <h3 className="text-base font-bold text-slate-800">{orgaoJulgador}</h3>
         </div>
 
         {/* Teor na Íntegra */}
         <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 border-b border-slate-200">
-            <Scale className="w-4 h-4 text-[#c9a227]" />
+            <Scale className="w-4 h-4 text-legal-gold" />
             <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
               Teor na Íntegra
             </span>
           </div>
           <div className="p-4 max-h-[600px] overflow-y-auto">
-            <pre className={`text-sm whitespace-pre-wrap break-words font-sans leading-relaxed ${isLida ? 'text-slate-500' : 'text-slate-700'}`}>
+            <pre className={`text-sm whitespace-pre-wrap break-words font-sans leading-relaxed ${isLida ? 'text-slate-600' : 'text-slate-700'}`}>
               {teorExibido}
             </pre>
           </div>
@@ -250,9 +250,9 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
         {/* Seção: Datas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex items-start gap-2.5">
-            <CalendarDays className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+            <CalendarDays className="w-4 h-4 text-slate-600 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
                 Data da Disponibilização
               </p>
               <p className="text-sm font-medium text-slate-800 mt-0.5">
@@ -261,9 +261,9 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
             </div>
           </div>
           <div className="flex items-start gap-2.5">
-            <CalendarDays className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+            <CalendarDays className="w-4 h-4 text-slate-600 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
                 Data da Publicação
               </p>
               <p className="text-sm font-medium text-slate-800 mt-0.5">
@@ -277,9 +277,9 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
 
         {/* Seção: Destinatários */}
         <div className="flex items-start gap-2.5">
-          <User className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+          <User className="w-4 h-4 text-slate-600 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
               Destinatário
             </p>
             <p className="text-sm font-medium text-slate-800 mt-0.5">
@@ -292,14 +292,14 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
 
         {/* Seção: Advogados */}
         <div className="flex items-start gap-2.5">
-          <Building2 className="w-4 h-4 text-[#c9a227] mt-0.5 flex-shrink-0" />
+          <Building2 className="w-4 h-4 text-legal-gold mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
               Advogado(a)
             </p>
-            <p className="text-sm font-bold text-[#1e3a5f] mt-0.5">
+            <p className="text-sm font-bold text-legal-blue mt-0.5">
               ANA RAFAELA VASCONCELOS DAMASCENO{" "}
-              <span className="font-normal text-slate-500">(OAB 36.219/CE)</span>
+              <span className="font-normal text-slate-600">(OAB 36.219/CE)</span>
             </p>
           </div>
         </div>
@@ -403,14 +403,14 @@ export default function PainelDJEN() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#1e3a5f] rounded-lg flex items-center justify-center">
-            <Inbox className="w-5 h-5 text-[#c9a227]" />
+          <div className="w-10 h-10 bg-legal-blue rounded-lg flex items-center justify-center">
+            <Inbox className="w-5 h-5 text-legal-gold" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-800">
               Caixa de Entrada Oficial
             </h2>
-            <p className="text-sm text-slate-500">Sincronizando intimações...</p>
+            <p className="text-sm text-slate-600">Sincronizando intimações...</p>
           </div>
         </div>
         <LoadingSkeleton />
@@ -425,14 +425,14 @@ export default function PainelDJEN() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#1e3a5f] rounded-lg flex items-center justify-center">
-            <Inbox className="w-5 h-5 text-[#c9a227]" />
+          <div className="w-10 h-10 bg-legal-blue rounded-lg flex items-center justify-center">
+            <Inbox className="w-5 h-5 text-legal-gold" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-800">
               Caixa de Entrada Oficial
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-600">
               Diário de Justiça Eletrônico Nacional
             </p>
           </div>
@@ -441,11 +441,11 @@ export default function PainelDJEN() {
         <div className="flex items-center gap-3 flex-wrap">
           <Badge
             variant="outline"
-            className="border-[#1e3a5f]/30 text-[#1e3a5f] text-sm px-3 py-1"
+            className="border-legal-blue-200 text-legal-blue text-sm px-3 py-1"
           >
             Sincronização Ativa (TI)
           </Badge>
-          <Badge className="bg-[#c9a227] text-[#1e3a5f] font-semibold text-sm px-3 py-1 hover:bg-[#c9a227]/90">
+          <Badge className="bg-legal-gold-500 text-legal-blue-900 font-semibold text-sm px-3 py-1 hover:bg-legal-gold-600">
             {comunicacoes.length}{" "}
             {comunicacoes.length === 1 ? "publicação" : "publicações"}
           </Badge>
@@ -457,10 +457,10 @@ export default function PainelDJEN() {
         <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Inbox className="w-12 h-12 text-slate-300 mb-3" />
-            <p className="text-slate-500 font-medium">
+            <p className="text-slate-600 font-medium">
               Nenhuma publicação encontrada
             </p>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-sm text-slate-600 mt-1">
               Não há comunicações disponíveis no momento.
             </p>
           </CardContent>

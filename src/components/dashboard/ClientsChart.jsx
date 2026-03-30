@@ -46,7 +46,7 @@ export default function ClientsChart({ clients = [], isLoading }) {
         <CardTitle className="text-lg font-semibold text-slate-800">
           Novos Clientes
         </CardTitle>
-        <p className="text-sm text-slate-500">Últimos 6 meses</p>
+        <p className="text-sm text-slate-600">Últimos 6 meses</p>
       </CardHeader>
       <CardContent>
         {isLoading ? (

@@ -58,7 +58,7 @@ export default function DeadlinesWidget({ deadlines = [], isLoading }) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[#1e3a5f]" />
+            <Calendar className="w-5 h-5 text-legal-blue" aria-hidden="true" />
             Prazos da Semana
           </CardTitle>
           <Link
@@ -80,7 +80,7 @@ export default function DeadlinesWidget({ deadlines = [], isLoading }) {
             ))}
           </div>
         ) : sortedDeadlines.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
+          <div className="text-center py-8 text-slate-600">
             <Calendar className="w-12 h-12 mx-auto mb-3 text-slate-300" />
             <p>Nenhum prazo pendente</p>
           </div>
@@ -102,7 +102,7 @@ export default function DeadlinesWidget({ deadlines = [], isLoading }) {
                   <p className="font-medium text-slate-800 truncate">
                     {deadline.description}
                   </p>
-                  <p className="text-sm text-slate-500 truncate">
+                  <p className="text-sm text-slate-600 truncate">
                     {deadline.process_number} • {deadline.client_name}
                   </p>
                 </div>
@@ -111,7 +111,7 @@ export default function DeadlinesWidget({ deadlines = [], isLoading }) {
                     <Clock className="w-3 h-3 mr-1" />
                     {status.label}
                   </Badge>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-600">
                     {format(parseISO(deadline.due_date), "dd MMM", {
                       locale: ptBR,
                     })}

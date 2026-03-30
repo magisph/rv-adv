@@ -540,7 +540,7 @@ export default function BPCIdosoForm({ tipoBeneficio, dados, onChange }) {
                       <div className="space-y-2">
                         <Label>Data de Nascimento</Label>
                         <Input type="date" value={membro.data_nascimento} onChange={(e) => atualizarMembro(index, "data_nascimento", e.target.value)} />
-                        {membro.idade !== null && <p className="text-xs text-slate-500">Idade: {membro.idade} anos</p>}
+                        {membro.idade !== null && <p className="text-xs text-slate-600">Idade: {membro.idade} anos</p>}
                       </div>
                       <div className="space-y-2">
                         <Label>Estado Civil</Label>

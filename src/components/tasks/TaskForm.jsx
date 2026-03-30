@@ -336,7 +336,7 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
           type="file"
           multiple
           accept=".pdf,.docx"
-          className="block w-full text-sm text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+          className="block w-full text-sm text-slate-600 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
           onChange={(e) => {
             const selected = Array.from(e.target.files);
             if (selected.length > 5) {
@@ -348,7 +348,7 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
           }}
         />
         {arquivos.length > 0 && (
-          <p className="text-xs text-slate-500">{arquivos.length} arquivo(s) selecionado(s)</p>
+          <p className="text-xs text-slate-600">{arquivos.length} arquivo(s) selecionado(s)</p>
         )}
       </div>
 
@@ -360,7 +360,7 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
         <Button
           type="submit"
           disabled={isSaving || isUploading}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           <Save className="w-4 h-4 mr-2" />
           {isUploading ? "Enviando..." : isSaving ? "Salvando..." : "Salvar"}

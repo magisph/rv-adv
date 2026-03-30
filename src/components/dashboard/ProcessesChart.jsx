@@ -52,7 +52,7 @@ export default function ProcessesChart({ processes = [], isLoading }) {
         <CardTitle className="text-lg font-semibold text-slate-800">
           Processos por Área
         </CardTitle>
-        <p className="text-sm text-slate-500">{totalActive} processos ativos</p>
+        <p className="text-sm text-slate-600">{totalActive} processos ativos</p>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -60,7 +60,7 @@ export default function ProcessesChart({ processes = [], isLoading }) {
             <div className="w-32 h-32 rounded-full border-4 border-slate-200 border-t-blue-500 animate-spin" />
           </div>
         ) : chartData.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-500">
+          <div className="h-64 flex items-center justify-center text-slate-600">
             Nenhum processo cadastrado
           </div>
         ) : (

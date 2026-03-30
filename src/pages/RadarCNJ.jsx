@@ -6,7 +6,7 @@ export default function RadarCNJ() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Radar CNJ</h1>
-        <p className="text-slate-500">
+        <p className="text-slate-600">
           Sala de controle investigativa — consulta oficial ao DataJud
         </p>
       </div>

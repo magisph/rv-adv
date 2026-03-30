@@ -486,7 +486,7 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
                 <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center mb-1">
                   <Smartphone className="w-4 h-4 text-blue-600" />
                 </div>
-                <span className="text-[10px] text-slate-500 font-medium">
+                <span className="text-[10px] text-slate-600 font-medium">
                   Android/iOS
                 </span>
               </div>
@@ -494,7 +494,7 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
                 <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center mb-1">
                   <Download className="w-4 h-4 text-blue-600" />
                 </div>
-                <span className="text-[10px] text-slate-500 font-medium">
+                <span className="text-[10px] text-slate-600 font-medium">
                   Windows PC
                 </span>
               </div>
@@ -556,7 +556,7 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
                   {/* Simulação da barra do Safari */}
                   <div className="bg-white rounded-t-2xl border-2 border-slate-300 p-3 shadow-lg">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="text-xs text-slate-500 truncate flex-1">
+                      <div className="text-xs text-slate-600 truncate flex-1">
                         {typeof window !== 'undefined' ? window.location.hostname : 'app'}
                       </div>
                       <Share className="w-5 h-5 text-blue-600 animate-bounce" />
@@ -581,11 +581,11 @@ export default function PWAInstallPrompt({ delay = 10000 }) {
                     </div>
                     <div className="flex items-center gap-3 p-2 opacity-30">
                       <div className="w-8 h-8 rounded-full bg-slate-100" />
-                      <span className="text-sm text-slate-400">Copiar</span>
+                      <span className="text-sm text-slate-600">Copiar</span>
                     </div>
                     <div className="flex items-center gap-3 p-2 opacity-30">
                       <div className="w-8 h-8 rounded-full bg-slate-100" />
-                      <span className="text-sm text-slate-400">WhatsApp</span>
+                      <span className="text-sm text-slate-600">WhatsApp</span>
                     </div>
                   </div>
                 </div>

@@ -139,7 +139,7 @@ export default function NotificationBell({ userEmail }) {
         <div className="flex items-center justify-between p-4 border-b">
           <div>
             <h3 className="font-semibold text-slate-900">Notificações</h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-600">
               {unreadCount} não {unreadCount === 1 ? "lida" : "lidas"}
             </p>
           </div>
@@ -159,7 +159,7 @@ export default function NotificationBell({ userEmail }) {
 
         <ScrollArea className="h-96">
           {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+            <div className="flex flex-col items-center justify-center py-12 text-slate-600">
               <Bell className="w-12 h-12 opacity-50 mb-3" />
               <p className="text-sm">Nenhuma notificação</p>
             </div>
@@ -205,7 +205,7 @@ export default function NotificationBell({ userEmail }) {
                       <p className="text-xs text-slate-600 mt-1">
                         {notification.message}
                       </p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-600">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           {notification.event_date &&

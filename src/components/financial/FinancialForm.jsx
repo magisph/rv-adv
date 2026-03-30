@@ -282,7 +282,7 @@ export default function FinancialForm({
         <Button
           type="submit"
           disabled={isSaving}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           {isSaving ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

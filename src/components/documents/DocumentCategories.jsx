@@ -205,7 +205,7 @@ export default function DocumentCategories({
                 </div>
 
                 {/* Descrição */}
-                <p className="text-sm text-slate-500 mb-4 line-clamp-1">
+                <p className="text-sm text-slate-600 mb-4 line-clamp-1">
                   {category.description}
                 </p>
 
@@ -229,7 +229,7 @@ export default function DocumentCategories({
 
                 {/* Indicador de mais documentos */}
                 {count > 0 && (
-                  <div className="flex items-center justify-end mt-3 text-xs text-slate-500">
+                  <div className="flex items-center justify-end mt-3 text-xs text-slate-600">
                     <span>Ver documentos</span>
                     <ChevronRight className="w-3 h-3 ml-1" />
                   </div>

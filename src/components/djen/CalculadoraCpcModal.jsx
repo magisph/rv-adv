@@ -91,7 +91,7 @@ export function CalculadoraCpcModal({ isOpen, onClose, comunicacao, numeroProces
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-[#c9a227]" />
+            <Calculator className="w-5 h-5 text-legal-gold" />
             Calculadora de Prazos CPC
           </DialogTitle>
           <DialogDescription>
@@ -139,7 +139,7 @@ export function CalculadoraCpcModal({ isOpen, onClose, comunicacao, numeroProces
           {datasCpc && (
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3 mt-2 text-sm">
               <h4 className="font-semibold text-slate-700 flex items-center gap-2 mb-3">
-                <CalendarDays className="w-4 h-4 text-[#1e3a5f]" />
+                <CalendarDays className="w-4 h-4 text-legal-blue" />
                 Resumo Matemático (CPC)
               </h4>
               <div className="flex justify-between items-center text-slate-600">
@@ -167,7 +167,7 @@ export function CalculadoraCpcModal({ isOpen, onClose, comunicacao, numeroProces
           <Button 
             onClick={handleSave} 
             disabled={!processId || saveMutation.isPending || !datasCpc}
-            className="bg-[#1e3a5f] hover:bg-[#152e4d] text-white"
+            className="bg-legal-blue hover:bg-legal-blue-700 text-white"
           >
             {saveMutation.isPending && <span className="mr-2 animate-spin">⏳</span>}
             <Save className="w-4 h-4 mr-2" />

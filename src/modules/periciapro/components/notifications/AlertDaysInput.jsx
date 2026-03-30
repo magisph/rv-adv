@@ -62,7 +62,7 @@ export default function AlertDaysInput({ days, onChange, label }) {
           <Plus className="w-4 h-4" />
         </Button>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-600">
         Digite o número de dias e pressione Enter para adicionar um novo alerta.
       </p>
     </div>

@@ -86,7 +86,7 @@ export default function PjeConfigModal({ open, onOpenChange }) {
                     <DialogTitle className="flex items-center gap-2">
                         {step === 1 ? (
                             <>
-                                <KeyRound className="w-5 h-5 text-[#1e3a5f]" />
+                                <KeyRound className="w-5 h-5 text-legal-blue" />
                                 Configurar PJe
                             </>
                         ) : (
@@ -140,7 +140,7 @@ export default function PjeConfigModal({ open, onOpenChange }) {
                             </Button>
                             <Button
                                 type="submit"
-                                className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+                                className="bg-legal-blue hover:bg-legal-blue-light"
                                 disabled={loading}
                             >
                                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

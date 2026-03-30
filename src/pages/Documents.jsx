@@ -75,7 +75,7 @@ export default function Documents() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Documentos</h1>
-          <p className="text-slate-500">
+          <p className="text-slate-600">
             {documents.length} documentos no total
           </p>
         </div>
@@ -86,7 +86,7 @@ export default function Documents() {
           </Button>
           <Button
             onClick={() => setShowUpload(true)}
-            className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+            className="bg-legal-blue hover:bg-legal-blue-light"
           >
             <Upload className="w-4 h-4 mr-2" />
             Upload
@@ -98,7 +98,7 @@ export default function Documents() {
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
             <Input
               placeholder="Buscar por nome ou conteúdo (OCR)..."
               value={search}
@@ -107,7 +107,7 @@ export default function Documents() {
             />
           </div>
           {search && (
-            <p className="text-xs text-slate-500 mt-2">
+            <p className="text-xs text-slate-600 mt-2">
               Buscando em nomes de documentos e conteúdo extraído por OCR
             </p>
           )}
@@ -150,7 +150,7 @@ export default function Documents() {
           ))
         ) : filteredDocuments.length === 0 ? (
           <Card className="border-0 shadow-sm col-span-full">
-            <CardContent className="p-12 text-center text-slate-500">
+            <CardContent className="p-12 text-center text-slate-600">
               <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
               <p>Nenhum documento encontrado</p>
             </CardContent>
@@ -184,11 +184,11 @@ export default function Documents() {
                       )}
                     </div>
                     {doc.ocr_processed && (
-                      <p className="text-xs text-slate-500 mt-2 line-clamp-2">
+                      <p className="text-xs text-slate-600 mt-2 line-clamp-2">
                         {doc.ocr_content?.substring(0, 100)}...
                       </p>
                     )}
-                    <p className="text-xs text-slate-400 mt-2">
+                    <p className="text-xs text-slate-600 mt-2">
                       {format(new Date(doc.created_at), "dd/MM/yyyy")}
                     </p>
                   </div>

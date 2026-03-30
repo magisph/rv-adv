@@ -213,7 +213,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
       <Card className="bg-slate-50 border-blue-100 mb-6">
         <CardContent className="pt-6">
           <div className="space-y-3">
-            <Label className="text-base font-semibold text-[#1e3a5f]">Área de Atuação *</Label>
+            <Label className="text-base font-semibold text-legal-blue">Área de Atuação *</Label>
             <RadioGroup
               value={formData.area_atuacao}
               onValueChange={(v) => {
@@ -301,7 +301,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                     required
                   />
                   {idade !== null && (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-600">
                       Idade: {idade} anos
                     </p>
                   )}
@@ -435,7 +435,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
                       onChange={(e) => handleChange("email_inss", e.target.value)}
                       placeholder="ex: pedrohdm@rafaelavasconcelos.adv.br"
                     />
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-600">
                       Gerado automaticamente a partir do nome se deixado em branco.
                     </p>
                   </div>
@@ -960,7 +960,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
             </Button>
             <Button
               type="button"
-              className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+              className="bg-legal-blue hover:bg-legal-blue-light"
               onClick={() => setActiveTab("endereco")}
             >
               Avançar
@@ -978,7 +978,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
             </Button>
             <Button
               type="button"
-              className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+              className="bg-legal-blue hover:bg-legal-blue-light"
               onClick={() => setActiveTab(formData.area_atuacao === "Cível" ? "civel" : "previdenciario")}
             >
               Avançar
@@ -997,7 +997,7 @@ export default function ClientForm({ client, onSave, onCancel, isSaving }) {
             <Button
               type="submit"
               disabled={isSaving}
-              className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+              className="bg-legal-blue hover:bg-legal-blue-light"
             >
               <Save className="w-4 h-4 mr-2" />
               {isSaving ? "Salvando..." : "Salvar Cliente"}

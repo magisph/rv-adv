@@ -17,7 +17,7 @@ export default function ActivityLogTab({ logs }) {
   if (!logs || logs.length === 0) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-slate-500">
+        <CardContent className="py-8 text-center text-slate-600">
           <History className="w-12 h-12 mx-auto mb-3 opacity-20" />
           <p>Nenhuma atividade registrada ainda.</p>
         </CardContent>
@@ -36,9 +36,9 @@ export default function ActivityLogTab({ logs }) {
       case "reminder":
         return <Calendar className="w-4 h-4 text-purple-500" />;
       case "creation":
-        return <Plus className="w-4 h-4 text-slate-500" />;
+        return <Plus className="w-4 h-4 text-slate-600" />;
       default:
-        return <CheckCircle className="w-4 h-4 text-slate-500" />;
+        return <CheckCircle className="w-4 h-4 text-slate-600" />;
     }
   };
 
@@ -59,7 +59,7 @@ export default function ActivityLogTab({ logs }) {
               {log.description}
             </p>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-slate-600">
                 {(() => {
                   const date = new Date(log.created_at);
                   const optionsDate = {
@@ -76,8 +76,8 @@ export default function ActivityLogTab({ logs }) {
                   return `${new Intl.DateTimeFormat("pt-BR", optionsDate).format(date)} às ${new Intl.DateTimeFormat("pt-BR", optionsTime).format(date)}`;
                 })()}
               </span>
-              <span className="text-xs text-slate-400">•</span>
-              <span className="text-xs text-slate-500">{log.created_by}</span>
+              <span className="text-xs text-slate-600">•</span>
+              <span className="text-xs text-slate-600">{log.created_by}</span>
             </div>
           </div>
         </div>

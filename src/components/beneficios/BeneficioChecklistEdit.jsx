@@ -856,13 +856,13 @@ export default function BeneficioChecklistEdit({
               <h3 className="font-medium text-slate-800">
                 Progresso do Checklist
               </h3>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-600">
                 {completedDocs} completos, {partialDocs} parciais,{" "}
                 {totalDocs - completedDocs - partialDocs} pendentes
               </p>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-bold text-[#1e3a5f]">
+              <span className="text-2xl font-bold text-legal-blue">
                 {Math.round(progressPercent)}%
               </span>
             </div>
@@ -893,7 +893,7 @@ export default function BeneficioChecklistEdit({
           <Card key={categoria}>
             <CardContent className="pt-6">
               <h4 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#1e3a5f]" />
+                <FileText className="w-4 h-4 text-legal-blue" />
                 {categoria}
               </h4>
               <div className="space-y-3">
@@ -1011,7 +1011,7 @@ export default function BeneficioChecklistEdit({
                                     ${
                                       uploadingItem === doc.id
                                         ? "border-blue-300 bg-blue-50"
-                                        : "border-slate-300 hover:border-[#1e3a5f] hover:bg-slate-50"
+                                        : "border-slate-300 hover:border-legal-blue hover:bg-slate-50"
                                     }
                                   `}
                                 >
@@ -1024,8 +1024,8 @@ export default function BeneficioChecklistEdit({
                                     </>
                                   ) : (
                                     <>
-                                      <Upload className="w-5 h-5 text-slate-400" />
-                                      <span className="text-sm text-slate-500">
+                                      <Upload className="w-5 h-5 text-slate-600" />
+                                      <span className="text-sm text-slate-600">
                                         Clique para fazer upload
                                       </span>
                                     </>
@@ -1062,7 +1062,7 @@ export default function BeneficioChecklistEdit({
 
         {totalDocs === 0 && (
           <Card>
-            <CardContent className="py-12 text-center text-slate-500">
+            <CardContent className="py-12 text-center text-slate-600">
               <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
               <p>
                 Nenhum documento específico definido para este tipo de

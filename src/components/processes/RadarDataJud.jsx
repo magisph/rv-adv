@@ -80,7 +80,7 @@ function ResultCard({ icon: Icon, label, children, accentColor = "blue" }) {
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-3">
             <Icon className={`w-5 h-5 ${iconColors[accentColor]}`} />
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
               {label}
             </span>
           </div>
@@ -117,7 +117,7 @@ function TimelineItem({ mov, index }) {
         <p className="text-sm font-medium text-slate-800 leading-snug">
           {nome}
         </p>
-        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+        <p className="text-xs text-slate-600 mt-0.5 flex items-center gap-1">
           <Clock className="w-3 h-3" />
           {data}
         </p>
@@ -187,7 +187,7 @@ export default function RadarDataJud() {
           <h2 className="text-lg font-bold text-slate-800">
             Radar de Processos
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-600">
             Consulta oficial no DataJud · TJCE &amp; TRF5
           </p>
         </div>
@@ -201,7 +201,7 @@ export default function RadarDataJud() {
           </label>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
               <Input
                 id="radar-cnj-input"
                 placeholder="0000000-00.0000.0.00.0000"
@@ -217,7 +217,7 @@ export default function RadarDataJud() {
               id="radar-buscar-btn"
               onClick={handleBuscar}
               disabled={!isReady || loading}
-              className="bg-[#1e3a5f] hover:bg-[#2d5a87] min-w-[160px] gap-2"
+              className="bg-legal-blue hover:bg-legal-blue-light min-w-[160px] gap-2"
             >
               {loading ? (
                 <>
@@ -327,7 +327,7 @@ export default function RadarDataJud() {
                     "—"}
                 </p>
                 {resultado.classeProcessual?.codigo && (
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-600 mt-1">
                     Código: {resultado.classeProcessual.codigo}
                   </p>
                 )}
@@ -345,7 +345,7 @@ export default function RadarDataJud() {
                     "—"}
                 </p>
                 {resultado.orgaoJulgador?.codigo && (
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-600 mt-1">
                     Código: {resultado.orgaoJulgador.codigo}
                   </p>
                 )}
@@ -380,7 +380,7 @@ export default function RadarDataJud() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
                         Movimentações
                       </span>
                     </div>

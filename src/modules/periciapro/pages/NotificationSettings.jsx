@@ -356,7 +356,7 @@ export default function NotificationSettings() {
                 }
                 placeholder="Template da mensagem..."
               />
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 Variáveis disponíveis: {"{{nome}}"}, {"{{dias}}"}, {"{{data}}"}
               </p>
             </div>
@@ -398,7 +398,7 @@ export default function NotificationSettings() {
                 }
                 placeholder="Template da mensagem..."
               />
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 Variáveis disponíveis: {"{{nome}}"}, {"{{dias}}"}, {"{{data}}"},{" "}
                 {"{{hora}}"}
               </p>

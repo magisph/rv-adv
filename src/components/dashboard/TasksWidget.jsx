@@ -289,7 +289,7 @@ export default function TasksWidget() {
 
 
 
-  const handleMoveTask = async (task, columnId) => {
+  const handleMoveTask = useCallback(async (task, columnId) => {
     // RBAC — Pipeline de Aprovação Estrita
     const userRole = user?.role?.toLowerCase() || "";
     if (userRole === "secretaria" || userRole === "assistente") {
@@ -310,9 +310,9 @@ export default function TasksWidget() {
       },
     });
     setLongPressTask(null);
-  };
+  }, [user, updateMutation]);
 
-  const handleQuickCreate = () => {
+  const handleQuickCreate = useCallback(() => {
     if (!quickTaskTitle.trim() || !user) return;
 
     const isAdmin = user?.role?.toLowerCase() === "admin";
@@ -344,9 +344,9 @@ export default function TasksWidget() {
     }
 
     createMutation.mutate(taskData);
-  };
+  }, [quickTaskTitle, user, quickTaskColumn, quickAssignedUser, quickTaskPriority, quickTaskDueDate, allUsers, isCollaborativeMode, createMutation]);
 
-  const handleChangePriority = async (task, newPriority) => {
+  const handleChangePriority = useCallback(async (task, newPriority) => {
     // Apenas admin pode mudar prioridade
     if (user?.role !== "admin") return;
 
@@ -355,28 +355,28 @@ export default function TasksWidget() {
       data: { ...task, priority: newPriority },
     });
     setLongPressTask(null);
-  };
+  }, [user, updateMutation]);
 
-  const togglePriorityFilter = (priority) => {
+  const togglePriorityFilter = useCallback((priority) => {
     setPriorityFilters((prev) => ({
       ...prev,
       [priority]: !prev[priority],
     }));
-  };
+  }, []);
 
-  const togglePeriodFilter = (period) => {
+  const togglePeriodFilter = useCallback((period) => {
     setPeriodFilters((prev) => ({
       ...prev,
       [period]: !prev[period],
     }));
-  };
+  }, []);
 
-  const toggleUserFilter = (userEmail) => {
+  const toggleUserFilter = useCallback((userEmail) => {
     setUserFilters((prev) => ({
       ...prev,
       [userEmail]: !prev[userEmail],
     }));
-  };
+  }, []);
 
   const clearAllFilters = () => {
     setPriorityFilters({
@@ -800,7 +800,7 @@ export default function TasksWidget() {
             </h4>
 
             {task.client_name && (
-              <p className="text-xs text-slate-500 truncate mb-1">
+              <p className="text-xs text-slate-600 truncate mb-1">
                 {task.client_name}
               </p>
             )}
@@ -821,8 +821,8 @@ export default function TasksWidget() {
                         ? "text-red-700 font-medium"
                         : isToday
                           ? "text-orange-700 font-medium"
-                          : "text-slate-500"
-                      : "text-slate-500"
+                          : "text-slate-600"
+                      : "text-slate-600"
                   }
                 >
                   {format(new Date(task.due_date), "dd/MM/yy", {
@@ -830,7 +830,7 @@ export default function TasksWidget() {
                   })}
                 </span>
                 {temporalStatus && !isOverdue && !isToday && (
-                  <span className="text-slate-400">
+                  <span className="text-slate-600">
                     • {temporalStatus.label}
                   </span>
                 )}
@@ -874,7 +874,7 @@ export default function TasksWidget() {
                     type="button"
                     disabled={!prevCol}
                     onClick={(e) => { e.stopPropagation(); if (prevCol) handleMoveTask(task, prevCol); }}
-                    className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+                    className="flex items-center gap-0.5 text-[10px] text-slate-600 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
                   >
                     <ChevronLeft className="w-3 h-3" />
                     {prevCol ? LABELS[prevCol] : null}
@@ -883,7 +883,7 @@ export default function TasksWidget() {
                     type="button"
                     disabled={nextDisabled}
                     onClick={(e) => { e.stopPropagation(); if (!nextDisabled && nextCol) handleMoveTask(task, nextCol); }}
-                    className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
+                    className="flex items-center gap-0.5 text-[10px] text-slate-600 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1"
                     title={isRestricted && nextCol === "done" ? "Apenas admin pode concluir" : undefined}
                   >
                     {nextCol ? LABELS[nextCol] : null}
@@ -1008,7 +1008,7 @@ export default function TasksWidget() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between mb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-[#1e3a5f]" />
+              <CheckCircle2 className="w-5 h-5 text-legal-blue" aria-hidden="true" />
               Quadro de Tarefas
               {totalTasks > 0 && (
                 <Badge variant="outline">
@@ -1022,8 +1022,9 @@ export default function TasksWidget() {
                 size="icon"
                 onClick={() => setShowFilters(!showFilters)}
                 className={getActiveFiltersCount() > 0 ? "text-blue-600" : ""}
+                aria-label={showFilters ? "Ocultar filtros" : "Mostrar filtros"}
               >
-                <AlertCircle className="w-4 h-4" />
+                <AlertCircle className="w-4 h-4" aria-hidden="true" />
                 {getActiveFiltersCount() > 0 && (
                   <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
                     {getActiveFiltersCount()}
@@ -1046,21 +1047,21 @@ export default function TasksWidget() {
           {/* Painel de Análises */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 p-3 bg-slate-50 rounded-lg">
             <div className="text-center">
-              <p className="text-xs text-slate-500">Ativas</p>
+              <p className="text-xs text-slate-600">Ativas</p>
               <p className="text-xl font-bold text-slate-800">{activeTasks}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-slate-500">Esta Semana</p>
+              <p className="text-xs text-slate-600">Esta Semana</p>
               <p className="text-xl font-bold text-green-600">
                 {completedThisWeek}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-slate-500">Atrasadas</p>
+              <p className="text-xs text-slate-600">Atrasadas</p>
               <p className="text-xl font-bold text-red-600">{overdueTasks}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-slate-500">Urgentes</p>
+              <p className="text-xs text-slate-600">Urgentes</p>
               <p className="text-xl font-bold text-orange-600">
                 {tasksByPriority.urgente}
               </p>
@@ -1102,7 +1103,7 @@ export default function TasksWidget() {
                 {/* Toggle visualização admin */}
                 {isAdmin && isCollaborativeMode && (
                   <>
-                    <span className="text-xs text-slate-400 mx-2">|</span>
+                    <span className="text-xs text-slate-600 mx-2">|</span>
                     <Button
                       variant={viewMode === "my" ? "default" : "outline"}
                       size="sm"
@@ -1163,7 +1164,7 @@ export default function TasksWidget() {
                     variant={periodFilters[key] ? "default" : "outline"}
                     size="sm"
                     onClick={() => togglePeriodFilter(key)}
-                    className={`text-xs ${periodFilters[key] ? "bg-[#1e3a5f]" : ""}`}
+                    className={`text-xs ${periodFilters[key] ? "bg-legal-blue" : ""}`}
                   >
                     <Icon className="w-3 h-3 mr-1" />
                     {label}
@@ -1329,7 +1330,7 @@ export default function TasksWidget() {
                       <Button
                         onClick={() => setShowQuickCreate(true)}
                         size="sm"
-                        className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+                        className="bg-legal-blue hover:bg-legal-blue-light"
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Criar Tarefa
@@ -1560,7 +1561,7 @@ export default function TasksWidget() {
               <Button
                 onClick={handleQuickCreate}
                 disabled={!quickTaskTitle.trim() || createMutation.isPending}
-                className="flex-1 bg-[#1e3a5f] hover:bg-[#2d5a87]"
+                className="flex-1 bg-legal-blue hover:bg-legal-blue-light"
               >
                 {createMutation.isPending ? "Criando..." : "Criar"}
               </Button>
@@ -1585,7 +1586,7 @@ export default function TasksWidget() {
       {canCreateTasks && (
         <Button
           onClick={() => setShowQuickCreate(true)}
-          className="md:hidden fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full shadow-2xl bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="md:hidden fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full shadow-2xl bg-legal-blue hover:bg-legal-blue-light"
         >
           <Plus className="w-6 h-6" />
         </Button>

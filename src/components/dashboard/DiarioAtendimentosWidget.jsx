@@ -182,12 +182,12 @@ export default function DiarioAtendimentosWidget() {
     <Card className="flex flex-col h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-          <BookOpen className="w-5 h-5 text-[#c9a227]" />
+          <BookOpen className="w-5 h-5 text-legal-gold" />
           Diário de Atendimentos
         </CardTitle>
         <Dialog open={isModalOpen} onOpenChange={(isOpen) => { if (!isOpen && (formData.nome_contato || formData.telefone || formData.assunto)) { if (!window.confirm('Existem informações não salvas. Deseja realmente cancelar e perder os dados?')) return; } setIsModalOpen(isOpen); if (!isOpen) { setEditingId(null); } }}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white" onClick={() => { setFormData({ nome_contato: "", telefone: "", categoria: "Prospecto", assunto: "", status: "Pendente", client_id: null, origem: "", origem_nome: "", detalhes: "" }); setEditingId(null); }}>
+            <Button size="sm" className="bg-legal-blue hover:bg-legal-blue-light text-white" onClick={() => { setFormData({ nome_contato: "", telefone: "", categoria: "Prospecto", assunto: "", status: "Pendente", client_id: null, origem: "", origem_nome: "", detalhes: "" }); setEditingId(null); }}>
               <Plus className="w-4 h-4 mr-1" />
               Novo
             </Button>
@@ -333,7 +333,7 @@ export default function DiarioAtendimentosWidget() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending || isUploading} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white">
+              <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending || isUploading} className="bg-legal-blue hover:bg-legal-blue-light text-white">
                 {(createMutation.isPending || updateMutation.isPending || isUploading) ? "Salvando..." : editingId ? "Salvar Edição" : "Salvar Atendimento"}
               </Button>
             </DialogFooter>
@@ -343,7 +343,7 @@ export default function DiarioAtendimentosWidget() {
 
       <div className="px-4 pt-2 pb-0">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
           <Input
             placeholder="Buscar por nome..."
             value={searchTerm}
@@ -355,7 +355,7 @@ export default function DiarioAtendimentosWidget() {
 
       <CardContent className="flex-1 p-4 pt-2 space-y-3">
         {isLoading ? (
-          <p className="text-sm text-slate-500 text-center py-4">Carregando atendimentos...</p>
+          <p className="text-sm text-slate-600 text-center py-4">Carregando atendimentos...</p>
         ) : (() => {
           const filteredAtendimentos = atendimentos.filter(a =>
             a.nome_contato && 
@@ -363,7 +363,7 @@ export default function DiarioAtendimentosWidget() {
             a.nome_contato.toLowerCase().includes(searchTerm.toLowerCase())
           );
           return filteredAtendimentos.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-4">
+            <p className="text-sm text-slate-600 text-center py-4">
               {searchTerm ? "Nenhum resultado encontrado." : "Nenhum atendimento registrado."}
             </p>
           ) : (
@@ -389,17 +389,17 @@ export default function DiarioAtendimentosWidget() {
                         }`}>
                           {atendimento.status}
                         </span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-600" onClick={(e) => { e.stopPropagation(); handleEdit(atendimento); }}>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-600 hover:text-blue-600" onClick={(e) => { e.stopPropagation(); handleEdit(atendimento); }}>
                           <Pencil className="w-3 h-3" />
                         </Button>
                         {(currentUser?.role === 'admin' || currentUser?.role === 'dono') && (
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); if(window.confirm('Excluir este atendimento?')) deleteMutation.mutate(atendimento.id); }}>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-600 hover:text-red-600" onClick={(e) => { e.stopPropagation(); if(window.confirm('Excluir este atendimento?')) deleteMutation.mutate(atendimento.id); }}>
                             <Trash2 className="w-3 h-3" />
                           </Button>
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-slate-500 flex items-center justify-between">
+                    <div className="text-xs text-slate-600 flex items-center justify-between">
                       {atendimento.created_at && (
                         <span>{format(new Date(atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}</span>
                       )}
@@ -414,7 +414,7 @@ export default function DiarioAtendimentosWidget() {
                       {atendimento.assunto}
                     </p>
                     {atendimento.detalhes && (
-                      <p className="text-[11px] text-slate-500 italic mt-1 line-clamp-2">{atendimento.detalhes}</p>
+                      <p className="text-[11px] text-slate-600 italic mt-1 line-clamp-2">{atendimento.detalhes}</p>
                     )}
                   </div>
                   

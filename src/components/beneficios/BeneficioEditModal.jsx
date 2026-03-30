@@ -269,7 +269,7 @@ export default function BeneficioEditModal({
                   <h2 className="text-lg font-bold text-slate-800">
                     {tipoLabel}
                   </h2>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-600">
                     {clientName} • Categoria: {categoriaLabel}
                   </p>
                 </div>
@@ -299,7 +299,7 @@ export default function BeneficioEditModal({
             {/* Status e Info Rápida */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
               <div className="space-y-1">
-                <Label className="text-xs text-slate-500">Status</Label>
+                <Label className="text-xs text-slate-600">Status</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger className="h-9">
                     <SelectValue />
@@ -314,7 +314,7 @@ export default function BeneficioEditModal({
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-slate-500">
+                <Label className="text-xs text-slate-600">
                   Nº Benefício (NB)
                 </Label>
                 <Input
@@ -325,7 +325,7 @@ export default function BeneficioEditModal({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-slate-500">
+                <Label className="text-xs text-slate-600">
                   Data do Protocolo
                 </Label>
                 <Input
@@ -336,7 +336,7 @@ export default function BeneficioEditModal({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-slate-500">Cadastrado em</Label>
+                <Label className="text-xs text-slate-600">Cadastrado em</Label>
                 <Input
                   value={(() => {
                     if (!beneficio.created_at) return "-";
@@ -361,14 +361,14 @@ export default function BeneficioEditModal({
                 <TabsList className="h-12 bg-transparent p-0 gap-6">
                   <TabsTrigger
                     value="formulario"
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-[#1e3a5f] rounded-none bg-transparent px-0 pb-3"
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-legal-blue rounded-none bg-transparent px-0 pb-3"
                   >
                     <FileText className="w-4 h-4 mr-2" />
                     Formulário Específico
                   </TabsTrigger>
                   <TabsTrigger
                     value="checklist"
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-[#1e3a5f] rounded-none bg-transparent px-0 pb-3"
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-legal-blue rounded-none bg-transparent px-0 pb-3"
                   >
                     <CheckSquare className="w-4 h-4 mr-2" />
                     Checklist de Documentos
@@ -419,7 +419,7 @@ export default function BeneficioEditModal({
           {/* Footer Actions */}
           <div className="flex-shrink-0 border-t bg-slate-50 px-6 py-4">
             <div className="flex items-center justify-between">
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-slate-600">
                 {hasChanges && (
                   <span className="text-amber-600 font-medium">
                     • Alterações não salvas
@@ -452,7 +452,7 @@ export default function BeneficioEditModal({
                 <Button
                   onClick={handleSave}
                   disabled={updateMutation.isPending}
-                  className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+                  className="bg-legal-blue hover:bg-legal-blue-light"
                 >
                   {updateMutation.isPending ? (
                     <>
@@ -522,7 +522,7 @@ export default function BeneficioEditModal({
                 setShowExitDialog(false);
                 handleSave();
               }}
-              className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+              className="bg-legal-blue hover:bg-legal-blue-light"
               disabled={updateMutation.isPending}
             >
               {updateMutation.isPending ? (

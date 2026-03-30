@@ -156,7 +156,7 @@ export default function BeneficioModal({
           {/* Step 2: Tipo de Benefício */}
           {step >= 2 && categoria && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-slate-500">
+              <div className="flex items-center gap-2 text-slate-600">
                 <ArrowRight className="w-4 h-4" />
                 <Label>Passo 2: Tipo de Benefício</Label>
               </div>
@@ -219,7 +219,7 @@ export default function BeneficioModal({
                 <Button
                   onClick={handleSave}
                   disabled={createMutation.isPending}
-                  className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+                  className="bg-legal-blue hover:bg-legal-blue-light"
                 >
                   <Save className="w-4 h-4 mr-2" />
                   {createMutation.isPending

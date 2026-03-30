@@ -564,7 +564,7 @@ export default function CadastroCliente() {
                       onChange={(e) => handleChange("dib", e.target.value)}
                       className="h-11"
                     />
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-600">
                       Data em que o benefício foi iniciado
                     </p>
                   </div>
@@ -865,7 +865,7 @@ export default function CadastroCliente() {
                     placeholder="Adicione informações relevantes sobre o caso, histórico médico, particularidades do cliente..."
                     rows={6}
                   />
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-600">
                     Use este campo para registrar informações importantes que
                     auxiliem no acompanhamento do caso
                   </p>

@@ -56,9 +56,9 @@ const CATEGORY_LABELS = {
 };
 
 const COLORS = [
-  "#1e3a5f",
-  "#2d5a87",
-  "#c9a227",
+  "#1e3a5f", // legal-blue
+  "#2d5a87", // legal-blue-light
+  "#c9a227", // legal-gold
   "#059669",
   "#dc2626",
   "#7c3aed",
@@ -192,14 +192,14 @@ export default function Financial() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Financeiro</h1>
-          <p className="text-slate-500">Gestão financeira do escritório</p>
+          <p className="text-slate-600">Gestão financeira do escritório</p>
         </div>
         <Button
           onClick={() => {
             setEditingTransaction(null);
             setShowForm(true);
           }}
-          className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+          className="bg-legal-blue hover:bg-legal-blue-light"
         >
           <Plus className="w-4 h-4 mr-2" />
           Nova Transação
@@ -225,7 +225,7 @@ export default function Financial() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-500">Receitas</p>
+                      <p className="text-sm text-slate-600">Receitas</p>
                       <p className="text-2xl font-bold text-green-600">
                         R$ {totalReceita.toLocaleString("pt-BR")}
                       </p>
@@ -247,7 +247,7 @@ export default function Financial() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-500">Despesas</p>
+                      <p className="text-sm text-slate-600">Despesas</p>
                       <p className="text-2xl font-bold text-red-600">
                         R$ {totalDespesa.toLocaleString("pt-BR")}
                       </p>
@@ -269,7 +269,7 @@ export default function Financial() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-500">Saldo</p>
+                      <p className="text-sm text-slate-600">Saldo</p>
                       <p
                         className={`text-2xl font-bold ${saldo >= 0 ? "text-blue-600" : "text-red-600"}`}
                       >
@@ -293,7 +293,7 @@ export default function Financial() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-500">A Receber</p>
+                      <p className="text-sm text-slate-600">A Receber</p>
                       <p className="text-2xl font-bold text-amber-600">
                         R$ {receitaPendente.toLocaleString("pt-BR")}
                       </p>
@@ -389,7 +389,7 @@ export default function Financial() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[300px] text-slate-500">
+                  <div className="flex items-center justify-center h-[300px] text-slate-600">
                     <p>Nenhuma transação cadastrada</p>
                   </div>
                 )}
@@ -461,13 +461,13 @@ export default function Financial() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-slate-50 rounded-lg">
-                  <p className="text-sm text-slate-500 mb-1">
+                  <p className="text-sm text-slate-600 mb-1">
                     Contas a Receber
                   </p>
                   <p className="text-xl font-bold text-green-600">
                     R$ {receitaPendente.toLocaleString("pt-BR")}
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-600 mt-1">
                     {
                       transactions.filter(
                         (t) => t.type === "receita" && t.status === "pendente",
@@ -477,11 +477,11 @@ export default function Financial() {
                   </p>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-lg">
-                  <p className="text-sm text-slate-500 mb-1">Contas a Pagar</p>
+                  <p className="text-sm text-slate-600 mb-1">Contas a Pagar</p>
                   <p className="text-xl font-bold text-red-600">
                     R$ {despesaPendente.toLocaleString("pt-BR")}
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-600 mt-1">
                     {
                       transactions.filter(
                         (t) => t.type === "despesa" && t.status === "pendente",
@@ -491,7 +491,7 @@ export default function Financial() {
                   </p>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-lg">
-                  <p className="text-sm text-slate-500 mb-1">Fluxo Projetado</p>
+                  <p className="text-sm text-slate-600 mb-1">Fluxo Projetado</p>
                   <p
                     className={`text-xl font-bold ${receitaPendente - despesaPendente >= 0 ? "text-blue-600" : "text-red-600"}`}
                   >
@@ -500,7 +500,7 @@ export default function Financial() {
                       "pt-BR",
                     )}
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">Saldo esperado</p>
+                  <p className="text-xs text-slate-600 mt-1">Saldo esperado</p>
                 </div>
               </div>
             </CardContent>

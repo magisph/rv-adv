@@ -193,7 +193,7 @@ export default function DocumentListModal({
 
       {/* Busca */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
         <Input
           placeholder="Buscar documentos..."
           value={search}
@@ -204,7 +204,7 @@ export default function DocumentListModal({
 
       {/* Lista agrupada por subcategoria */}
       {categoryDocs.length === 0 ? (
-        <div className="text-center py-12 text-slate-500">
+        <div className="text-center py-12 text-slate-600">
           <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
           <p>Nenhum documento nesta categoria</p>
         </div>
@@ -226,7 +226,7 @@ export default function DocumentListModal({
               >
                 <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-slate-50">
                   <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-slate-400" />
+                    <FileText className="w-4 h-4 text-slate-600" />
                     <span className="font-medium">{sub.label}</span>
                     <Badge variant="secondary" className="ml-2">
                       {docs.length}
@@ -235,7 +235,7 @@ export default function DocumentListModal({
                 </AccordionTrigger>
                 <AccordionContent>
                   {docs.length === 0 ? (
-                    <p className="text-sm text-slate-500 px-4 py-2">
+                    <p className="text-sm text-slate-600 px-4 py-2">
                       Nenhum documento
                     </p>
                   ) : (
@@ -264,7 +264,7 @@ export default function DocumentListModal({
                                     className="w-full h-full object-cover rounded"
                                   />
                                 ) : (
-                                  <FileIcon className="w-5 h-5 text-slate-400" />
+                                  <FileIcon className="w-5 h-5 text-slate-600" />
                                 )}
                               </div>
 
@@ -289,7 +289,7 @@ export default function DocumentListModal({
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                                <div className="flex items-center gap-3 text-xs text-slate-600 mt-1">
                                   <span>{formatFileSize(doc.file_size)}</span>
                                   <span>•</span>
                                   <span className="flex items-center gap-1">

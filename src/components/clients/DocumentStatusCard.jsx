@@ -147,14 +147,14 @@ export default function DocumentStatusCard({
                   className={
                     doc.status === "complete"
                       ? "text-slate-700"
-                      : "text-slate-500"
+                      : "text-slate-600"
                   }
                 >
                   {doc.label}
                 </span>
               </div>
               {doc.status === "complete" && doc.date && (
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-slate-600">
                   {format(new Date(doc.date), "dd/MM/yyyy")}
                 </span>
               )}
@@ -162,7 +162,7 @@ export default function DocumentStatusCard({
           ))}
 
           <div className="pt-2 border-t">
-            <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+            <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
               <span>Progresso</span>
               <span>{Math.round(generalProgress)}%</span>
             </div>
@@ -220,7 +220,7 @@ export default function DocumentStatusCard({
         {expandedSections[sectionKey] && (
           <div className="p-4 space-y-3">
             {items.length === 0 ? (
-              <p className="text-sm text-slate-500 italic">
+              <p className="text-sm text-slate-600 italic">
                 Nenhum documento definido para este tipo de benefício
               </p>
             ) : (
@@ -244,7 +244,7 @@ export default function DocumentStatusCard({
                       </button>
                     </div>
                     {item.status === "complete" && item.date && (
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-600">
                         {format(new Date(item.date), "dd/MM/yyyy")}
                       </span>
                     )}
@@ -252,7 +252,7 @@ export default function DocumentStatusCard({
                 ))}
 
                 <div className="pt-2 border-t">
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                  <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
                     <span>Progresso</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
@@ -293,7 +293,7 @@ export default function DocumentStatusCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-[#1e3a5f]" />
+            <FileSpreadsheet className="w-5 h-5 text-legal-blue" />
             Status de Documentos
           </CardTitle>
           <Badge variant="outline" className="text-sm">
@@ -317,7 +317,7 @@ export default function DocumentStatusCard({
           {beneficios.map((beneficio) => renderBeneficioSection(beneficio))}
 
           {beneficios.length === 0 && (
-            <div className="text-center py-8 text-slate-500">
+            <div className="text-center py-8 text-slate-600">
               <p className="text-sm">Nenhum benefício cadastrado ainda</p>
             </div>
           )}

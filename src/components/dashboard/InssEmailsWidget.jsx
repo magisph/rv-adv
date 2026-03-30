@@ -33,7 +33,7 @@ export default function InssEmailsWidget() {
             <Card className="border-0 shadow-sm mt-8">
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                        <Mail className="w-5 h-5 text-[#1e3a5f]" />
+                        <Mail className="w-5 h-5 text-legal-blue" />
                         Últimos E-mails do INSS
                     </CardTitle>
                 </CardHeader>
@@ -62,7 +62,7 @@ export default function InssEmailsWidget() {
         <Card className="border-0 shadow-sm mt-8">
             <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                    <Mail className="w-5 h-5 text-[#1e3a5f]" />
+                    <Mail className="w-5 h-5 text-legal-blue" />
                     Últimos E-mails do INSS
                 </CardTitle>
             </CardHeader>
@@ -80,7 +80,7 @@ export default function InssEmailsWidget() {
                                     <p className="text-sm text-slate-600 mb-1">
                                         Cliente: <span className="font-medium text-slate-700">{email.clients?.full_name || "N/A"}</span>
                                     </p>
-                                    <p className="text-xs text-slate-400">
+                                    <p className="text-xs text-slate-600">
                                         Recebido em: {format(new Date(email.created_at), "dd/MM/yyyy HH:mm")}
                                     </p>
                                 </div>
@@ -97,7 +97,7 @@ export default function InssEmailsWidget() {
                                     </Badge>
                                     <button
                                         onClick={(e) => handleArchive(e, email.id)}
-                                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+                                        className="p-1.5 text-slate-600 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
                                         title="Arquivar Notificação"
                                     >
                                         <Archive className="w-4 h-4" />

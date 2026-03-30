@@ -102,7 +102,7 @@ export default function DetalhesCliente() {
             <h1 className="text-2xl font-bold text-slate-900">
               {pericia.nome}
             </h1>
-            <p className="text-slate-500">
+            <p className="text-slate-600">
               CPF: {pericia.cpf} • {pericia.esfera}
             </p>
           </div>
@@ -116,7 +116,7 @@ export default function DetalhesCliente() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-slate-500">Status Atual</p>
+              <p className="text-sm text-slate-600">Status Atual</p>
               <div className="flex items-center justify-between mt-1">
                 <span className="font-semibold text-lg">{pericia.status}</span>
                 <Badge variant="outline" className="bg-blue-50">
@@ -127,7 +127,7 @@ export default function DetalhesCliente() {
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-slate-500 mb-2">Próxima Perícia</p>
+              <p className="text-sm text-slate-600 mb-2">Próxima Perícia</p>
               <p className="font-semibold text-lg mb-3">
                 {pericia.data_pericia ? (
                   <>
@@ -150,7 +150,7 @@ export default function DetalhesCliente() {
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-slate-500">Data DCB</p>
+              <p className="text-sm text-slate-600">Data DCB</p>
               <p className="font-semibold text-lg mt-1">
                 {pericia.dcb
                   ? new Date(pericia.dcb + "T00:00:00").toLocaleDateString(

@@ -194,7 +194,7 @@ export default function CalendarSettings() {
         <h1 className="text-2xl font-bold text-slate-800">
           Integração com Google Calendar
         </h1>
-        <p className="text-slate-500 mt-1">
+        <p className="text-slate-600 mt-1">
           Sincronize suas tarefas, agendamentos e prazos com o Google Calendar
         </p>
       </div>
@@ -203,7 +203,7 @@ export default function CalendarSettings() {
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[#1e3a5f]" />
+            <Calendar className="w-5 h-5 text-legal-blue" />
             <CardTitle className="text-base">Status da Conexão</CardTitle>
           </div>
         </CardHeader>
@@ -217,19 +217,19 @@ export default function CalendarSettings() {
                     <p className="font-semibold text-slate-800">
                       Conectado ao Google Calendar
                     </p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-600">
                       Sua conta está sincronizada
                     </p>
                   </div>
                 </>
               ) : (
                 <>
-                  <XCircle className="w-8 h-8 text-slate-400" />
+                  <XCircle className="w-8 h-8 text-slate-600" />
                   <div>
                     <p className="font-semibold text-slate-800">
                       Não Conectado
                     </p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-600">
                       Conecte sua conta para sincronizar eventos
                     </p>
                   </div>
@@ -255,7 +255,7 @@ export default function CalendarSettings() {
             ) : (
               <Button
                 onClick={handleConnect}
-                className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+                className="bg-legal-blue hover:bg-legal-blue-light"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Conectar Google Calendar
@@ -296,7 +296,7 @@ export default function CalendarSettings() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="font-semibold">Sincronizar Tarefas</Label>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-600">
                     Criar eventos no calendário para suas tarefas
                   </p>
                 </div>
@@ -313,7 +313,7 @@ export default function CalendarSettings() {
                   <Label className="font-semibold">
                     Sincronizar Agendamentos
                   </Label>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-600">
                     Criar eventos para reuniões e compromissos
                   </p>
                 </div>
@@ -330,7 +330,7 @@ export default function CalendarSettings() {
                   <Label className="font-semibold">
                     Sincronizar Prazos Processuais
                   </Label>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-600">
                     Criar eventos para prazos importantes
                   </p>
                 </div>
@@ -345,7 +345,7 @@ export default function CalendarSettings() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="font-semibold">Criação Automática</Label>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-600">
                     Criar eventos automaticamente ao adicionar
                     tarefas/agendamentos
                   </p>
@@ -363,7 +363,7 @@ export default function CalendarSettings() {
                   <Label className="font-semibold">
                     Sincronização Bidirecional
                   </Label>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-600">
                     Eventos criados no Google Calendar também aparecem no
                     sistema
                   </p>
@@ -379,7 +379,7 @@ export default function CalendarSettings() {
               <Button
                 onClick={() => saveMutation.mutate()}
                 disabled={saveMutation.isPending}
-                className="bg-[#1e3a5f] hover:bg-[#2d5a87]"
+                className="bg-legal-blue hover:bg-legal-blue-light"
               >
                 {saveMutation.isPending
                   ? "Salvando..."

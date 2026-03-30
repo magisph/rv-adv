@@ -234,7 +234,7 @@ export default function NotificationPanel({ user, onClose }) {
                 {notification.message}
               </p>
               <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-slate-600">
                   {formatDistanceToNow(new Date(notification.created_at), {
                     addSuffix: true,
                     locale: ptBR,
@@ -293,7 +293,7 @@ export default function NotificationPanel({ user, onClose }) {
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
           <Input
             placeholder="Buscar notificações..."
             value={search}
@@ -356,7 +356,7 @@ export default function NotificationPanel({ user, onClose }) {
             <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
           </div>
         ) : filteredNotifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+          <div className="flex flex-col items-center justify-center py-12 text-slate-600">
             <Bell className="w-12 h-12 mb-3 text-slate-300" />
             <p className="text-sm">
               {search

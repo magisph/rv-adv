@@ -282,11 +282,11 @@ export default function CategoryUploadModal({
           className="hidden"
           onChange={handleFileSelect}
         />
-        <Upload className="w-12 h-12 mx-auto text-slate-400 mb-3" />
+        <Upload className="w-12 h-12 mx-auto text-slate-600 mb-3" />
         <p className="text-slate-600 font-medium">
           Arraste arquivos aqui ou clique para selecionar
         </p>
-        <p className="text-sm text-slate-500 mt-2">
+        <p className="text-sm text-slate-600 mt-2">
           PDF, DOC, DOCX, JPG, PNG, TIFF (máx. 10MB por arquivo)
         </p>
       </div>
@@ -315,12 +315,12 @@ export default function CategoryUploadModal({
                     exit={{ opacity: 0, x: 20 }}
                     className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
                   >
-                    <FileIcon className="w-8 h-8 text-slate-400" />
+                    <FileIcon className="w-8 h-8 text-slate-600" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
                         {fileData.name}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-600">
                         {formatFileSize(fileData.size)}
                       </p>
                       {status === "uploading" && (
@@ -340,7 +340,7 @@ export default function CategoryUploadModal({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-slate-400 hover:text-red-500"
+                        className="h-8 w-8 text-slate-600 hover:text-red-500"
                         onClick={() => removeFile(fileData.id)}
                       >
                         <Trash2 className="w-4 h-4" />
