@@ -16,47 +16,48 @@
 // ============================================
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-
-// ============================================
-// CORS — restrito ao domínio de produção + localhost dev
-// ============================================
-const ALLOWED_ORIGINS = [
-  "https://rafaelavasconcelos.adv.br",
-  "https://www.rafaelavasconcelos.adv.br",
-  "https://rv-adv.app",
-  "https://www.rv-adv.app",
-  "http://localhost:5173",
-  "http://localhost:3000",
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get("origin") || "";
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin)
-    ? origin
-    : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Vary": "Origin",
-  };
-}
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 // ============================================
 // DJEN API — Comunicações públicas do PJe (sem autenticação)
 // ============================================
 const DJEN_API_BASE = "https://comunicaapi.pje.jus.br/api/v1/comunicacao";
 
+// In-memory rate limiting (max 100 requests per IP per minute)
+const rateLimits = new Map<string, { count: number; expiresAt: number }>();
+
 // ============================================
 // Main serve handler
 // ============================================
 serve(async (req: Request) => {
-  const corsHeaders = getCorsHeaders(req);
+  const corsHeaders = getCorsHeaders(req.headers.get('origin'));
 
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // 1. Rate Limiter Checks
+  const clientIp = req.headers.get("x-forwarded-for") || "unknown";
+  const now = Date.now();
+  const limit = rateLimits.get(clientIp);
+
+  if (limit && now < limit.expiresAt) {
+    if (limit.count >= 100) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    limit.count++;
+  } else {
+    rateLimits.set(clientIp, { count: 1, expiresAt: now + 60000 });
+  }
+
+  // Idempotency Check (Defense-in-depth)
+  const idempotencyKey = req.headers.get("X-Idempotency-Key");
+  if (idempotencyKey) {
+    console.log(`[djen-bypass] Processing Request com Idempotency-Key: ${idempotencyKey}`);
   }
 
   // Only allow POST

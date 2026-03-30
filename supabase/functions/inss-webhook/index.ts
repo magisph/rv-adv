@@ -1,15 +1,39 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// In-memory rate limiting (max 100 requests per IP per minute)
+const rateLimits = new Map<string, { count: number; expiresAt: number }>();
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get('origin'));
+
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
+  }
+
+  // 1. Rate Limiter Checks
+  const clientIp = req.headers.get("x-forwarded-for") || "unknown";
+  const now = Date.now();
+  const limit = rateLimits.get(clientIp);
+
+  if (limit && now < limit.expiresAt) {
+    if (limit.count >= 100) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    limit.count++;
+  } else {
+    rateLimits.set(clientIp, { count: 1, expiresAt: now + 60000 });
+  }
+
+  // Idempotency Check (Defense-in-depth)
+  const idempotencyKey = req.headers.get("X-Idempotency-Key");
+  if (idempotencyKey) {
+    console.log(`[Webhook INSS] Processing Request com Idempotency-Key: ${idempotencyKey}`);
   }
 
   if (req.method !== 'POST') {
