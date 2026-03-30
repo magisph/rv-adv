@@ -1,12 +1,37 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { enforceRateLimit, getRateLimitHeaders } from "../_shared/rate-limit.ts";
 
-// In-memory rate limiting (max 100 requests per IP per minute)
-const rateLimits = new Map<string, { count: number; expiresAt: number }>();
+/**
+ * Verifica o hash HMAC-SHA256 de forma timing-safe via Web Crypto API nativa do Deno.
+ */
+async function verifyHMAC(payload: string, secret: string, hexSignature: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["verify"]
+  );
+  
+  const sigBytes = new Uint8Array(hexSignature.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []);
+  
+  return crypto.subtle.verify("HMAC", key, sigBytes, encoder.encode(payload));
+}
 
 serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req.headers.get('origin'));
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  const stdRateLimitHeaders = getRateLimitHeaders(req, 5);
+  
+  const securityHeaders = {
+    ...corsHeaders,
+    ...stdRateLimitHeaders,
+    'Content-Type': 'application/json'
+  };
 
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
@@ -14,21 +39,8 @@ serve(async (req) => {
   }
 
   // 1. Rate Limiter Checks
-  const clientIp = req.headers.get("x-forwarded-for") || "unknown";
-  const now = Date.now();
-  const limit = rateLimits.get(clientIp);
-
-  if (limit && now < limit.expiresAt) {
-    if (limit.count >= 100) {
-      return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    limit.count++;
-  } else {
-    rateLimits.set(clientIp, { count: 1, expiresAt: now + 60000 });
-  }
+  const rateLimitResponse = enforceRateLimit(req, origin, 5);
+  if (rateLimitResponse) return rateLimitResponse;
 
   // Idempotency Check (Defense-in-depth)
   const idempotencyKey = req.headers.get("X-Idempotency-Key");
@@ -39,7 +51,7 @@ serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { 
       status: 405, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: securityHeaders 
     });
   }
 
@@ -47,18 +59,39 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY') || '';
+    const webhookSecret = Deno.env.get('INSS_WEBHOOK_SECRET') || '';
 
     // Initialize Supabase Client bypassing RLS with service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the incoming JSON payload
-    const payload = await req.json();
+    // Get the incoming Raw Webhook Payload
+    const rawBody = await req.text();
+    const signatureHeader = req.headers.get("X-CF-Signature");
+
+    if (!signatureHeader) {
+      return new Response(JSON.stringify({ error: "Missing signature" }), {
+        status: 401,
+        headers: securityHeaders,
+      });
+    }
+
+    // HMAC Validation
+    const isValid = await verifyHMAC(rawBody, webhookSecret, signatureHeader);
+    if (!isValid) {
+      console.error(`[Webhook INSS] Assinatura inválida (Timing-Safe Check Failed). Recebida: ${signatureHeader}`);
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 401,
+        headers: securityHeaders,
+      });
+    }
+
+    const payload = JSON.parse(rawBody);
     const { to, from, subject, text } = payload;
 
     if (!to) {
       return new Response(JSON.stringify({ error: 'Missing "to" address' }), { 
         status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: securityHeaders 
       });
     }
 
@@ -82,7 +115,7 @@ serve(async (req) => {
         message: 'Email ignored: Client not found' 
       }), { 
         status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: securityHeaders 
       });
     }
 
@@ -140,22 +173,31 @@ serve(async (req) => {
           """
         `;
 
-        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: prompt
-              }]
-            }],
-            generationConfig: {
-              temperature: 0.1,
-            }
-          })
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        let geminiResponse;
+        try {
+          geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{
+                  text: prompt
+                }]
+              }],
+              generationConfig: {
+                temperature: 0.1,
+              }
+            })
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
         if (geminiResponse.ok) {
           const geminiData = await geminiResponse.json();
@@ -232,13 +274,14 @@ serve(async (req) => {
       geminiData: extractedData 
     }), { 
       status: 200, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: securityHeaders 
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { 
+    const isTimeout = error.name === 'AbortError';
+    return new Response(JSON.stringify({ error: isTimeout ? 'Gemini API Timeout' : error.message }), { 
       status: 500, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      headers: securityHeaders 
     });
   }
 });

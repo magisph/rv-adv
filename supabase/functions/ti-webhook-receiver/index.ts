@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { getCorsHeaders } from "../_shared/cors.ts";
-
+import { enforceRateLimit, getRateLimitHeaders } from "../_shared/rate-limit.ts";
 /**
  * Normaliza o número do processo removendo qualquer caracter não numérico.
  */
@@ -28,32 +28,22 @@ async function verifyHMAC(payload: string, secret: string, hexSignature: string)
   return crypto.subtle.verify("HMAC", key, sigBytes, encoder.encode(payload));
 }
 
-// In-memory rate limiting (simplificado para instâncias isoladas no Deno Edge)
-const rateLimits = new Map<string, { count: number; expiresAt: number }>();
-
+// Remover: const rateLimits = new Map<...>
+  
 serve(async (req: Request) => {
+  const origin = req.headers.get("origin");
+  const stdRateLimitHeaders = getRateLimitHeaders(req, 5);
+  
   // Configuração de Headers de Segurança consolidada no _shared
   const securityHeaders = {
-    ...getCorsHeaders(req.headers.get("origin")),
+    ...getCorsHeaders(origin),
+    ...stdRateLimitHeaders,
     "Content-Type": "application/json"
   };
 
-  // 1. Rate Limiter (Max 100 requests per IP per minute)
-  const clientIp = req.headers.get("x-forwarded-for") || "unknown";
-  const now = Date.now();
-  const limit = rateLimits.get(clientIp);
-
-  if (limit && now < limit.expiresAt) {
-    if (limit.count >= 100) {
-      return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
-        status: 429,
-        headers: securityHeaders,
-      });
-    }
-    limit.count++;
-  } else {
-    rateLimits.set(clientIp, { count: 1, expiresAt: now + 60000 });
-  }
+  // 1. Rate Limiter (Max 5 requests per IP per minute) via Shared Middleware
+  const rateLimitResponse = enforceRateLimit(req, origin, 5);
+  if (rateLimitResponse) return rateLimitResponse;
 
   // 2. Verificação de Método
   if (req.method !== "POST") {
@@ -124,17 +114,16 @@ serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 8. Casamento de Processo
+    // 8. Casamento de Processo via process_number_normalized (Busca O(1))
     const { data: processes, error: searchError } = await supabase
       .from("processes")
       .select("id, process_number")
-      .filter("process_number", "neq", null);
+      .eq("process_number_normalized", normalizedNum)
+      .limit(1);
 
     if (searchError) throw searchError;
 
-    const matchedProcess = processes.find(
-      (p) => normalize(p.process_number) === normalizedNum
-    );
+    const matchedProcess = processes?.[0];
 
     if (!matchedProcess) {
       console.log(`[Webhook TI] Nenhum processo ativo encontrado para: ${processNumber}`);
