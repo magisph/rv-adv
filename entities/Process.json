@@ -8,6 +8,7 @@
     },
     "client_id": {
       "type": "string",
+      "format": "uuid",
       "description": "ID do cliente relacionado"
     },
     "client_name": {

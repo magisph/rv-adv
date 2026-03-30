@@ -155,6 +155,10 @@
       ],
       "default": "ativo",
       "description": "Status do cliente"
+    },
+    "dados_civeis": {
+      "type": "object",
+      "description": "Dados espec\u00edficos da \u00e1rea c\u00edvel"
     }
   },
   "required": [
