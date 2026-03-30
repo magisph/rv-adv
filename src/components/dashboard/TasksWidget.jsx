@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, memo } from "react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { userService, taskService, notificationService } from "@/services";
@@ -681,7 +681,12 @@ export default function TasksWidget() {
 
   const filteredTaskCount = Object.values(tasksByColumn).flat().length;
 
-  const KanbanCard = ({ task, columnId }) => {
+  // ============================================
+  // KanbanCard Memoizado (Performance)
+  // ============================================
+  // Memoiza o KanbanCard para evitar re-renders desnecessários
+  // durante animações do Framer Motion e interações DnD
+  const KanbanCard = memo(({ task, columnId }) => {
     const priorityConfig =
       PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.media;
     const temporalStatus = getTemporalStatus(task.due_date);
@@ -942,7 +947,7 @@ export default function TasksWidget() {
         </div>
       </motion.div>
     );
-  };
+  });
 
   const totalTasks = allTasks.length;
   const activeTasks = allTasks.filter((t) => t.status !== "done").length;

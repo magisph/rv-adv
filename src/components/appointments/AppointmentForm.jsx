@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,23 @@ import { format, isFuture } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Checkbox } from "@/components/ui/checkbox";
 
-export default function AppointmentForm({ appointment, clientId, clientName, onSave, onCancel, isSaving }) {
+/**
+ * @typedef {Object} AppointmentFormProps
+ * @property {Object} [appointment] - Dados do compromisso para edição
+ * @property {string} [clientId] - ID do cliente
+ * @property {string} [clientName] - Nome do cliente
+ * @property {Function} onSave - Callback para salvar o formulário
+ * @property {Function} onCancel - Callback para cancelar
+ * @property {boolean} [isSaving] - Estado de salvamento
+ */
+export default function AppointmentForm({ 
+  /** @type {Object|undefined} */ appointment, 
+  /** @type {string|undefined} */ clientId, 
+  /** @type {string|undefined} */ clientName, 
+  /** @type {Function} */ onSave, 
+  /** @type {Function} */ onCancel, 
+  /** @type {boolean|undefined} */ isSaving 
+}) {
   const [formData, setFormData] = useState({
     client_id: clientId || "",
     client_name: clientName || "",
@@ -29,47 +45,54 @@ export default function AppointmentForm({ appointment, clientId, clientName, onS
     appointment?.date ? new Date(appointment.date) : new Date()
   );
 
+  // CORRIGIDO: Stale closure - usando setter funcional para evitar dependência de formData
   useEffect(() => {
     if (appointment) {
-      setFormData({ ...formData, ...appointment });
+      setFormData(prev => ({ ...prev, ...appointment }));
       if (appointment.date) {
         setSelectedDate(new Date(appointment.date));
       }
     }
   }, [appointment]);
 
-  const handleChange = (field, value) => {
+  const handleChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const handleDateTimeChange = (date) => {
+  const handleDateTimeChange = useCallback((date) => {
     setSelectedDate(date);
-    const time = formData.date ? new Date(formData.date).toTimeString().slice(0, 5) : "09:00";
-    const dateTime = new Date(date);
-    const [hours, minutes] = time.split(":");
-    dateTime.setHours(parseInt(hours), parseInt(minutes));
-    setFormData(prev => ({ ...prev, date: dateTime.toISOString() }));
-  };
+    setFormData(prev => {
+      const time = prev.date ? new Date(prev.date).toTimeString().slice(0, 5) : "09:00";
+      const dateTime = new Date(date);
+      const [hours, minutes] = time.split(":");
+      dateTime.setHours(parseInt(hours), parseInt(minutes));
+      return { ...prev, date: dateTime.toISOString() };
+    });
+  }, []);
 
-  const handleTimeChange = (time) => {
-    const dateTime = new Date(selectedDate);
-    const [hours, minutes] = time.split(":");
-    dateTime.setHours(parseInt(hours), parseInt(minutes));
-    setFormData(prev => ({ ...prev, date: dateTime.toISOString() }));
-  };
+  const handleTimeChange = useCallback((time) => {
+    setFormData(prev => {
+      const dateTime = new Date(selectedDate);
+      const [hours, minutes] = time.split(":");
+      dateTime.setHours(parseInt(hours), parseInt(minutes));
+      return { ...prev, date: dateTime.toISOString() };
+    });
+  }, [selectedDate]);
 
-  const handleAlertDayToggle = (day) => {
-    const alertDays = formData.alert_days || [];
-    const newAlertDays = alertDays.includes(day)
-      ? alertDays.filter(d => d !== day)
-      : [...alertDays, day];
-    setFormData(prev => ({ ...prev, alert_days: newAlertDays }));
-  };
+  const handleAlertDayToggle = useCallback((day) => {
+    setFormData(prev => {
+      const alertDays = prev.alert_days || [];
+      const newAlertDays = alertDays.includes(day)
+        ? alertDays.filter(d => d !== day)
+        : [...alertDays, day];
+      return { ...prev, alert_days: newAlertDays };
+    });
+  }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = useCallback((e) => {
     e.preventDefault();
     onSave(formData);
-  };
+  }, [formData, onSave]);
 
   const currentTime = formData.date ? format(new Date(formData.date), "HH:mm") : "09:00";
   const isFutureDate = isFuture(new Date(formData.date));

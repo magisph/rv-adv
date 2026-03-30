@@ -1,8 +1,8 @@
 import { BaseService } from "./baseService";
 export { authService } from "./authService";
 
-// Entity Services mapped to probable table names
-export const clientService = new BaseService("clients");
+// Client Service especializado com validação Zod
+export { clientService } from "./clientService";
 export const processService = new BaseService("processes");
 export const deadlineService = new BaseService("deadlines");
 export const taskService = new BaseService("tasks");

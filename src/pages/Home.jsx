@@ -12,7 +12,6 @@ import StatsCard from "@/components/dashboard/StatsCard";
 import DeadlinesWidget from "@/components/dashboard/DeadlinesWidget";
 import TasksWidget from "@/components/dashboard/TasksWidget";
 import InssEmailsWidget from "@/components/dashboard/InssEmailsWidget";
-import CalendarWidget from "@/components/calendar/CalendarWidget";
 import DiarioAtendimentosWidget from "@/components/dashboard/DiarioAtendimentosWidget";
 import { motion } from "framer-motion";
 export default function Home() {

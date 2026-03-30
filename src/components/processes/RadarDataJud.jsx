@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { datajudBuscaNumero, formatarNumeroCNJ } from "@/services/cnjService";
+import { datajudBuscaNumero } from "@/services/cnjService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

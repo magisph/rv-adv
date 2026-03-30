@@ -1,6 +1,26 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "openwork",
+  "skills": {
+    "aiox": {
+      "enabled": true,
+      "path": "aiox-core",
+      "description": "Framework AIOX para desenvolvimento jurídico autônomo",
+      "agents": [
+        "dev",
+        "qa",
+        "architect",
+        "po",
+        "pm",
+        "sm",
+        "analyst",
+        "data-engineer",
+        "devops",
+        "ux-expert",
+        "aiox-master"
+      ]
+    }
+  },
   "mcp": {
     "chrome-devtools": {
       "command": [
