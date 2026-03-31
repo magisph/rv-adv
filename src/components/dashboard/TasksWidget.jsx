@@ -405,7 +405,6 @@ export default function TasksWidget() {
         });
       }
     }
-    setLongPressTask(null);
   }, [allUsers, user, updateMutation]);
 
   // ============================================
