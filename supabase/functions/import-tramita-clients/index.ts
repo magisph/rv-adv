@@ -9,10 +9,10 @@ import { enforceRateLimit } from "../_shared/rate-limit.ts";
 //
 // Segurança:
 //   - Rate Limiting: 3 req/min por IP (via _shared/rate-limit.ts)
-//   - Autenticação de caller via header `apikey` (service_role)
+//   - DUAL AUTH: AUTHORIZED_API_KEY (scripts) OU JWT + supabase.auth.getUser()
 //   - Autenticação API externa via TRAMITA_API_KEY (Vault)
 //   - Upsert idempotente via cpf_cnpj (UNIQUE constraint)
-//   - Service Role Key para bypass de RLS
+//   - Service Role Key para bypass de RLS (modo admin)
 //   - Null Safety: todas as strings vazias convertidas para null
 //   - Timeout de 30s por requisição à API externa
 //   - Filtra somente CPFs (11 dígitos numéricos)
@@ -262,8 +262,10 @@ Deno.serve(async (req: Request) => {
   // 1. Validação de variáveis de ambiente (Vault)
   // ========================================================================
   const tramitaApiKey = Deno.env.get("TRAMITA_API_KEY");
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const authorizedKey = Deno.env.get("AUTHORIZED_API_KEY");
 
   if (!tramitaApiKey) {
     log("ERROR", "TRAMITA_API_KEY não configurada no Vault.");
@@ -281,50 +283,154 @@ Deno.serve(async (req: Request) => {
   }
 
   // ========================================================================
-  // 2. Autenticação do caller (verifica que quem chama tem a apikey correta)
-  //    Aceita via header 'apikey' (padrão Supabase) ou 'Authorization: Bearer'
+  // 2. DUAL AUTHENTICATION: AUTHORIZED_API_KEY OU JWT (com RLS)
+  //    
+  //    Implementa autenticação dual conforme best practices Supabase:
+  //    - Caminho 1: API Key (AUTHORIZED_API_KEY) → Modo admin/bypass RLS
+  //    - Caminho 2: JWT + supabase.auth.getUser() → Modo usuário c/ RLS
+  //
+  //    IMPORTANTE: Segue rigorosamente a skill supabase-postgres-best-practices
+  //    (Security & RLS - security-rls-basics.md)
   // ========================================================================
   const callerApiKey = req.headers.get("apikey") ||
-    req.headers.get("authorization")?.replace("Bearer ", "");
+    req.headers.get("authorization")?.replace("Bearer ", "") ||
+    req.headers.get("Authorization")?.replace("Bearer ", "");
+  
+  const authHeader = req.headers.get("authorization") || 
+                     req.headers.get("Authorization") || "";
 
-  if (!callerApiKey || callerApiKey !== supabaseServiceKey) {
-    log("WARN", "Tentativa de acesso sem autorização válida.", {
+  // Track de qual modo de autenticação foi usado
+  let authMode: "api_key" | "jwt" | null = null;
+  let authenticatedUserId: string | null = null;
+  let supabaseClient: ReturnType<typeof createClient>;
+  let systemUserId: string;
+
+  // -------------------------------------------------------------------------
+  // Caminho 1: Autenticação via API Key (scripts automáticos)
+  // -------------------------------------------------------------------------
+  if (authorizedKey && callerApiKey === authorizedKey) {
+    authMode = "api_key";
+    log("INFO", "Autenticação via API Key autorizada.", {
+      hasAuthorizedKey: !!authorizedKey,
+    });
+    
+    // Modo admin: usa service role para bypass de RLS
+    supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Resolve usuário admin para created_by
+    const { data: adminUser, error: adminError } = await supabaseClient
+      .from("users")
+      .select("auth_id")
+      .in("role", ["admin", "dono"])
+      .limit(1)
+      .single();
+
+    if (adminError || !adminUser?.auth_id) {
+      log("ERROR", "Falha ao resolver admin/dono user.", {
+        detail: adminError?.message,
+      });
+      return new Response(
+        JSON.stringify({ error: "Sem usuário admin/dono para atribuir created_by." }),
+        { status: 500, headers }
+      );
+    }
+    systemUserId = adminUser.auth_id;
+  } 
+  // -------------------------------------------------------------------------
+  // Caminho 2: Autenticação via JWT (usuários autenticados com RLS)
+  // -------------------------------------------------------------------------
+  else if (authHeader.startsWith("Bearer ") && supabaseAnonKey) {
+    try {
+      // Extrai o token JWT do header Authorization
+      const jwtToken = authHeader.replace("Bearer ", "");
+
+      // Cria cliente auth para validar o JWT
+      const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      });
+
+      // Valida o JWT usando supabase.auth.getUser() - método oficial Supabase
+      const { data: userData, error: authError } = await authClient.auth.getUser(jwtToken);
+
+      if (authError || !userData?.user) {
+        log("WARN", "JWT inválido ou expirado.", {
+          error: authError?.message,
+          ip: req.headers.get("x-forwarded-for") ?? "unknown",
+        });
+        return new Response(
+          JSON.stringify({ error: "Token JWT inválido ou expirado." }),
+          { status: 401, headers }
+        );
+      }
+
+      // JWT válido: autenticação bem-sucedida
+      authMode = "jwt";
+      authenticatedUserId = userData.user.id;
+      
+      log("INFO", "Autenticação via JWT bem-sucedida.", {
+        userId: authenticatedUserId,
+        email: userData.user.email,
+      });
+
+      // Modo usuário: cria cliente com o JWT do usuário (respecta RLS)
+      supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+        global: {
+          headers: {
+            Authorization: `Bearer ${jwtToken}`,
+          },
+        },
+      });
+
+      // Usa o usuário autenticado como created_by
+      if (!authenticatedUserId) {
+        log("ERROR", "JWT válido mas sem user ID.");
+        return new Response(
+          JSON.stringify({ error: "Erro ao identificar usuário autenticado." }),
+          { status: 500, headers }
+        );
+      }
+      systemUserId = authenticatedUserId;
+    } catch (jwtError) {
+      log("ERROR", "Erro ao processar JWT.", {
+        error: jwtError instanceof Error ? jwtError.message : String(jwtError),
+      });
+      return new Response(
+        JSON.stringify({ error: "Erro ao validar token JWT." }),
+        { status: 401, headers }
+      );
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Nenhuma autenticação válida
+  // -------------------------------------------------------------------------
+  else {
+    log("WARN", "Tentativa de acesso sem autenticação válida.", {
+      hasCallerApiKey: !!callerApiKey,
+      hasAuthorizedKey: !!authorizedKey,
+      hasAuthHeader: !!authHeader,
       ip: req.headers.get("x-forwarded-for") ?? "unknown",
     });
     return new Response(
-      JSON.stringify({ error: "Não autorizado." }),
+      JSON.stringify({ error: "Não autorizado. Forneça AUTHORIZED_API_KEY ou token JWT válido." }),
       { status: 401, headers }
     );
   }
 
-  // ========================================================================
-  // 3. Inicializa Supabase com Service Role (bypass de RLS)
-  // ========================================================================
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  log("INFO", "Autenticação Dual Auth concluída.", {
+    authMode,
+    authenticatedUserId,
+    systemUserId,
+  });
 
   // ========================================================================
-  // 4. Resolve o system user para created_by (NOT NULL constraint)
-  // ========================================================================
-  const { data: adminUser, error: adminError } = await supabase
-    .from("users")
-    .select("auth_id")
-    .in("role", ["admin", "dono"])
-    .limit(1)
-    .single();
-
-  if (adminError || !adminUser?.auth_id) {
-    log("ERROR", "Falha ao resolver admin/dono user.", {
-      detail: adminError?.message,
-    });
-    return new Response(
-      JSON.stringify({ error: "Sem usuário admin/dono para atribuir created_by." }),
-      { status: 500, headers }
-    );
-  }
-  const systemUserId: string = adminUser.auth_id;
-
-  // ========================================================================
-  // 5. Itera páginas da API Tramitação Inteligente
+  // 3. Itera páginas da API Tramitação Inteligente
   // ========================================================================
   const baseUrl = "https://app.tramitacaointeligente.com.br/api/v1/clientes";
   let currentPage = 1;
@@ -393,7 +499,7 @@ Deno.serve(async (req: Request) => {
       log("INFO", `Página ${currentPage}: ${clients.length} clientes recebidos.`);
 
       // ==================================================================
-      // 6. PENEIRA CPFs: somente 11 dígitos numéricos passam
+      // 4. PENEIRA CPFs: somente 11 dígitos numéricos passam
       // ==================================================================
       const cpfClients = clients.filter((c) => isCpf(c.cpf_cnpj || c.cpf));
       const skippedThisPage = clients.length - cpfClients.length;
@@ -412,12 +518,12 @@ Deno.serve(async (req: Request) => {
       const mappedClients = cpfClients.map((c) => mapToClient(c, systemUserId));
 
       // ==================================================================
-      // 7. Upsert idempotente em batches via cpf_cnpj
+      // 5. Upsert idempotente em batches via cpf_cnpj
       // ==================================================================
       for (let i = 0; i < mappedClients.length; i += UPSERT_BATCH_SIZE) {
         const batch = mappedClients.slice(i, i + UPSERT_BATCH_SIZE);
 
-        const { data: upsertData, error: upsertError } = await supabase
+        const { data: upsertData, error: upsertError } = await supabaseClient
           .from("clients")
           .upsert(batch, {
             onConflict: "cpf_cnpj",
@@ -462,7 +568,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // ========================================================================
-  // 8. Relatório Final
+  // 6. Relatório Final
   // ========================================================================
   const report = {
     success: errors.length === 0,

@@ -10,6 +10,64 @@ function normalize(num: string): string {
 }
 
 /**
+ * Extrai o número do processo de múltiplas fontes possíveis no payload.
+ * Suporta campos diretos e aninhados, com ou sem máscara.
+ */
+function extractProcessNumber(payload: Record<string, unknown>): string | null {
+  // Mapeamento de campos possíveis (diretos e aninhados)
+  const fieldMappings = [
+    // Campos diretos
+    "numero_processo",
+    "process_number",
+    "numeroProcesso",
+    "processNumber",
+    // Campos aninhados em publication
+    "publication.numero_processo",
+    "publication.process_number",
+    "publications.0.numero_processo",
+    "publications.0.process_number",
+    // Campos em data
+    "data.numero_processo",
+    "data.process_number",
+  ];
+
+  for (const field of fieldMappings) {
+    const value = getNestedValue(payload, field);
+    if (value && typeof value === "string" && value.trim().length > 0) {
+      console.log(`[Webhook TI] Campo '${field}' encontrado com valor: ${value}`);
+      return value.trim();
+    }
+  }
+
+  console.log(`[Webhook TI] Nenhum campo de número de processo encontrado no payload.`);
+  return null;
+}
+
+/**
+ * Obtém valor de objeto aninhado via caminho com notação de ponto.
+ */
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  const parts = path.split(".");
+  let current: unknown = obj;
+
+  for (const part of parts) {
+    if (current === null || current === undefined) return null;
+    if (typeof current !== "object") return null;
+
+    // Tratamento para arrays (ex: publications.0)
+    if (Array.isArray(current)) {
+      const index = parseInt(part, 10);
+      if (isNaN(index) || index < 0 || index >= current.length) return null;
+      current = current[index];
+    } else {
+      current = (current as Record<string, unknown>)[part];
+    }
+  }
+
+  return current;
+}
+
+/**
  * Verifica o hash HMAC-SHA256 de forma timing-safe via Web Crypto API nativa do Deno.
  */
 async function verifyHMAC(payload: string, secret: string, hexSignature: string): Promise<boolean> {
@@ -90,18 +148,54 @@ serve(async (req: Request) => {
 
     // 6. Processamento do Evento
     if (event_type !== "publications.created") {
+      console.log(`[Webhook TI] Evento ignorado: ${event_type}`);
       return new Response(JSON.stringify({ message: "Evento ignorado" }), {
         status: 200,
         headers: securityHeaders,
       });
     }
 
-    const processNumber = payload.numero_processo || payload.process_number;
+    console.log(`[Webhook TI] Payload recebido: ${Deno.inspect(payload)}`);
+
+    // ========================================================================
+    // GUARD CLAUSES: Validação defensiva do payload ANTES do processamento
+    // ========================================================================
+    
+    // Guard 1: Verifica se publications existe e não está vazio
+    const publications = payload.publications;
+    if (Array.isArray(publications) && publications.length === 0) {
+      console.log(`[Webhook TI] Guard: publications array está vazio. Abortando graciosamente.`);
+      return new Response(JSON.stringify({ message: "Nenhuma publicação para processar" }), {
+        status: 200,
+        headers: securityHeaders,
+      });
+    }
+    
+    if (publications === null || publications === undefined) {
+      console.log(`[Webhook TI] Guard: publications é null/undefined. Abortando graciosamente.`);
+      return new Response(JSON.stringify({ message: "Publicações não disponíveis" }), {
+        status: 200,
+        headers: securityHeaders,
+      });
+    }
+
+    // Guard 2: Verifica se payload tem estrutura mínima
+    if (!payload || typeof payload !== "object") {
+      console.error(`[Webhook TI] Guard: payload inválido ou ausente.`);
+      return new Response(JSON.stringify({ error: "Payload inválido" }), {
+        status: 400,
+        headers: securityHeaders,
+      });
+    }
+
+    // Extrai o número do processo de múltiplas fontes possíveis
+    const processNumber = extractProcessNumber(payload);
     const content = payload.conteudo || payload.content;
     const date = payload.data_disponibilizacao || payload.date || new Date().toISOString().split("T")[0];
 
     if (!processNumber) {
-      return new Response(JSON.stringify({ error: "Número do processo ausente" }), {
+      console.error(`[Webhook TI] Número do processo ausente no payload. Campos disponíveis: ${Object.keys(payload).join(", ")}`);
+      return new Response(JSON.stringify({ error: "Número do processo ausente", received_fields: Object.keys(payload) }), {
         status: 400,
         headers: securityHeaders,
       });
