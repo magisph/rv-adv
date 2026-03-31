@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { formatarNumeroCNJ } from "@/services/cnjService";
+import useDjenComunicacoes from "@/hooks/useDjenComunicacoes";
 import {
   Card,
   CardContent,
@@ -23,7 +23,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { CalculadoraCpcModal } from "./CalculadoraCpcModal";
-import { processMoveService } from "@/services";
 
 // ============================================================================
 // getField — Extrator blindado contra inconsistência de case nas chaves
@@ -359,28 +358,28 @@ export default function PainelDJEN() {
   };
 
   const {
-    data,
+    data: djenData,
     isLoading,
-  } = useQuery({
-    queryKey: ["djen-comunicacoes-reativas"],
-    queryFn: () => processMoveService.filter({ move_type: 'intimacao' }, "-date"),
-    staleTime: 5 * 60 * 1000,
-  });
+    error,
+    refetch,
+  } = useDjenComunicacoes();
 
   // ── Hooks must be declared before any early return (Rules of Hooks) ─────────────
-  // Transform process_moves structure to match what ComunicacaoCard expects
+  // Transform DJEN API response to match what ComunicacaoCard expects
   const comunicacoes = useMemo(() => {
-    if (!data) return [];
-    return data.map(move => ({
-      numero_processo: move.process_number,
-      data_disponibilizacao: move.date,
-      conteudo: move.description,
-      tipo_comunicacao: "Intimação",
-      sigla_tribunal: "WebHook TI",
-      // Adicionando metadados salvos se houver (placeholder para campos extras)
-      ...move
+    if (!djenData?.comunicacoes) return [];
+    return djenData.comunicacoes.map(com => ({
+      numero_processo: getField(com, ["numeroprocesso", "numero_processo", "numero", "processo"]),
+      data_disponibilizacao: getField(com, ["datadisponibilizacao", "data_disponibilizacao"]),
+      data_publicacao: getField(com, ["datapublicacao", "data_publicacao"]),
+      conteudo: getField(com, ["texto", "conteudo", "teor", "mensagem", "descricao"]),
+      tipo_comunicacao: getField(com, ["tipocomunicacao", "tipo_comunicacao", "tipo", "tipoato"], "Intimação"),
+      sigla_tribunal: getField(com, ["siglatribunal", "sigla_tribunal", "tribunal"], ""),
+      nome_orgao: getField(com, ["nomeorgao", "nome_orgao", "orgaojulgador"]),
+      nome_destinatario: getField(com, ["nomedestinatario", "nome_destinatario"]),
+      ...com
     }));
-  }, [data]);
+  }, [djenData]);
 
   // Memoize filtered list — heavy iteration with getField() calls per item
   const comunicacoesFiltradas = useMemo(
@@ -414,6 +413,47 @@ export default function PainelDJEN() {
           </div>
         </div>
         <LoadingSkeleton />
+      </div>
+    );
+  }
+
+  // ── Error State ─────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+            <Inbox className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">
+              Caixa de Entrada Oficial
+            </h2>
+            <p className="text-sm text-slate-600">
+              Erro ao carregar intimações
+            </p>
+          </div>
+        </div>
+        <Card className="border-red-200 bg-red-50/50">
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <div className="text-red-500 mb-4">
+              <Inbox className="w-12 h-12" />
+            </div>
+            <p className="text-red-700 font-medium text-center mb-2">
+              Não foi possível carregar as comunicações do DJEN
+            </p>
+            <p className="text-red-600 text-sm text-center mb-4 max-w-md">
+              {error.message || "Erro desconhecido. Verifique sua conexão e tente novamente."}
+            </p>
+            <Button
+              onClick={() => refetch()}
+              variant="outline"
+              className="border-red-300 text-red-700 hover:bg-red-100"
+            >
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

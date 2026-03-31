@@ -3,6 +3,7 @@
 // DataJud: Consulta via Edge Function global (datajud-bypass) no Supabase.
 // DJEN:    Consulta via Edge Function global (djen-bypass) no Supabase.
 // ── Migração DJEN concluída em 2026-03-21 — Mixed Content/Geo-Block fix ──
+// ── Sanitização OAB (padStart 7) adicionada em 2026-03-31 — PJe fix ──────
 // ============================================================================
 
 import { supabase } from '../lib/supabase';
@@ -124,19 +125,76 @@ export async function datajudBuscaNumero(numero) {
 }
 
 // ============================================================================
-// djenBuscaPublica()
+// sanitizarNumeroOab(numeroOab)
+//
+// Sanitiza o número da OAB para o formato exigido pela API DJEN / PJe:
+//   1. Converte para string
+//   2. Remove TODOS os caracteres não-numéricos (letras de tipo, traços, etc.)
+//   3. Aplica zero-padding para garantir exatamente 7 dígitos
+//
+// Exemplos:
+//   "CE36219"  → "0036219"  (remove UF + padding)
+//   "36219"    → "0036219"  (apenas padding)
+//   "0036219"  → "0036219"  (idempotente)
+//   "12345678" → "2345678"  (trunca pela esquerda se > 7 dígitos)
+// ============================================================================
+export function sanitizarNumeroOab(numeroOab) {
+  // Passo 1: remove tudo que não for dígito (letras de tipo, UF embutida, etc.)
+  const apenasDigitos = String(numeroOab).replace(/\D/g, "");
+
+  if (apenasDigitos.length === 0) {
+    throw new Error(
+      `Número OAB inválido — nenhum dígito encontrado em: "${numeroOab}"`
+    );
+  }
+
+  // Passo 2: garante exatamente 7 dígitos com zeros à esquerda
+  // .padStart(7) adiciona zeros se < 7 dígitos
+  // .slice(-7) garante truncamento estrito se > 7 dígitos (padStart não corta)
+  return apenasDigitos.padStart(7, "0").slice(-7);
+}
+
+// ============================================================================
+// djenBuscaPublica(numeroOab, ufOab, nomeAdvogado, dataInicio, dataFim)
 //
 // Invoca a Edge Function 'djen-bypass' no Supabase (global, sem CORS).
-// Consulta comunicações/intimações da advogada (OAB/CE 36219) via DJEN.
-// Retorna: lista de comunicações públicas.
+// Consulta comunicações/intimações da advogada via DJEN (API do CNJ).
+//
+// Parâmetros:
+// - numeroOab: Número da OAB (ex: "36219" ou "CE36219" — sanitização automática)
+// - ufOab: Unidade da federação da OAB (ex: "CE") — enviada separadamente
+// - nomeAdvogado: Nome completo do advogado (opcional)
+// - dataInicio: Data inicial de filtro (opcional, formato YYYY-MM-DD)
+// - dataFim: Data final de filtro (opcional, formato YYYY-MM-DD)
+//
+// Retorna: { advogado, oab, totalComunicacoes, comunicacoes, _raw }
 // ============================================================================
-export async function djenBuscaPublica() {
+export async function djenBuscaPublica({
+  numeroOab,
+  ufOab,
+  nomeAdvogado = null,
+  dataDisponibilizacaoInicio = null,
+  dataDisponibilizacaoFim = null,
+} = {}) {
+  // Validação dos parâmetros obrigatórios
+  if (!numeroOab || !ufOab) {
+    throw new Error("Parâmetros obrigatórios: 'numeroOab' e 'ufOab'");
+  }
+
+  // ── Sanitização OAB ────────────────────────────────────────────────────────
+  // Remove letras/caracteres especiais e aplica zero-padding para 7 dígitos.
+  // A API DJEN/PJe exige exatamente 7 dígitos numéricos em 'numero_oab'.
+  // A UF vai separadamente em 'uf_oab' e NÃO deve estar embutida no número.
+  const numeroOabSanitizado = sanitizarNumeroOab(numeroOab);
+  // ──────────────────────────────────────────────────────────────────────────
+
   const { data, error } = await supabase.functions.invoke('djen-bypass', {
     body: {
-      numeroOab: "36219",
-      ufOab: "CE",
-      nomeAdvogado: "Ana Rafaela Vasconcelos Damasceno",
-      dataDisponibilizacaoInicio: "2026-03-16",
+      numeroOab: numeroOabSanitizado,  // 7 dígitos, ex: "0036219"
+      ufOab,                           // UF separada, ex: "CE"
+      nomeAdvogado,
+      dataDisponibilizacaoInicio,
+      dataDisponibilizacaoFim,
     },
   });
 
@@ -158,8 +216,8 @@ export async function djenBuscaPublica() {
     : json?.comunicacoes ?? json?.items ?? json?.content ?? [];
 
   return {
-    advogada: "Ana Rafaela Vasconcelos Damasceno",
-    oab: "36219/CE",
+    advogado: nomeAdvogado || "Advogado",
+    oab: `${numeroOabSanitizado}/${ufOab}`, // Usa o número sanitizado no retorno
     totalComunicacoes: comunicacoes.length,
     comunicacoes,
     _raw: json,
@@ -172,6 +230,7 @@ export async function djenBuscaPublica() {
 export const cnjService = {
   resolverTribunal,
   formatarNumeroCNJ,
+  sanitizarNumeroOab,
   datajudBuscaNumero,
   djenBuscaPublica,
 };
