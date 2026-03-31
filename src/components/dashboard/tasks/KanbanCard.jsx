@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
-import { Calendar, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
+import { AlertCircle, Calendar, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PRIORITY_CONFIG, KANBAN_COLUMNS } from "./constants";
