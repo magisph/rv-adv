@@ -1,19 +1,22 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 
 // ============================================================================
 // Edge Function: import-tramita-clients
 // Descrição: Importa clientes da API da Tramitação Inteligente para o Supabase.
-//            Roda como Enterprise Mode (cloud), substituindo o script local.
+//            Enterprise Mode (cloud), substituindo o script local legado.
 //
 // Segurança:
-//   - Autenticação via TRAMITA_API_KEY (Deno.env / Vault)
+//   - Rate Limiting: 3 req/min por IP (via _shared/rate-limit.ts)
+//   - Autenticação de caller via header `apikey` (service_role)
+//   - Autenticação API externa via TRAMITA_API_KEY (Vault)
 //   - Upsert idempotente via cpf_cnpj (UNIQUE constraint)
 //   - Service Role Key para bypass de RLS
 //   - Null Safety: todas as strings vazias convertidas para null
 //   - Timeout de 30s por requisição à API externa
 //   - Filtra somente CPFs (11 dígitos numéricos)
+//   - Batch upsert em chunks de 100 registros
 //
 // Rota: POST /import-tramita-clients
 // ============================================================================
@@ -24,9 +27,16 @@ const MAX_PAGES = 100;
 /** Timeout para chamadas à API externa em milissegundos */
 const FETCH_TIMEOUT_MS = 30_000;
 
+/** Tamanho máximo do batch para upsert (evita payload gigante) */
+const UPSERT_BATCH_SIZE = 100;
+
+// ---------------------------------------------------------------------------
+// Utilitários de Saneamento (Null Safety)
+// ---------------------------------------------------------------------------
+
 /**
- * Converte string vazia ("") para null. Retorna o valor original se não for string vazia.
- * Garante Null Safety rigorosa no payload antes do upsert.
+ * Converte string vazia ("") para null. Retorna o valor original se não for
+ * string vazia. Garante Null Safety rigorosa no payload antes do upsert.
  */
 function sanitize(value: unknown): unknown {
   if (typeof value === "string" && value.trim() === "") return null;
@@ -49,9 +59,14 @@ function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
   return result as T;
 }
 
+// ---------------------------------------------------------------------------
+// Validação de CPF (Peneira Matemática)
+// ---------------------------------------------------------------------------
+
 /**
  * Valida se o documento é um CPF (somente 11 dígitos numéricos).
- * Rejeita CNPJs e formatos inválidos.
+ * Remove TODA formatação (pontos, traços, barras) antes de contar.
+ * Rejeita CNPJs (14 dígitos) e formatos inválidos matemática e deterministicamente.
  */
 function isCpf(doc: string | null | undefined): boolean {
   if (!doc) return false;
@@ -66,18 +81,18 @@ function normalizeCpf(doc: string): string {
   return doc.replace(/\D/g, "");
 }
 
+// ---------------------------------------------------------------------------
+// Triagem Inteligente — Área de Atuação
+// ---------------------------------------------------------------------------
+
 /**
- * Determina a área de atuação baseado nas tags e meu_inss_pass do cliente TI.
- * Triagem Inteligente:
+ * Determina a área de atuação baseado nas tags do cliente TI.
  *   - Se tags conterem referência a "cível" → "Cível"
- *   - Se meu_inss_pass estiver preenchido → "Previdenciário"
  *   - Default → "Previdenciário"
  */
 function resolveAreaAtuacao(
-  tags: string | string[] | null | undefined,
-  meuInssPass: string | null | undefined
+  tags: string | string[] | null | undefined
 ): string {
-  // Normaliza tags para array
   const tagList: string[] = Array.isArray(tags)
     ? tags
     : typeof tags === "string" && tags.trim() !== ""
@@ -91,12 +106,12 @@ function resolveAreaAtuacao(
       tag.includes("civil")
   );
 
-  if (isCivel) return "Cível";
-
-  // Se tem senha do INSS, confirma como Previdenciário
-  // Default: Previdenciário
-  return "Previdenciário";
+  return isCivel ? "Cível" : "Previdenciário";
 }
+
+// ---------------------------------------------------------------------------
+// Interface de contrato do payload da API externa
+// ---------------------------------------------------------------------------
 
 interface TramitaClient {
   name?: string;
@@ -126,16 +141,26 @@ interface TramitaClient {
   [key: string]: unknown;
 }
 
+// ---------------------------------------------------------------------------
+// Mapeamento: API TI → Schema public.clients
+// ---------------------------------------------------------------------------
+
 /**
  * Mapeia um cliente da Tramitação Inteligente para o schema public.clients.
- * Aplica Null Safety em todos os campos.
+ * Aplica Null Safety recursiva em todos os campos.
+ *
+ * Campos mapeados (De → Para):
+ *   name           → full_name
+ *   cpf_cnpj       → cpf_cnpj (somente dígitos)
+ *   email_exclusivo → ti_email_exclusivo (OBRIGATÓRIO)
+ *   tags           → area_atuacao (via resolveAreaAtuacao)
  */
 function mapToClient(
   ti: TramitaClient,
   systemUserId: string
 ): Record<string, unknown> {
   const cpfCnpj = normalizeCpf(ti.cpf_cnpj || ti.cpf || "");
-  const areaAtuacao = resolveAreaAtuacao(ti.tags, ti.meu_inss_pass);
+  const areaAtuacao = resolveAreaAtuacao(ti.tags);
 
   const mapped: Record<string, unknown> = {
     full_name: ti.name || ti.nome || null,
@@ -157,16 +182,16 @@ function mapToClient(
     observations: ti.observacoes || null,
     status: "ativo",
     created_by: systemUserId,
-    updated_at: new Date().toISOString(),
   };
 
   // Null Safety final: qualquer "" residual vira null
   return sanitizeObject(mapped);
 }
 
-/**
- * Fetch com timeout usando AbortController (Deno nativo).
- */
+// ---------------------------------------------------------------------------
+// Fetch com timeout (AbortController nativo Deno)
+// ---------------------------------------------------------------------------
+
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
@@ -186,17 +211,42 @@ async function fetchWithTimeout(
   }
 }
 
-serve(async (req: Request) => {
+// ---------------------------------------------------------------------------
+// Logging estruturado
+// ---------------------------------------------------------------------------
+
+function log(level: "INFO" | "WARN" | "ERROR", message: string, data?: Record<string, unknown>): void {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    level,
+    function: "import-tramita-clients",
+    message,
+    ...data,
+  };
+  if (level === "ERROR") {
+    console.error(JSON.stringify(entry));
+  } else if (level === "WARN") {
+    console.warn(JSON.stringify(entry));
+  } else {
+    console.log(JSON.stringify(entry));
+  }
+}
+
+// ============================================================================
+// HANDLER PRINCIPAL
+// ============================================================================
+
+Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
   const headers = { ...corsHeaders, "Content-Type": "application/json" };
 
-  // CORS Preflight
+  // -- CORS Preflight --
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Somente POST
+  // -- Somente POST --
   if (req.method !== "POST") {
     return new Response(
       JSON.stringify({ error: "Método não permitido. Use POST." }),
@@ -204,22 +254,26 @@ serve(async (req: Request) => {
     );
   }
 
+  // -- Rate Limiting: 3 req/min --
+  const rateLimitResponse = enforceRateLimit(req, origin, 3);
+  if (rateLimitResponse) return rateLimitResponse;
+
   // ========================================================================
-  // 1. Validação de variáveis de ambiente
+  // 1. Validação de variáveis de ambiente (Vault)
   // ========================================================================
   const tramitaApiKey = Deno.env.get("TRAMITA_API_KEY");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
   if (!tramitaApiKey) {
-    console.error("[Import TI] TRAMITA_API_KEY não configurada no Vault.");
+    log("ERROR", "TRAMITA_API_KEY não configurada no Vault.");
     return new Response(
       JSON.stringify({ error: "Configuração de API ausente." }),
       { status: 500, headers }
     );
   }
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error("[Import TI] SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausentes.");
+    log("ERROR", "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausentes.");
     return new Response(
       JSON.stringify({ error: "Configuração do Supabase ausente." }),
       { status: 500, headers }
@@ -227,12 +281,29 @@ serve(async (req: Request) => {
   }
 
   // ========================================================================
-  // 2. Inicializa Supabase com Service Role (ignora RLS)
+  // 2. Autenticação do caller (verifica que quem chama tem a apikey correta)
+  //    Aceita via header 'apikey' (padrão Supabase) ou 'Authorization: Bearer'
+  // ========================================================================
+  const callerApiKey = req.headers.get("apikey") ||
+    req.headers.get("authorization")?.replace("Bearer ", "");
+
+  if (!callerApiKey || callerApiKey !== supabaseServiceKey) {
+    log("WARN", "Tentativa de acesso sem autorização válida.", {
+      ip: req.headers.get("x-forwarded-for") ?? "unknown",
+    });
+    return new Response(
+      JSON.stringify({ error: "Não autorizado." }),
+      { status: 401, headers }
+    );
+  }
+
+  // ========================================================================
+  // 3. Inicializa Supabase com Service Role (bypass de RLS)
   // ========================================================================
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   // ========================================================================
-  // 3. Resolve o system user para created_by (NOT NULL constraint)
+  // 4. Resolve o system user para created_by (NOT NULL constraint)
   // ========================================================================
   const { data: adminUser, error: adminError } = await supabase
     .from("users")
@@ -242,7 +313,9 @@ serve(async (req: Request) => {
     .single();
 
   if (adminError || !adminUser?.auth_id) {
-    console.error("[Import TI] Falha ao resolver admin/dono user:", adminError);
+    log("ERROR", "Falha ao resolver admin/dono user.", {
+      detail: adminError?.message,
+    });
     return new Response(
       JSON.stringify({ error: "Sem usuário admin/dono para atribuir created_by." }),
       { status: 500, headers }
@@ -251,7 +324,7 @@ serve(async (req: Request) => {
   const systemUserId: string = adminUser.auth_id;
 
   // ========================================================================
-  // 4. Itera páginas da API Tramitação Inteligente
+  // 5. Itera páginas da API Tramitação Inteligente
   // ========================================================================
   const baseUrl = "https://app.tramitacaointeligente.com.br/api/v1/clientes";
   let currentPage = 1;
@@ -260,7 +333,7 @@ serve(async (req: Request) => {
   let totalPages = 0;
   const errors: Array<{ page: number; cpf?: string; error: string }> = [];
 
-  console.log("[Import TI] Iniciando importação...");
+  log("INFO", "Iniciando importação de clientes TI.");
 
   try {
     while (currentPage <= MAX_PAGES) {
@@ -282,10 +355,10 @@ serve(async (req: Request) => {
       } catch (fetchErr) {
         const errMsg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
         if (errMsg.includes("aborted")) {
-          console.error(`[Import TI] Timeout na página ${currentPage} (>${FETCH_TIMEOUT_MS}ms)`);
+          log("ERROR", `Timeout na página ${currentPage}.`, { timeoutMs: FETCH_TIMEOUT_MS });
           errors.push({ page: currentPage, error: `Timeout após ${FETCH_TIMEOUT_MS}ms` });
         } else {
-          console.error(`[Import TI] Erro de rede na página ${currentPage}:`, errMsg);
+          log("ERROR", `Erro de rede na página ${currentPage}.`, { detail: errMsg });
           errors.push({ page: currentPage, error: errMsg });
         }
         break;
@@ -293,15 +366,14 @@ serve(async (req: Request) => {
 
       if (!response.ok) {
         const statusText = `HTTP ${response.status}: ${response.statusText}`;
-        console.error(`[Import TI] API retornou erro na página ${currentPage}: ${statusText}`);
+        log("ERROR", `API retornou erro na página ${currentPage}.`, { status: statusText });
         errors.push({ page: currentPage, error: statusText });
         break;
       }
 
       const body = await response.json();
 
-      // A API pode retornar { data: [...], meta: { last_page, current_page } }
-      // ou diretamente um array. Suportamos ambos os formatos.
+      // A API pode retornar { data: [...], meta: { last_page } } ou array direto
       const clients: TramitaClient[] = Array.isArray(body)
         ? body
         : Array.isArray(body?.data)
@@ -314,52 +386,63 @@ serve(async (req: Request) => {
 
       // Página vazia = fim da paginação
       if (clients.length === 0) {
-        console.log(`[Import TI] Página ${currentPage} vazia. Fim da paginação.`);
+        log("INFO", `Página ${currentPage} vazia. Fim da paginação.`);
         break;
       }
 
-      console.log(`[Import TI] Página ${currentPage}: ${clients.length} clientes recebidos.`);
+      log("INFO", `Página ${currentPage}: ${clients.length} clientes recebidos.`);
 
-      // ====================================================================
-      // 5. Filtra CPFs e mapeia para schema do Supabase
-      // ====================================================================
+      // ==================================================================
+      // 6. PENEIRA CPFs: somente 11 dígitos numéricos passam
+      // ==================================================================
       const cpfClients = clients.filter((c) => isCpf(c.cpf_cnpj || c.cpf));
-      totalSkipped += clients.length - cpfClients.length;
+      const skippedThisPage = clients.length - cpfClients.length;
+      totalSkipped += skippedThisPage;
+
+      if (skippedThisPage > 0) {
+        log("INFO", `Página ${currentPage}: ${skippedThisPage} CNPJs/inválidos descartados.`);
+      }
 
       if (cpfClients.length === 0) {
-        console.log(`[Import TI] Página ${currentPage}: 0 CPFs válidos. Pulando.`);
+        log("INFO", `Página ${currentPage}: 0 CPFs válidos. Pulando.`);
         currentPage++;
         continue;
       }
 
       const mappedClients = cpfClients.map((c) => mapToClient(c, systemUserId));
 
-      // ====================================================================
-      // 6. Upsert idempotente via cpf_cnpj (risk-zero de duplicidade)
-      // ====================================================================
-      const { data: upsertData, error: upsertError } = await supabase
-        .from("clients")
-        .upsert(mappedClients, {
-          onConflict: "cpf_cnpj",
-          ignoreDuplicates: false,
-        })
-        .select("id");
+      // ==================================================================
+      // 7. Upsert idempotente em batches via cpf_cnpj
+      // ==================================================================
+      for (let i = 0; i < mappedClients.length; i += UPSERT_BATCH_SIZE) {
+        const batch = mappedClients.slice(i, i + UPSERT_BATCH_SIZE);
 
-      if (upsertError) {
-        console.error(
-          `[Import TI] Erro no upsert da página ${currentPage}:`,
-          upsertError.message
-        );
-        errors.push({ page: currentPage, error: upsertError.message });
-      } else {
-        const count = upsertData?.length ?? 0;
-        totalImported += count;
-        console.log(`[Import TI] Página ${currentPage}: ${count} clientes upserted.`);
+        const { data: upsertData, error: upsertError } = await supabase
+          .from("clients")
+          .upsert(batch, {
+            onConflict: "cpf_cnpj",
+            ignoreDuplicates: false,
+          })
+          .select("id");
+
+        if (upsertError) {
+          log("ERROR", `Erro no upsert da página ${currentPage}, batch ${Math.floor(i / UPSERT_BATCH_SIZE) + 1}.`, {
+            detail: upsertError.message,
+          });
+          errors.push({ page: currentPage, error: upsertError.message });
+        } else {
+          const count = upsertData?.length ?? 0;
+          totalImported += count;
+        }
       }
 
-      // Se a API informou total de páginas e já chegamos ao fim, para
+      log("INFO", `Página ${currentPage}: processamento concluído.`, {
+        imported: totalImported,
+      });
+
+      // Se a API informou total de páginas e já chegamos ao fim
       if (totalPages > 0 && currentPage >= totalPages) {
-        console.log(`[Import TI] Última página (${totalPages}) processada.`);
+        log("INFO", `Última página (${totalPages}) processada.`);
         break;
       }
 
@@ -367,7 +450,7 @@ serve(async (req: Request) => {
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.error("[Import TI] Erro fatal durante importação:", errMsg);
+    log("ERROR", "Erro fatal durante importação.", { detail: errMsg });
     return new Response(
       JSON.stringify({
         error: "Erro interno durante importação.",
@@ -379,7 +462,7 @@ serve(async (req: Request) => {
   }
 
   // ========================================================================
-  // 7. Relatório Final
+  // 8. Relatório Final
   // ========================================================================
   const report = {
     success: errors.length === 0,
@@ -392,7 +475,7 @@ serve(async (req: Request) => {
     errors: errors.length > 0 ? errors : undefined,
   };
 
-  console.log("[Import TI] Importação finalizada:", JSON.stringify(report.summary));
+  log("INFO", "Importação finalizada.", report.summary as unknown as Record<string, unknown>);
 
   return new Response(JSON.stringify(report), {
     status: errors.length > 0 && totalImported === 0 ? 502 : 200,
