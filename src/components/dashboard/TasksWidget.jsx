@@ -60,7 +60,6 @@ export default function TasksWidget() {
   const [quickTaskPriority, setQuickTaskPriority] = useState("media");
   const [quickTaskDueDate, setQuickTaskDueDate] = useState("");
   const [quickAssignedUser, setQuickAssignedUser] = useState("");
-  const [longPressTask, setLongPressTask] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -219,7 +218,6 @@ export default function TasksWidget() {
     const userRole = user?.role?.toLowerCase() || "";
     if ((userRole === "secretaria" || userRole === "assistente") && columnId === "done") {
       toast.error("Apenas a advogada (admin) pode revisar e concluir as tarefas.");
-      setLongPressTask(null);
       return;
     }
 
@@ -232,7 +230,6 @@ export default function TasksWidget() {
         kanban_column: columnId,
       },
     });
-    setLongPressTask(null);
   }, [user, updateMutation]);
 
   const handleQuickCreate = useCallback(() => {
@@ -274,7 +271,6 @@ export default function TasksWidget() {
       id: task.id,
       data: { ...task, priority: newPriority },
     });
-    setLongPressTask(null);
   }, [user, updateMutation]);
 
   // Toggle handlers (memoizados)
@@ -318,7 +314,6 @@ export default function TasksWidget() {
       kanban_column: "todo",
     };
     await createMutation.mutateAsync(duplicateData);
-    setLongPressTask(null);
   }, [createMutation]);
 
   const handleEdit = useCallback((task) => {
@@ -651,7 +646,6 @@ export default function TasksWidget() {
                       onDuplicateTask={handleDuplicateTask}
                       onReassignTask={handleReassignTask}
                       onToggleSelection={toggleTaskSelection}
-                      onLongPress={setLongPressTask}
                     />
                   ))}
                 </div>

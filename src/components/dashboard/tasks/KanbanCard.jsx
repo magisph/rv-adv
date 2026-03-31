@@ -94,11 +94,11 @@ const KanbanCard = memo(({
   onDuplicateTask,
   onReassignTask,
   onToggleSelection,
-  onLongPress,
 }) => {
   const priorityConfig = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.media;
   const temporalStatus = getTemporalStatus(task.due_date);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const PriorityIcon = priorityConfig.icon;
 
   const canEditPriority = isAdmin;
@@ -286,15 +286,15 @@ const KanbanCard = memo(({
 
         {/* Menu de Ações */}
         <DropdownMenu
-          open={longPressTask?.id === task.id}
-          onOpenChange={(open) => !open && onLongPress && onLongPress(null)}
+          open={showActionsMenu}
+          onOpenChange={setShowActionsMenu}
         >
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
               className="h-6 w-6 md:opacity-0 md:group-hover:opacity-100"
-              onClick={(e) => { e.stopPropagation(); onLongPress && onLongPress(task); }}
+              onClick={(e) => { e.stopPropagation(); setShowActionsMenu(true); }}
               onPointerDown={(e) => e.stopPropagation()}
               aria-label="Menu de opções da tarefa"
             >
