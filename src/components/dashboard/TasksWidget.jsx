@@ -453,6 +453,8 @@ export default function TasksWidget() {
     const isAdmin = role === "admin" || role === "dono";
     const isTunnelVision = role === "secretaria" || role === "assistente";
 
+    // CORREÇÃO CRÍTICA: Adicionar valor inicial {} ao reduce para evitar
+    // "TypeError: Cannot create property 'in_progress' on string 'todo'"
     return Object.keys(KANBAN_COLUMNS).reduce((acc, columnId) => {
       const columnTasks = allTasks.filter((task) => {
         if (isTunnelVision && task.assigned_to !== user?.email) return false;
@@ -490,7 +492,7 @@ export default function TasksWidget() {
       });
 
       return acc;
-    });
+    }, {}); // ✅ VALOR INICIAL: objeto vazio para evitar TypeError
   }, [allTasks, user, priorityFilters, periodFilters, userFilters, searchQuery, sortBy, isCollaborativeMode, passesDateFilter]);
 
   const filteredTaskCount = Object.values(tasksByColumn).flat().length;
