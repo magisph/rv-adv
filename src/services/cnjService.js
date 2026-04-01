@@ -161,16 +161,20 @@ export function sanitizarNumeroOab(numeroOab) {
 // Consulta comunicações/intimações da advogada via DJEN (API do CNJ).
 //
 // Parâmetros:
-// - numeroOab: Número da OAB (ex: "36219" ou "CE36219" — sanitização automática)
+// - numeroOab: Número da OAB já sanitizado/transformado (ex: "0036219") — enviado no payload
+// - numeroOabRaw: Número original da OAB (ex: "36219") — usado apenas no campo de exibição
 // - ufOab: Unidade da federação da OAB (ex: "CE") — enviada separadamente
 // - nomeAdvogado: Nome completo do advogado (opcional)
 // - dataInicio: Data inicial de filtro (opcional, formato YYYY-MM-DD)
 // - dataFim: Data final de filtro (opcional, formato YYYY-MM-DD)
 //
-// Retorna: { advogado, oab, totalComunicacoes, comunicacoes, _raw }
+// Retorna: { advogado, oab, oabExibicao, totalComunicacoes, comunicacoes, _raw }
+//   oab         → número sanitizado usado internamente (ex: "0036219/CE")
+//   oabExibicao → número original para exibição ao usuário (ex: "36219/CE")
 // ============================================================================
 export async function djenBuscaPublica({
   numeroOab,
+  numeroOabRaw = null,
   ufOab,
   nomeAdvogado = null,
   dataDisponibilizacaoInicio = null,
@@ -217,7 +221,14 @@ export async function djenBuscaPublica({
 
   return {
     advogado: nomeAdvogado || "Advogado",
-    oab: `${numeroOabSanitizado}/${ufOab}`, // Usa o número sanitizado no retorno
+    // ── Fix 3: oab interno (sanitizado, 7 dígitos) vs oabExibicao (original) ──
+    // oab: mantido para compatibilidade interna com o payload da Edge Function
+    oab: `${numeroOabSanitizado}/${ufOab}`,
+    // oabExibicao: usa o número bruto (sem zero-padding) para mostrar ao usuário
+    // Evita exibir "0036219/CE" na UI — mostra "36219/CE" em vez disso.
+    oabExibicao: numeroOabRaw
+      ? `${String(numeroOabRaw).replace(/\D/g, "").replace(/^0+/, "") || numeroOabRaw}/${ufOab}`
+      : `${numeroOabSanitizado}/${ufOab}`,
     totalComunicacoes: comunicacoes.length,
     comunicacoes,
     _raw: json,

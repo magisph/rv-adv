@@ -1,7 +1,8 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { formatarNumeroCNJ } from "@/services/cnjService";
 import useDjenComunicacoes from "@/hooks/useDjenComunicacoes";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Card,
   CardContent,
@@ -99,7 +100,9 @@ function LoadingSkeleton() {
 }
 
 // ─── Card de Comunicação — Layout de Gestão Processual ─────────────────────
-function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
+// P1: advogadoLogado e oabExibicao vêm do retorno do useDjenComunicacoes,
+// eliminando o hardcode e garantindo que exibição reflita o usuário logado.
+function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida, advogadoLogado, oabExibicao }) {
   const [isCalculadoraOpen, setIsCalculadoraOpen] = React.useState(false);
 
   // ── Extração blindada de campos ────────────────────────────────────────
@@ -296,9 +299,12 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
             <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
               Advogado(a)
             </p>
+            {/* P1: consome oabExibicao e advogadoLogado do hook — sem hardcode */}
             <p className="text-sm font-bold text-legal-blue mt-0.5">
-              ANA RAFAELA VASCONCELOS DAMASCENO{" "}
-              <span className="font-normal text-slate-600">(OAB 36.219/CE)</span>
+              {advogadoLogado || "Advogado(a)"}{" "}
+              {oabExibicao && (
+                <span className="font-normal text-slate-600">(OAB {oabExibicao})</span>
+              )}
             </p>
           </div>
         </div>
@@ -318,41 +324,57 @@ function ComunicacaoCard({ comunicacao, lidas, toggleLida, toggleExcluida }) {
 
 // ─── Painel Principal ──────────────────────────────────────────────────────
 export default function PainelDJEN() {
-  // Estado persistido de comunicações lidas
-  const [lidas, setLidas] = React.useState(() =>
-    JSON.parse(localStorage.getItem('djen_lidas') || '[]')
-  );
+  // ── P2: Isolamento de localStorage por user.id ──────────────────────────
+  // Evita colisão de estado entre advogados diferentes na mesma máquina.
+  // React Hook Rule: useAuth() antes de qualquer useState que dependa do user.
+  const { user } = useAuth();
 
-  const [excluidas, setExcluidas] = React.useState(() =>
-    JSON.parse(localStorage.getItem('djen_excluidas') || '[]')
-  );
+  // Chaves isoladas por ID — null enquanto user ainda não carregou
+  const lidasKey    = user?.id ? `djen_lidas_${user.id}`    : null;
+  const excluídasKey = user?.id ? `djen_excluidas_${user.id}` : null;
+
+  // Inicia vazio — useEffect sincroniza do localStorage quando user.id surgir
+  const [lidas, setLidas] = React.useState([]);
+  const [excluidas, setExcluidas] = React.useState([]);
+
+  // Carrega do localStorage quando o ID do usuário estiver disponível
+  useEffect(() => {
+    if (!lidasKey) return;
+    try {
+      setLidas(JSON.parse(localStorage.getItem(lidasKey) || '[]'));
+    } catch {
+      setLidas([]);
+    }
+  }, [lidasKey]);
+
+  useEffect(() => {
+    if (!excluídasKey) return;
+    try {
+      setExcluidas(JSON.parse(localStorage.getItem(excluídasKey) || '[]'));
+    } catch {
+      setExcluidas([]);
+    }
+  }, [excluídasKey]);
+  // ──────────────────────────────────────────────────────────────────────────
 
   const toggleLida = (id) => {
-    // TODO [DÍVIDA TÉCNICA — Cross-device]: Estado de leitura atualmente persiste
-    // apenas no LocalStorage do dispositivo atual. Para sincronização entre
-    // múltiplos dispositivos/sessões, migrar para a tabela de preferências do
-    // usuário no Supabase (ex.: user_preferences.djen_lidas JSONB ou tabela
-    // dedicada djen_reading_state com colunas user_id, card_id, lida, updated_at).
+    if (!lidasKey) return; // guard: não persiste sem user autenticado
     setLidas((prev) => {
       const next = prev.includes(id)
         ? prev.filter((i) => i !== id)
         : [...prev, id];
-      localStorage.setItem('djen_lidas', JSON.stringify(next));
+      localStorage.setItem(lidasKey, JSON.stringify(next));
       return next;
     });
   };
 
   const toggleExcluida = (id) => {
-    // TODO [DÍVIDA TÉCNICA — Cross-device]: Estado de exclusão/ocultação atualmente
-    // persiste apenas no LocalStorage do dispositivo atual. Para sincronização entre
-    // múltiplos dispositivos/sessões, migrar para a tabela de preferências do
-    // usuário no Supabase (ex.: user_preferences.djen_excluidas JSONB ou tabela
-    // dedicada djen_reading_state com colunas user_id, card_id, excluida, updated_at).
+    if (!excluídasKey) return; // guard: não persiste sem user autenticado
     setExcluidas((prev) => {
       const next = prev.includes(id)
         ? prev.filter((i) => i !== id)
         : [...prev, id];
-      localStorage.setItem('djen_excluidas', JSON.stringify(next));
+      localStorage.setItem(excluídasKey, JSON.stringify(next));
       return next;
     });
   };
@@ -508,12 +530,14 @@ export default function PainelDJEN() {
       ) : (
         <div className="space-y-4">
           {comunicacoesFiltradas.map((com, idx) => (
-            <ComunicacaoCard 
-              key={idx} 
-              comunicacao={com} 
-              lidas={lidas} 
-              toggleLida={toggleLida} 
+            <ComunicacaoCard
+              key={idx}
+              comunicacao={com}
+              lidas={lidas}
+              toggleLida={toggleLida}
               toggleExcluida={toggleExcluida}
+              advogadoLogado={djenData?.advogado}
+              oabExibicao={djenData?.oabExibicao}
             />
           ))}
         </div>
