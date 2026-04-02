@@ -45,7 +45,7 @@
   "plugin": [
     "opencode-scheduler"
   ],
-  "model": "opencode/big-pickle",
+  "model": "provider-auth-zai/glm-5",
   "compaction": {
     "auto": true
   }

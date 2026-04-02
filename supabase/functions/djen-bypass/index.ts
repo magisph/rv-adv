@@ -4,8 +4,8 @@
 // Elimina dependência do proxy reverso externo e resolve
 // Mixed Content (HTTP vs HTTPS) e Geo-Block (403).
 //
-// AUTH: JWT validado nativamente pelo Supabase Edge Runtime
-//       (deploy SEM --no-verify-jwt). Nenhuma revalidação manual.
+// AUTH: JWT validado internamente via authenticateRequest().
+//       Rejeita requisições sem Bearer token válido (401).
 //
 // DJEN: Endpoint PÚBLICO do WSO2 Gateway do CNJ.
 //       O WSO2 rejeita a requisição com 401 se QUALQUER header
@@ -16,7 +16,57 @@
 // ============================================
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { getCorsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
+// ============================================
+// CORS — restrito ao domínio de produção + localhost dev
+// ============================================
+const ALLOWED_ORIGINS = [
+  "https://rv-adv.app",
+  "https://www.rv-adv.app",
+  "https://rafaelavasconcelos.adv.br",
+  "https://www.rafaelavasconcelos.adv.br",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin)
+    ? origin
+    : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
+
+// ============================================
+// JWT Auth — valida token antes de processar
+// ============================================
+async function authenticateRequest(
+  req: Request
+): Promise<{ userId: string } | null> {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+
+  const token = authHeader.replace("Bearer ", "");
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  );
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  return { userId: user.id };
+}
 
 // ============================================
 // DJEN API — Comunicações públicas do PJe (sem autenticação)
@@ -30,11 +80,23 @@ const rateLimits = new Map<string, { count: number; expiresAt: number }>();
 // Main serve handler
 // ============================================
 serve(async (req: Request) => {
-  const corsHeaders = getCorsHeaders(req.headers.get('origin'));
+  const corsHeaders = getCorsHeaders(req);
 
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // 🔒 JWT Authentication Gate
+  const auth = await authenticateRequest(req);
+  if (!auth) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized" }),
+      {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 
   // 1. Rate Limiter Checks
@@ -70,9 +132,6 @@ serve(async (req: Request) => {
       }
     );
   }
-
-  // AUTH: JWT já validado pelo Supabase Edge Runtime na porta de entrada.
-  // Nenhuma revalidação manual necessária aqui.
 
   try {
     // Parse body — parâmetros vindos do frontend
@@ -120,9 +179,11 @@ serve(async (req: Request) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
-    // CRÍTICO: O WSO2 Gateway do CNJ é PÚBLICO e rejeita com 401
-    // QUALQUER header Authorization (APIKey ou Bearer JWT).
-    // O objeto headers deve conter SOMENTE o mínimo necessário.
+    // WS02 BLINDAGEM CRÍTICA:
+    // O WSO2 Gateway do CNJ é PÚBLICO e rejeita com 401 QUALQUER header
+    // Authorization (APIKey, Bearer, x-client-info, apikey).
+    // NENHUM header de autenticação pode ser enviado ao CNJ.
+    // Headers limpos: apenas Content-Type e Accept.
     let djenResponse: Response;
     try {
       djenResponse = await fetch(djenUrl, {
