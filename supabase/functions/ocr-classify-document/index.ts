@@ -12,6 +12,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 const ALLOWED_ORIGINS = [
   "https://rv-adv.app",
   "https://www.rv-adv.app",
+  "https://rafaelavasconcelos.adv.br",
+  "https://www.rafaelavasconcelos.adv.br",
   "http://localhost:5173",
   "http://localhost:3000",
 ];

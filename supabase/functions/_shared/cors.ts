@@ -1,6 +1,8 @@
 export const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'https://rafaelavasconcelos.adv.br',
+  'https://www.rafaelavasconcelos.adv.br',
   // Domain de producao, adicionar se houver var de ambiente (opcional via string split)
 ];
 
