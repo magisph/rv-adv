@@ -54,13 +54,17 @@ export function useDjenComunicacoes({
   // futura do _mapUser:
   //   override → raiz (contrato atual) → user_metadata (contrato nativo) → default
   const numeroOabRaw = numeroOabOverride
-    || user?.numero_oab
-    || user?.user_metadata?.numero_oab;
+    || user?.oab_number             // Prioridade 1: Settings.jsx (via spread)
+    || user?.user_metadata?.oab_number  // Prioridade 2: Metadados nativos
+    || user?.numero_oab             // Fallback 1: Chave antiga (spread)
+    || user?.user_metadata?.numero_oab; // Fallback 2: Chave antiga (nativa)
 
   const ufOab = (
     ufOabOverride
-    || user?.uf_oab
-    || user?.user_metadata?.uf_oab
+    || user?.oab_state              // Prioridade 1: Settings.jsx (via spread)
+    || user?.user_metadata?.oab_state   // Prioridade 2: Metadados nativos
+    || user?.uf_oab                // Fallback 1: Chave antiga (spread)
+    || user?.user_metadata?.uf_oab  // Fallback 2: Chave antiga (nativa)
     || "CE"
   ).toUpperCase();
 
