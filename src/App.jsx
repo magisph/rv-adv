@@ -8,13 +8,22 @@ import PageNotFound from "./lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import AuthPage from "./pages/AuthPage";
+import React, { Suspense } from "react";
 
-// PericiaPro module pages (prefixed /pericias/*)
-import PericiasDashboard from "@/modules/periciapro/pages/Dashboard";
-import PericiasCadastro from "@/modules/periciapro/pages/CadastroCliente";
-import PericiasCalendario from "@/modules/periciapro/pages/Calendario";
-import PericiasAlertas from "@/modules/periciapro/pages/Alertas";
-import PericiasDetalhes from "@/modules/periciapro/pages/DetalhesCliente";
+// PericiaPro module pages — carregadas sob demanda (code splitting)
+// Reduz o bundle inicial excluindo o módulo PericiaPro até a primeira navegação
+const PericiasDashboard = React.lazy(() => import("@/modules/periciapro/pages/Dashboard"));
+const PericiasCadastro  = React.lazy(() => import("@/modules/periciapro/pages/CadastroCliente"));
+const PericiasCalendario = React.lazy(() => import("@/modules/periciapro/pages/Calendario"));
+const PericiasAlertas   = React.lazy(() => import("@/modules/periciapro/pages/Alertas"));
+const PericiasDetalhes  = React.lazy(() => import("@/modules/periciapro/pages/DetalhesCliente"));
+
+/** Spinner exibido enquanto o chunk lazy está sendo carregado */
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[50vh]">
+    <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+  </div>
+);
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -91,13 +100,15 @@ const AuthenticatedApp = () => {
         />
       ))}
 
-      {/* PericiaPro Module Routes */}
+      {/* PericiaPro Module Routes — cada rota envolve o componente lazy em Suspense */}
       <Route
         path="/pericias/painel"
         element={
           <ProtectedRoute>
             <LayoutWrapper currentPageName="pericias-painel">
-              <PericiasDashboard />
+              <Suspense fallback={<PageLoader />}>
+                <PericiasDashboard />
+              </Suspense>
             </LayoutWrapper>
           </ProtectedRoute>
         }
@@ -107,7 +118,9 @@ const AuthenticatedApp = () => {
         element={
           <ProtectedRoute>
             <LayoutWrapper currentPageName="pericias-cadastro">
-              <PericiasCadastro />
+              <Suspense fallback={<PageLoader />}>
+                <PericiasCadastro />
+              </Suspense>
             </LayoutWrapper>
           </ProtectedRoute>
         }
@@ -117,7 +130,9 @@ const AuthenticatedApp = () => {
         element={
           <ProtectedRoute>
             <LayoutWrapper currentPageName="pericias-calendario">
-              <PericiasCalendario />
+              <Suspense fallback={<PageLoader />}>
+                <PericiasCalendario />
+              </Suspense>
             </LayoutWrapper>
           </ProtectedRoute>
         }
@@ -127,7 +142,9 @@ const AuthenticatedApp = () => {
         element={
           <ProtectedRoute>
             <LayoutWrapper currentPageName="pericias-alertas">
-              <PericiasAlertas />
+              <Suspense fallback={<PageLoader />}>
+                <PericiasAlertas />
+              </Suspense>
             </LayoutWrapper>
           </ProtectedRoute>
         }
@@ -137,7 +154,9 @@ const AuthenticatedApp = () => {
         element={
           <ProtectedRoute>
             <LayoutWrapper currentPageName="pericias-detalhes">
-              <PericiasDetalhes />
+              <Suspense fallback={<PageLoader />}>
+                <PericiasDetalhes />
+              </Suspense>
             </LayoutWrapper>
           </ProtectedRoute>
         }
