@@ -1,9 +1,12 @@
 /**
  * scraperService.js
  * Comunicação HTTP com o servidor local de scraping (porta 3001).
+ *
+ * SECURITY: O endpoint é configurado via variável de ambiente VITE_SCRAPER_URL.
+ * Em produção, deve apontar para um endereço HTTPS autenticado.
+ * Nunca commitar IPs ou URLs fixas neste arquivo.
  */
-
-const SCRAPER_BASE_URL = 'http://46.224.176.59:3001';
+const SCRAPER_BASE_URL = import.meta.env.VITE_SCRAPER_URL || 'http://localhost:3001';
 
 async function handleResponse(response) {
   const data = await response.json();

@@ -22,7 +22,11 @@ const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_K
 const supabase = createClient(supabaseUrl!, supabaseKey!);
 
 // ─── CNJ APIs Config (DataJud + DJEN) ───────────────────────────────
-const DATAJUD_API_KEY = 'APIKey cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
+// SECURITY: A chave DataJud é carregada do ambiente. Nunca commitar chaves reais.
+const DATAJUD_API_KEY = process.env.DATAJUD_API_KEY || '';
+if (!DATAJUD_API_KEY) {
+  console.warn('⚠️  DATAJUD_API_KEY não configurada. Defina-a em .env antes de usar as APIs CNJ.');
+}
 const DATAJUD_BASE = 'https://api-publica.datajud.cnj.jus.br';
 const DJEN_BASE = 'https://comunicaapi.pje.jus.br';
 
@@ -283,11 +287,22 @@ async function vigiarDJEN(): Promise<void> {
   console.log('\n[Vigia DJEN] Acordando...');
 
   try {
+    // SECURITY: Dados do advogado carregados do ambiente. Nunca commitar dados pessoais.
+    const numeroOab = process.env.DJEN_NUMERO_OAB || '';
+    const ufOab = process.env.DJEN_UF_OAB || '';
+    const nomeAdvogado = process.env.DJEN_NOME_ADVOGADO || '';
+    const dataInicio = process.env.DJEN_DATA_INICIO || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    if (!numeroOab || !ufOab) {
+      console.warn('[Vigia DJEN] DJEN_NUMERO_OAB ou DJEN_UF_OAB não configurados. Pulando ciclo.');
+      return;
+    }
+
     const params = new URLSearchParams({
-      numeroOab: '36219',
-      ufOab: 'CE',
-      nomeAdvogado: 'Ana Rafaela Vasconcelos Damasceno',
-      dataDisponibilizacaoInicio: '2026-03-16',
+      numeroOab,
+      ufOab,
+      ...(nomeAdvogado ? { nomeAdvogado } : {}),
+      dataDisponibilizacaoInicio: dataInicio,
     });
 
     const url = `${DJEN_BASE}/api/v1/comunicacao?${params.toString()}`;
