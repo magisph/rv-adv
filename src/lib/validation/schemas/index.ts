@@ -19,12 +19,72 @@ export {
 // ============================================
 
 /**
- * Schema para validação de CPF/CNPJ
+ * Validação matemática de CPF (dígitos verificadores).
+ * Rejeita CPFs com todos os dígitos iguais (ex: 111.111.111-11).
+ */
+function validarCPF(cpf: string): boolean {
+  cpf = cpf.replace(/[^\d]/g, "");
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
+  let resto = 11 - (soma % 11);
+  const digito1 = resto >= 10 ? 0 : resto;
+
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);
+  resto = 11 - (soma % 11);
+  const digito2 = resto >= 10 ? 0 : resto;
+
+  return parseInt(cpf.charAt(9)) === digito1 && parseInt(cpf.charAt(10)) === digito2;
+}
+
+/**
+ * Validação matemática de CNPJ (dígitos verificadores).
+ * Rejeita CNPJs com todos os dígitos iguais (ex: 11.111.111/1111-11).
+ */
+function validarCNPJ(cnpj: string): boolean {
+  cnpj = cnpj.replace(/[^\d]/g, "");
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+
+  let tamanho = cnpj.length - 2;
+  let numeros = cnpj.substring(0, tamanho);
+  const digitos = cnpj.substring(tamanho);
+  let soma = 0;
+  let pos = tamanho - 7;
+
+  for (let i = tamanho; i >= 1; i--) {
+    soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+  let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+  if (resultado !== parseInt(digitos.charAt(0))) return false;
+
+  tamanho += 1;
+  numeros = cnpj.substring(0, tamanho);
+  soma = 0;
+  pos = tamanho - 7;
+  for (let i = tamanho; i >= 1; i--) {
+    soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+  resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+  return resultado === parseInt(digitos.charAt(1));
+}
+
+/**
+ * Schema para validação de CPF/CNPJ com verificação matemática dos dígitos.
  */
 const cpfCnpjSchema = z.string()
   .min(11, "CPF/CNPJ deve ter no mínimo 11 caracteres")
   .max(18, "CPF/CNPJ deve ter no máximo 18 caracteres")
-  .regex(/^[\d.\-/]+$/, "CPF/CNPJ contém caracteres inválidos");
+  .regex(/^[\d.\-/]+$/, "CPF/CNPJ contém caracteres inválidos")
+  .refine((val) => {
+    const clean = val.replace(/[^\d]/g, "");
+    if (clean.length === 11) return validarCPF(clean);
+    if (clean.length === 14) return validarCNPJ(clean);
+    return false;
+  }, "CPF ou CNPJ inválido");
 
 /**
  * Schema para área de atuação jurídica
