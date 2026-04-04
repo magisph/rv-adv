@@ -130,15 +130,22 @@ export class BaseService {
   }
 
   /**
-   * Lista registros com ordenação opcional
-   * 
-   * @param {string} [orderBy='created_at'] - Campo para ordenação (prefixar com "-" para descendente)
-   * @param {number} [limit=100] - Limite de registros
-   * @param {Object} [filters] - Filtros adicionais { campo: valor }
+   * Lista registros com ordenação e paginação opcionais.
+   *
+   * @param {string}  [orderBy='created_at'] - Campo para ordenação (prefixar com "-" para descendente)
+   * @param {number}  [limit=100]            - Número máximo de registros por página
+   * @param {Object}  [filters=null]         - Filtros adicionais { campo: valor }
+   * @param {number}  [offset=0]             - Deslocamento para paginação (0 = primeira página)
    * @returns {Promise<Array>} Lista de registros
    * @throws {Error} Erro mapeado para PT-BR
+   *
+   * @example
+   * // Página 1 (registros 0-49)
+   * await service.list('-created_at', 50, null, 0);
+   * // Página 2 (registros 50-99)
+   * await service.list('-created_at', 50, null, 50);
    */
-  async list(orderBy = "created_at", limit = 100, filters = null) {
+  async list(orderBy = "created_at", limit = 100, filters = null, offset = 0) {
     let ascending = true;
     let column = orderBy;
     
@@ -151,8 +158,12 @@ export class BaseService {
     let query = supabase
       .from(this.table)
       .select("*")
-      .order(column, { ascending })
-      .limit(limit);
+      .order(column, { ascending });
+
+    // Aplicar paginação via range (mais eficiente que limit+offset separados no PostgREST)
+    if (limit > 0) {
+      query = query.range(offset, offset + limit - 1);
+    }
     
     // Apply additional filters if provided
     if (filters && typeof filters === 'object') {
@@ -299,15 +310,16 @@ export class BaseService {
   }
   
   /**
-   * Método genérico de filtro
-   * 
-   * @param {Object} filters - Objeto com filtros { campo: valor }
+   * Método genérico de filtro com suporte a paginação por offset.
+   *
+   * @param {Object} filters             - Objeto com filtros { campo: valor }
    * @param {string} [orderBy='created_at'] - Campo para ordenação
-   * @param {number} [limit=100] - Limite de registros
+   * @param {number} [limit=100]         - Número máximo de registros por página
+   * @param {number} [offset=0]          - Deslocamento para paginação
    * @returns {Promise<Array>} Lista de registros filtrados
    * @throws {Error} Erro mapeado para PT-BR
    */
-  async filter(filters, orderBy = "created_at", limit = 100) {
+  async filter(filters, orderBy = "created_at", limit = 100, offset = 0) {
     let query = supabase.from(this.table).select("*");
     
     // Apply filters
@@ -328,8 +340,9 @@ export class BaseService {
       query = query.order(column, { ascending });
     }
     
-    if (limit) {
-      query = query.limit(limit);
+    // Aplicar paginação via range
+    if (limit > 0) {
+      query = query.range(offset, offset + limit - 1);
     }
     
     const { data, error } = await query;
