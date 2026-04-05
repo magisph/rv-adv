@@ -117,7 +117,7 @@ export async function listarJurisprudencias(page = 0, limit = 20, orderBy = 'pub
 
   const { data, error, count } = await supabase
     .from('jurisprudences')
-    .select('id, process_number, publication_date, relator, tema, excerpt, embedding_status, pdf_path', {
+    .select('id, process_number, publication_date, trial_date, relator, tema, excerpt, embedding_status', {
       count: 'exact',
     })
     .order(orderBy, { ascending: false })
@@ -158,42 +158,59 @@ export async function dispararScrapingTNU(termo = 'aposentadoria por incapacidad
 
 // ─── Scraping em lote (múltiplas páginas) ─────────────────────────────────────
 /**
- * Coleta múltiplas páginas de acórdãos da TNU sequencialmente.
- * Usa a Edge Function scrape-tnu para cada página.
+ * Coleta acórdãos da TNU em lote usando o novo backend com loop interno.
+ * O backend faz múltiplas páginas de 10 em uma única chamada HTTP.
  *
  * @param {string} [termo='aposentadoria por incapacidade'] - Termo de busca
- * @param {number} [totalPaginas=5] - Número de páginas a coletar (máx 10)
- * @param {number} [tamanho=10] - Acórdãos por página
- * @param {function} [onProgress] - Callback de progresso (pagina, total, coletados)
+ * @param {number} [totalPaginas=5] - Número de lotes a coletar (cada lote = 100 acórdãos)
+ * @param {number} [_tamanhoIgnorado=10] - Ignorado (backend usa limite=100 internamente)
+ * @param {function} [onProgress] - Callback de progresso (loteAtual, totalLotes, coletadosAteAgora)
  * @returns {Promise<{totalColetados: number, paginas: number}>}
  */
 export async function dispararScrapingTNULote(
   termo = 'aposentadoria por incapacidade',
   totalPaginas = 5,
-  tamanho = 10,
+  _tamanhoIgnorado = 10,
   onProgress = null
 ) {
-  const maxPaginas = Math.min(Math.max(1, totalPaginas), 10);
+  // Cada lote coleta até 100 acórdãos (10 páginas TNU de 10 cada)
+  const LIMITE_POR_LOTE = 100;
+  const maxLotes = Math.min(Math.max(1, totalPaginas), 10);
   let totalColetados = 0;
-  let paginasProcessadas = 0;
+  let lotesProcessados = 0;
+  let paginaInicio = 0;
 
-  for (let pagina = 0; pagina < maxPaginas; pagina++) {
-    const resultado = await dispararScrapingTNU(termo, pagina, tamanho);
-    totalColetados += resultado.coletados ?? 0;
-    paginasProcessadas++;
+  for (let lote = 0; lote < maxLotes; lote++) {
+    const { data, error } = await supabase.functions.invoke('scrape-tnu', {
+      body: {
+        termo,
+        pagina_inicio: paginaInicio,
+        limite: LIMITE_POR_LOTE,
+      },
+      headers: { 'x-region': 'sa-east-1' },
+    });
+
+    if (error) throw new Error(`Erro no scraping (lote ${lote + 1}): ${error.message}`);
+    if (!data?.success) throw new Error(data?.error ?? 'Scraping falhou sem mensagem de erro.');
+
+    totalColetados += data.coletados ?? 0;
+    lotesProcessados++;
 
     if (onProgress) {
-      onProgress(pagina + 1, maxPaginas, totalColetados);
+      onProgress(lote + 1, maxLotes, totalColetados);
     }
 
-    // Se não há mais páginas disponíveis, parar
-    if (!resultado.proximo_disponivel) break;
+    // Para se não há mais resultados disponíveis
+    if (!data.proximo_disponivel) break;
 
-    // Pausa de 1s entre páginas para não sobrecarregar o servidor da TNU
-    if (pagina < maxPaginas - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Avança para a próxima página de início
+    paginaInicio = data.proxima_pagina ?? (paginaInicio + LIMITE_POR_LOTE / 10);
+
+    // Pausa entre lotes para não sobrecarregar o portal TNU
+    if (lote < maxLotes - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
     }
   }
 
-  return { totalColetados, paginas: paginasProcessadas };
+  return { totalColetados, paginas: lotesProcessados };
 }

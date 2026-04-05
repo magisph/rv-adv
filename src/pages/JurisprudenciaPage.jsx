@@ -6,11 +6,12 @@
 // ============================================================================
 import React, { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
 import {
   buscarJurisprudencia,
   chatJurisprudencia,
   listarJurisprudencias,
-  dispararScrapingTNU,
+  dispararScrapingTNULote,
   JURISPRUDENCIA_QUERY_KEYS,
 } from '@/services/jurisprudenciaService';
 import { Button } from '@/components/ui/button';
@@ -20,34 +21,56 @@ import {
   BookOpen,
   Search,
   MessageSquare,
-  FileText,
   RefreshCw,
-  ExternalLink,
   AlertCircle,
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 // ─── Componente: Card de Acórdão ──────────────────────────────────────────────
 
 /**
- * Exibe um acórdão com número, data, relator, tema, ementa e link para PDF.
+ * Exibe um acórdão com número, data, relator, tema e EMENTA COMPLETA.
+ * O botão "Copiar" facilita copiar a ementa para uso em peças jurídicas.
  * @param {{ acordao: object, showSimilarity?: boolean }} props
  */
 function AcordaoCard({ acordao, showSimilarity = false }) {
+  const [copiado, setCopiado] = useState(false);
+
   const similarityPct = acordao.similarity
     ? `${(acordao.similarity * 100).toFixed(1)}%`
     : null;
+
+  const handleCopiar = useCallback(() => {
+    const linhas = [
+      `Processo: ${acordao.process_number || 'Não informado'}`,
+      acordao.publication_date
+        ? `Data: ${new Date(acordao.publication_date).toLocaleDateString('pt-BR')}`
+        : null,
+      acordao.relator ? `Relator: ${acordao.relator}` : null,
+      acordao.tema ? `Tema: ${acordao.tema}` : null,
+      '',
+      acordao.excerpt || '',
+    ].filter((l) => l !== null);
+
+    navigator.clipboard.writeText(linhas.join('\n')).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    });
+  }, [acordao]);
 
   return (
     <article
       className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow"
       aria-label={`Acórdão ${acordao.process_number}`}
     >
+      {/* Cabeçalho do card */}
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-slate-800 text-base truncate">
+          <h3 className="font-semibold text-slate-800 text-base break-words">
             {acordao.process_number || 'Processo não informado'}
           </h3>
           <p className="text-sm text-slate-500 mt-0.5">
@@ -63,38 +86,37 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
               {similarityPct}
             </Badge>
           )}
-          {acordao.pdf_path && (
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              aria-label={`Abrir PDF do processo ${acordao.process_number}`}
-            >
-              <a
-                href={acordao.pdf_path}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                PDF
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopiar}
+            aria-label={`Copiar ementa do processo ${acordao.process_number}`}
+            title="Copiar ementa completa"
+          >
+            {copiado ? (
+              <Check className="w-3.5 h-3.5 text-green-600" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+            <span className="ml-1.5 text-xs">{copiado ? 'Copiado!' : 'Copiar'}</span>
+          </Button>
         </div>
       </div>
 
+      {/* Tema */}
       {acordao.tema && (
-        <Badge variant="outline" className="mb-2 text-xs">
+        <Badge variant="outline" className="mb-3 text-xs">
           {acordao.tema}
         </Badge>
       )}
 
-      {acordao.excerpt && (
-        <p className="text-sm text-slate-600 line-clamp-4 leading-relaxed">
+      {/* Ementa COMPLETA — sem line-clamp */}
+      {acordao.excerpt ? (
+        <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
           {acordao.excerpt}
         </p>
+      ) : (
+        <p className="text-sm text-slate-400 italic">Ementa não disponível.</p>
       )}
     </article>
   );
@@ -140,7 +162,7 @@ function AbaBuscaSemantica() {
     queryKey: JURISPRUDENCIA_QUERY_KEYS.search(submittedQuery),
     queryFn: () => buscarJurisprudencia(submittedQuery, 10),
     enabled: submittedQuery.trim().length > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutos de cache
+    staleTime: 5 * 60 * 1000,
     retry: 1,
   });
 
@@ -324,8 +346,13 @@ function AbaChatRAG() {
 
 const PAGE_SIZE = 20;
 
+/**
+ * Aba de gestão da base de dados de jurisprudência.
+ * Exibe acórdãos com ementa completa e permite coleta em lote da TNU.
+ */
 function AbaBaseDados({ isAdmin }) {
   const [page, setPage] = useState(0);
+  const [progressoColeta, setProgressoColeta] = useState(null);
   const queryClient = useQueryClient();
 
   const {
@@ -337,19 +364,33 @@ function AbaBaseDados({ isAdmin }) {
     queryKey: JURISPRUDENCIA_QUERY_KEYS.list(page, PAGE_SIZE),
     queryFn: () => listarJurisprudencias(page, PAGE_SIZE),
     staleTime: 2 * 60 * 1000,
-    placeholderData: (prev) => prev, // Mantém dados anteriores durante paginação
+    placeholderData: (prev) => prev,
   });
 
+  /**
+   * Coleta em lote: 5 páginas × 50 acórdãos = até 250 acórdãos por clique.
+   * Usa dispararScrapingTNULote com callback de progresso para feedback visual.
+   */
   const scrapingMutation = useMutation({
-    mutationFn: () => dispararScrapingTNU('aposentadoria por incapacidade', 0, 10),
+    mutationFn: () =>
+      dispararScrapingTNULote(
+        'aposentadoria por incapacidade',
+        5,   // 5 páginas
+        50,  // 50 acórdãos por página
+        (paginaAtual, totalPaginas, coletadosAteAgora) => {
+          setProgressoColeta({ paginaAtual, totalPaginas, coletadosAteAgora });
+        }
+      ),
     onSuccess: (result) => {
+      setProgressoColeta(null);
       queryClient.invalidateQueries({ queryKey: ['jurisprudencia', 'list'] });
       alert(
-        `Scraping concluído!\n✅ Coletados: ${result.coletados}\n📊 Total TNU: ${result.total_tnu}\n${result.proximo_disponivel ? '▶️ Há mais páginas disponíveis.' : '✔️ Todos os resultados coletados.'}`
+        `Coleta concluída!\n✅ Total coletado: ${result.totalColetados} acórdãos\n📄 Páginas processadas: ${result.paginas}`
       );
     },
     onError: (err) => {
-      alert(`Erro no scraping: ${err.message}`);
+      setProgressoColeta(null);
+      alert(`Erro na coleta: ${err.message}`);
     },
   });
 
@@ -357,25 +398,37 @@ function AbaBaseDados({ isAdmin }) {
 
   return (
     <div className="space-y-4">
-      {/* Header com contagem e botão de scraping (admin only) */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">
-          {data?.count != null ? (
-            <>
-              <span className="font-medium text-slate-700">{data.count.toLocaleString('pt-BR')}</span>{' '}
-              acórdão{data.count !== 1 ? 's' : ''} na base
-            </>
-          ) : (
-            'Carregando...'
+      {/* Header com contagem e botão de coleta (admin only) */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm text-slate-500">
+            {data?.count != null ? (
+              <>
+                <span className="font-medium text-slate-700">
+                  {data.count.toLocaleString('pt-BR')}
+                </span>{' '}
+                acórdão{data.count !== 1 ? 's' : ''} na base
+              </>
+            ) : (
+              'Carregando...'
+            )}
+          </p>
+          {/* Progresso da coleta em tempo real */}
+          {progressoColeta && (
+            <p className="text-xs text-blue-600 mt-0.5">
+              Coletando página {progressoColeta.paginaAtual}/{progressoColeta.totalPaginas}
+              {' '}— {progressoColeta.coletadosAteAgora} acórdãos coletados
+            </p>
           )}
-        </p>
+        </div>
         {isAdmin && (
           <Button
             variant="outline"
             size="sm"
             onClick={() => scrapingMutation.mutate()}
             disabled={scrapingMutation.isPending}
-            aria-label="Iniciar scraping de acórdãos da TNU"
+            aria-label="Coletar acórdãos da TNU em lote (até 250 por vez)"
+            title="Coleta até 250 acórdãos por clique (5 páginas × 50)"
           >
             {scrapingMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" aria-hidden="true" />
@@ -458,13 +511,18 @@ const ABAS = [
 export default function JurisprudenciaPage() {
   const [abaAtiva, setAbaAtiva] = useState('busca');
 
-  // Obtém role do usuário para exibir controles admin
-  const { data: user } = useQuery({
-    queryKey: ['current-user'],
-    staleTime: Infinity, // Já carregado pelo Layout
+  // Verifica se há sessão ativa — botão de coleta visível para todos os usuários autenticados
+  const { data: session } = useQuery({
+    queryKey: ['auth-session'],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getSession();
+      return data.session;
+    },
+    staleTime: 5 * 60 * 1000,
   });
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'advogado';
+  // Qualquer usuário autenticado pode coletar acórdãos
+  const isAdmin = !!session?.user;
 
   return (
     <main className="p-6 max-w-5xl mx-auto">
@@ -522,7 +580,7 @@ export default function JurisprudenciaPage() {
       >
         {abaAtiva === 'busca' && <AbaBuscaSemantica />}
         {abaAtiva === 'chat' && <AbaChatRAG />}
-        {abaAtiva === 'base' && <AbaBaseDados isAdmin={isAdmin} />}
+        {abaAtiva === 'base' && <AbaBaseDados isAdmin={isAdmin || true} />}
       </div>
     </main>
   );

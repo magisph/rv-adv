@@ -2,8 +2,9 @@
 // Supabase Edge Function: scrape-tnu
 // Extrai acórdãos diretamente do portal de jurisprudência da TNU
 // (https://eproctnu-jur.cjf.jus.br/eproc/) usando fetch puro.
-// Sem necessidade de browser headless ou servidor local.
-// Deploy: npx supabase functions deploy scrape-tnu
+// O TNU retorna sempre 10 registros por página — este scraper faz loop
+// interno de múltiplas páginas por chamada para coletar em lote.
+// Deploy: supabase functions deploy scrape-tnu --no-verify-jwt --use-api
 // ============================================================================
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -23,7 +24,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
+      "authorization, x-client-info, apikey, content-type, x-region",
   };
 }
 
@@ -35,6 +36,9 @@ const TNU_SEARCH_PAGE =
 const TNU_RESULTS_URL =
   TNU_BASE +
   "externo_controlador.php?acao=jurisprudencia@jurisprudencia/listar_resultados";
+
+// O TNU sempre retorna 10 registros por página, independente do parâmetro
+const TNU_PAGE_SIZE = 10;
 
 const SCRAPER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36";
@@ -53,6 +57,23 @@ function extractProcesso(cardHtml: string): string {
     /resLabel[^>]*>\s*PROCESSO\s*<\/div>[\s\S]*?(\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4})/i;
   const m = cardHtml.match(re);
   return m ? m[1].trim() : "";
+}
+
+/**
+ * Decodifica string URL-encoded em ISO-8859-1 (padrão do portal TNU).
+ * O portal TNU usa charset=iso-8859-1 — o decodeURIComponent padrão (UTF-8) corrompe acentos.
+ */
+function decodeIso8859Cite(encoded: string): string {
+  const raw = encoded
+    .replace(/%([0-9A-Fa-f]{2})/g, (_: string, hex: string) => {
+      return String.fromCharCode(parseInt(hex, 16));
+    })
+    .replace(/\+/g, " ");
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) {
+    bytes[i] = raw.charCodeAt(i) & 0xff;
+  }
+  return new TextDecoder("iso-8859-1").decode(bytes);
 }
 
 /** Extrai o link para inteiro teor */
@@ -90,13 +111,6 @@ function parseResultCards(html: string, tema: string): AcordaoRow[] {
     const numeroProcesso = extractProcesso(cardHtml);
     if (!numeroProcesso) continue;
 
-    const tipoMatch = cardHtml.match(/(PUIL|PEDILEF|PEDIDO DE UNIFORMIZA[^<]*)/i);
-    const tipoDocumento = tipoMatch ? tipoMatch[1].trim() : "PUIL";
-
-    const ufMatch = cardHtml.match(
-      /resLabel[^>]*>\s*UF\s*<\/div>\s*<div[^>]*resValue[^>]*>\s*([A-Z]{2})\s*<\/div>/i
-    );
-
     const djMatch = cardHtml.match(
       /DATA DO JULGAMENTO[\s\S]*?resValue[^>]*>\s*(\d{2}\/\d{2}\/\d{4})/i
     );
@@ -112,15 +126,11 @@ function parseResultCards(html: string, tema: string): AcordaoRow[] {
       /DECIS[ÃA]O\s*<\/div>\s*<div[^>]*resValue[^>]*>([\s\S]*?)<\/div>/i
     );
 
-    // Ementa via data-citacao (mais confiável)
+    // Ementa via data-citacao — portal TNU usa ISO-8859-1, não UTF-8
     const citeMatch = cardHtml.match(/data-citacao="([^"]+)"/);
     let ementa = "";
     if (citeMatch) {
-      try {
-        ementa = decodeURIComponent(citeMatch[1].replace(/\+/g, "%20"));
-      } catch {
-        ementa = citeMatch[1];
-      }
+      ementa = decodeIso8859Cite(citeMatch[1]);
     }
 
     const decisaoText = decisaoMatch
@@ -143,12 +153,11 @@ function parseResultCards(html: string, tema: string): AcordaoRow[] {
   return results;
 }
 
-/** Obtém sessão PHP e executa a busca */
-async function fetchTnuResults(
-  termoBusca: string,
-  pagina: number,
-  tamanhoPagina: number
-): Promise<{ html: string; totalResultados: number }> {
+/**
+ * Obtém sessão PHP do portal TNU.
+ * A sessão é necessária para autenticar as requisições de busca.
+ */
+async function getTnuSession(): Promise<string> {
   const sessionResp = await fetch(TNU_SEARCH_PAGE, {
     headers: {
       "User-Agent": SCRAPER_UA,
@@ -165,12 +174,25 @@ async function fetchTnuResults(
     throw new Error("Não foi possível obter sessão PHP do portal TNU");
   }
 
+  return phpSessId;
+}
+
+/**
+ * Busca uma página de resultados do TNU.
+ * O TNU sempre retorna 10 registros por página (hdnInfraTamanho é ignorado).
+ * Usa hdnInfraInicioRegistro para paginação offset.
+ */
+async function fetchTnuPage(
+  termoBusca: string,
+  offset: number,
+  phpSessId: string
+): Promise<{ html: string; totalResultados: number }> {
   const formData = new URLSearchParams({
     txtPesquisa: termoBusca,
     rdoCampo: "I",
     hdnInfraPrefixoCookie: "TRF4_Eproc_",
-    hdnInfraTamanho: String(tamanhoPagina),
-    hdnInfraInicioRegistro: String(pagina * tamanhoPagina),
+    hdnInfraTamanho: String(TNU_PAGE_SIZE),
+    hdnInfraInicioRegistro: String(offset),
   });
 
   const searchResp = await fetch(TNU_RESULTS_URL, {
@@ -190,7 +212,9 @@ async function fetchTnuResults(
     throw new Error(`TNU retornou HTTP ${searchResp.status}`);
   }
 
-  const html = await searchResp.text();
+  // Portal TNU usa ISO-8859-1 — decodificar corretamente via arrayBuffer
+  const buffer = await searchResp.arrayBuffer();
+  const html = new TextDecoder("iso-8859-1").decode(buffer);
   const totalMatch = html.match(/Documento \d+ de (\d+)/);
   const totalResultados = totalMatch ? parseInt(totalMatch[1], 10) : 0;
 
@@ -222,7 +246,14 @@ serve(async (req: Request) => {
     });
   }
 
-  let body: { termo?: string; pagina?: number; tamanho?: number } = {};
+  let body: {
+    termo?: string;
+    pagina_inicio?: number;
+    limite?: number;
+    // Parâmetros legados (compatibilidade)
+    pagina?: number;
+    tamanho?: number;
+  } = {};
   try {
     body = await req.json();
   } catch {
@@ -233,8 +264,11 @@ serve(async (req: Request) => {
   }
 
   const termo = (body.termo ?? "aposentadoria por incapacidade").slice(0, 200);
-  const pagina = Math.max(0, Math.min(body.pagina ?? 0, 99));
-  const tamanho = Math.max(5, Math.min(body.tamanho ?? 10, 20));
+
+  // Suporte a parâmetros legados (pagina/tamanho) e novos (pagina_inicio/limite)
+  const paginaInicio = body.pagina_inicio ?? body.pagina ?? 0;
+  // Limite máximo de 100 registros por chamada (10 páginas de 10)
+  const limite = Math.max(10, Math.min(body.limite ?? body.tamanho ?? 50, 100));
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -243,14 +277,38 @@ serve(async (req: Request) => {
   );
 
   try {
-    const { html, totalResultados } = await fetchTnuResults(
-      termo,
-      pagina,
-      tamanho
-    );
-    const acordaos = parseResultCards(html, termo);
+    // Obtém sessão PHP uma única vez para todas as páginas
+    const phpSessId = await getTnuSession();
 
-    if (acordaos.length === 0) {
+    let totalResultados = 0;
+    const allAcordaos: AcordaoRow[] = [];
+    let currentOffset = paginaInicio * TNU_PAGE_SIZE;
+    const targetOffset = currentOffset + limite;
+
+    // Loop de paginação: coleta até `limite` registros em páginas de 10
+    while (currentOffset < targetOffset) {
+      const { html, totalResultados: total } = await fetchTnuPage(
+        termo,
+        currentOffset,
+        phpSessId
+      );
+
+      totalResultados = total;
+
+      const acordaos = parseResultCards(html, termo);
+      if (acordaos.length === 0) break;
+
+      allAcordaos.push(...acordaos);
+      currentOffset += TNU_PAGE_SIZE;
+
+      // Para se não há mais resultados no TNU
+      if (currentOffset >= total) break;
+
+      // Pausa mínima entre requisições para não sobrecarregar o portal
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    if (allAcordaos.length === 0) {
       return new Response(
         JSON.stringify({
           success: true,
@@ -258,7 +316,7 @@ serve(async (req: Request) => {
           total_tnu: totalResultados,
           coletados: 0,
           salvos: 0,
-          pagina,
+          pagina_inicio: paginaInicio,
           proximo_disponivel: false,
         }),
         {
@@ -270,7 +328,7 @@ serve(async (req: Request) => {
 
     const { data: upserted, error: upsertError } = await supabase
       .from("jurisprudences")
-      .upsert(acordaos, {
+      .upsert(allAcordaos, {
         onConflict: "process_number",
         ignoreDuplicates: false,
       })
@@ -290,16 +348,19 @@ serve(async (req: Request) => {
       );
     }
 
+    const proximaPagina = Math.floor(currentOffset / TNU_PAGE_SIZE);
+    const proximoDisponivel = currentOffset < totalResultados;
+
     return new Response(
       JSON.stringify({
         success: true,
-        message: `${acordaos.length} acórdão(s) coletado(s) com sucesso`,
+        message: `${allAcordaos.length} acórdão(s) coletado(s) com sucesso`,
         total_tnu: totalResultados,
-        coletados: acordaos.length,
-        salvos: upserted?.length ?? acordaos.length,
-        pagina,
-        tamanho,
-        proximo_disponivel: (pagina + 1) * tamanho < totalResultados,
+        coletados: allAcordaos.length,
+        salvos: upserted?.length ?? allAcordaos.length,
+        pagina_inicio: paginaInicio,
+        proxima_pagina: proximaPagina,
+        proximo_disponivel: proximoDisponivel,
       }),
       {
         status: 200,
