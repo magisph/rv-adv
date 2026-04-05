@@ -123,8 +123,7 @@ interface AcordaoRow {
   trial_date: string | null;
   publication_date: string | null;
   relator: string | null;
-  ementa: string;           // Ementa completa — campo principal
-  excerpt: string;          // Alias de ementa para compatibilidade
+  excerpt: string;          // Ementa completa (coluna DB: excerpt)
   full_text: string | null; // Texto da decisão (campo DECISÃO do card)
   pdf_path: string | null;
   tema: string;
@@ -190,8 +189,7 @@ function parseResultCards(html: string): AcordaoRow[] {
       trial_date: parseBrDate(djMatch ? djMatch[1] : null),
       publication_date: parseBrDate(dpMatch ? dpMatch[1] : null),
       relator: relatorMatch ? relatorMatch[1].trim() : null,
-      ementa,
-      excerpt: ementa,   // Ementa completa — sem truncamento
+      excerpt: ementa,   // Ementa completa — sem truncamento (coluna DB: excerpt)
       full_text: decisaoText,
       pdf_path: extractInteiroTeorUrl(cardHtml),
       tema,
