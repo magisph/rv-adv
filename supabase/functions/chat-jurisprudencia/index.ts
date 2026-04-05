@@ -17,9 +17,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 
 const GEMINI_EMBEDDING_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent";
 const GEMINI_CHAT_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 // Limites de segurança
 const MAX_QUERY_LENGTH = 2_000;
@@ -90,7 +90,7 @@ async function gerarEmbedding(query: string): Promise<number[]> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "models/embedding-001",
+        model: "models/gemini-embedding-001",
         content: { parts: [{ text: query }] },
         taskType: "RETRIEVAL_QUERY", // Query mode para busca semântica
       }),
