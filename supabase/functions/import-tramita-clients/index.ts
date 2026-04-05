@@ -264,7 +264,7 @@ Deno.serve(async (req: Request) => {
   const tramitaApiKey = Deno.env.get("TRAMITA_API_KEY");
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const supabaseAnonKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const authorizedKey = Deno.env.get("AUTHORIZED_API_KEY");
 
   if (!tramitaApiKey) {
