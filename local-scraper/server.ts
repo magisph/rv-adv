@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import { iniciarExtracaoPje } from './crawlers/pje-crawler.js';
+import { iniciarScrapingTNU } from './crawlers/tnu-crawler.js';
 
 // ─── Config ────────────────────────────────────────────────────────
 const envPath = path.resolve(import.meta.dirname, '../.env');
@@ -405,6 +406,26 @@ async function vigiarDJEN(): Promise<void> {
 
 
 
+// ─── Jurisprudência TNU ─────────────────────────────────────────────
+// POST /api/jurisprudencia/scrape-tnu
+// Inicia o scraping de acórdãos da TNU e persiste no Supabase.
+// Parâmetro opcional: maxAcordaos (default: 50)
+app.post('/api/jurisprudencia/scrape-tnu', async (req: Request, res: Response) => {
+  if (!supabase) {
+    res.status(503).json({ error: 'Supabase client não inicializado. Verifique VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.' });
+    return;
+  }
+  const maxAcordaos = typeof req.body?.maxAcordaos === 'number' ? req.body.maxAcordaos : 50;
+  try {
+    console.log(`[TNU] Iniciando scraping (max: ${maxAcordaos} acórdãos)...`);
+    const resultado = await iniciarScrapingTNU(supabase, maxAcordaos);
+    res.json(resultado);
+  } catch (error: any) {
+    console.error('[TNU] Erro fatal no scraping:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ─── Ignição ────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀 Scraper Server rodando em http://localhost:${PORT}`);
@@ -414,7 +435,8 @@ app.listen(PORT, () => {
   console.log(`   ├─ Extração:        POST /advogado/processos`);
   console.log(`   ├─ Proxy DataJud:   POST /api/cnj/datajud`);
   console.log(`   ├─ Proxy DJEN:      GET  /api/cnj/djen`);
-  console.log(`   └─ Vigia DJEN:      ⏱️  a cada ${VIGIA_INTERVAL_MS / 60000} min (insert direto no Supabase)\n`);
+  console.log(`   ├─ Vigia DJEN:      ⏱️  a cada ${VIGIA_INTERVAL_MS / 60000} min (insert direto no Supabase)`);
+  console.log(`   └─ Scraping TNU:    POST /api/jurisprudencia/scrape-tnu\n`);
 
   // Executa imediatamente na ignição + agenda repetição
   vigiarDJEN();
