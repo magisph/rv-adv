@@ -9,6 +9,7 @@ import NotificationSettings from "./pages/NotificationSettings";
 import ProcessDetail from "./pages/ProcessDetail";
 import Processes from "./pages/Processes";
 import IntimacoesDJEN from "./pages/IntimacoesDJEN";
+import JurisprudenciaPage from "./pages/JurisprudenciaPage";
 import RadarCNJ from "./pages/RadarCNJ";
 import Settings from "./pages/Settings";
 import Tasks from "./pages/Tasks";
@@ -27,6 +28,7 @@ export const PAGES = {
   ProcessDetail: ProcessDetail,
   Processes: Processes,
   IntimacoesDJEN: IntimacoesDJEN,
+  Jurisprudencia: JurisprudenciaPage,
   RadarCNJ: RadarCNJ,
   Settings: Settings,
   Tasks: Tasks,
