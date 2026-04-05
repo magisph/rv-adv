@@ -308,7 +308,16 @@ serve(async (req: Request) => {
       await new Promise((r) => setTimeout(r, 300));
     }
 
-    if (allAcordaos.length === 0) {
+    // Deduplica por process_number — o TNU pode retornar o mesmo processo em páginas diferentes
+    // O PostgreSQL não permite upsert com a mesma chave conflitante duas vezes no mesmo batch
+    const seen = new Set<string>();
+    const uniqueAcordaos = allAcordaos.filter((a) => {
+      if (!a.process_number || seen.has(a.process_number)) return false;
+      seen.add(a.process_number);
+      return true;
+    });
+
+    if (uniqueAcordaos.length === 0) {
       return new Response(
         JSON.stringify({
           success: true,
@@ -328,7 +337,7 @@ serve(async (req: Request) => {
 
     const { data: upserted, error: upsertError } = await supabase
       .from("jurisprudences")
-      .upsert(allAcordaos, {
+      .upsert(uniqueAcordaos, {
         onConflict: "process_number",
         ignoreDuplicates: false,
       })
@@ -354,10 +363,10 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `${allAcordaos.length} acórdão(s) coletado(s) com sucesso`,
-        total_tnu: totalResultados,
-        coletados: allAcordaos.length,
-        salvos: upserted?.length ?? allAcordaos.length,
+          message: `${uniqueAcordaos.length} acórdão(s) coletado(s) com sucesso`,
+          total_tnu: totalResultados,
+          coletados: uniqueAcordaos.length,
+          salvos: upserted?.length ?? uniqueAcordaos.length,
         pagina_inicio: paginaInicio,
         proxima_pagina: proximaPagina,
         proximo_disponivel: proximoDisponivel,
