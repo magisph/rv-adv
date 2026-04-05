@@ -75,8 +75,13 @@ export async function datajudBuscaNumero(numero) {
   const sigla = resolverTribunal(numero);
   const numeroFormatado = formatarNumeroCNJ(numero);
 
+  // Força execução em sa-east-1 (São Paulo) — o DataJud/CNJ pode aplicar
+  // restrições geográficas similares ao DJEN. Garante IP brasileiro.
   const { data, error } = await supabase.functions.invoke('datajud-bypass', {
     body: { sigla, numeroFormatado },
+    headers: {
+      'x-region': 'sa-east-1',  // Força execução em São Paulo (IP brasileiro)
+    },
   });
 
   if (error) {
@@ -192,6 +197,11 @@ export async function djenBuscaPublica({
   const numeroOabSanitizado = sanitizarNumeroOab(numeroOab);
   // ──────────────────────────────────────────────────────────────────────────
 
+  // CRÍTICO: forçar execução na região sa-east-1 (São Paulo).
+  // O CloudFront do CNJ (DJEN) bloqueia IPs fora do Brasil (HTTP 403).
+  // O Supabase Edge Runtime roteia para o nó mais próximo do CLIENTE,
+  // que pode ser us-east-1 ou outro nó não-brasileiro.
+  // O header x-region garante execução em São Paulo (IP brasileiro).
   const { data, error } = await supabase.functions.invoke('djen-bypass', {
     body: {
       numeroOab: numeroOabSanitizado,  // 7 dígitos, ex: "0036219"
@@ -199,6 +209,9 @@ export async function djenBuscaPublica({
       nomeAdvogado,
       dataDisponibilizacaoInicio,
       dataDisponibilizacaoFim,
+    },
+    headers: {
+      'x-region': 'sa-east-1',  // Força execução em São Paulo (IP brasileiro)
     },
   });
 
