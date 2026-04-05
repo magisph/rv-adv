@@ -65,17 +65,13 @@ function extractInteiroTeorUrl(cardHtml: string): string | null {
 }
 
 interface AcordaoRow {
-  numero_processo: string;
-  tipo_documento: string;
-  uf: string | null;
-  data_julgamento: string | null;
-  data_publicacao: string | null;
+  process_number: string;
+  trial_date: string | null;
+  publication_date: string | null;
   relator: string | null;
-  decisao: string | null;
-  ementa: string;
-  inteiro_teor_url: string | null;
-  source_url: string;
-  tribunal: string;
+  excerpt: string;
+  full_text: string | null;
+  pdf_path: string | null;
   tema: string;
   embedding_status: string;
 }
@@ -127,20 +123,18 @@ function parseResultCards(html: string, tema: string): AcordaoRow[] {
       }
     }
 
+    const decisaoText = decisaoMatch
+      ? decisaoMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+      : null;
+
     results.push({
-      numero_processo: numeroProcesso,
-      tipo_documento: tipoDocumento,
-      uf: ufMatch ? ufMatch[1] : null,
-      data_julgamento: parseBrDate(djMatch ? djMatch[1] : null),
-      data_publicacao: parseBrDate(dpMatch ? dpMatch[1] : null),
+      process_number: numeroProcesso,
+      trial_date: parseBrDate(djMatch ? djMatch[1] : null),
+      publication_date: parseBrDate(dpMatch ? dpMatch[1] : null),
       relator: relatorMatch ? relatorMatch[1].trim() : null,
-      decisao: decisaoMatch
-        ? decisaoMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
-        : null,
-      ementa,
-      inteiro_teor_url: extractInteiroTeorUrl(cardHtml),
-      source_url: TNU_RESULTS_URL,
-      tribunal: "TNU",
+      excerpt: ementa || decisaoText || "",
+      full_text: decisaoText,
+      pdf_path: extractInteiroTeorUrl(cardHtml),
       tema,
       embedding_status: "pending",
     });
@@ -277,7 +271,7 @@ serve(async (req: Request) => {
     const { data: upserted, error: upsertError } = await supabase
       .from("jurisprudences")
       .upsert(acordaos, {
-        onConflict: "numero_processo",
+        onConflict: "process_number",
         ignoreDuplicates: false,
       })
       .select("id");
