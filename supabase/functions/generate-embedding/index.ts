@@ -1,6 +1,6 @@
 // ============================================================================
 // Supabase Edge Function: generate-embedding
-// Gera embeddings vetoriais via Gemini API (embedding-001, 768 dims).
+// Gera embeddings vetoriais via Gemini API (gemini-embedding-001, 3072 dims).
 // Skill: backend-security-coder (JWT auth, input validation, error sanitization)
 // Skill: api-security-best-practices (CORS restrito, rate limiting, timeout)
 // Deploy: npx supabase functions deploy generate-embedding
@@ -12,7 +12,7 @@ import { authenticateRequest } from "../_shared/auth.ts";
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const GEMINI_EMBEDDING_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent";
 
 // Limites de segurança — api-security-best-practices
 const MAX_TEXT_LENGTH = 25_000;  // ~6.000 tokens (limite do embedding-001)
@@ -132,7 +132,7 @@ serve(async (req: Request) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "models/embedding-001",
+          model: "models/gemini-embedding-001",
           content: { parts: [{ text: text.trim() }] },
           taskType: resolvedTaskType,
         }),
