@@ -38,14 +38,17 @@ ALTER TABLE public.jurisprudences
   ALTER COLUMN embedding TYPE vector(3072)
   USING NULL::vector(3072);
 
--- 4. Recreate the semantic search RPC with correct column names and 3072-dim signature
--- Uses exact sequential scan (no index) — acceptable for < 50k rows.
--- When the table exceeds 50k rows, consider truncating embeddings to 1536 dims
--- and using an IVFFlat index.
+-- 4. Recreate the semantic search RPC with:
+--    - Correct column names: excerpt, court_id, relator, tema, publication_date (not summary/court/rapporteur)
+--    - Parameter names matching the frontend: match_count, similarity_threshold
+--    - Both trial_date and publication_date in the result set
+--    - Exact sequential scan (no index) — acceptable for < 50k rows.
+--    When the table exceeds 50k rows, consider truncating embeddings to 1536 dims
+--    and using an IVFFlat index.
 CREATE FUNCTION public.buscar_jurisprudencia(
-  query_embedding   vector(3072),
-  similarity_thresh float DEFAULT 0.5,
-  max_results       int   DEFAULT 10
+  query_embedding      vector(3072),
+  match_count          int   DEFAULT 10,
+  similarity_threshold float DEFAULT 0.4
 )
 RETURNS TABLE (
   id               uuid,
@@ -54,6 +57,7 @@ RETURNS TABLE (
   relator          text,
   tema             text,
   trial_date       date,
+  publication_date date,
   excerpt          text,
   full_text        text,
   pdf_path         text,
@@ -71,6 +75,7 @@ AS $$
     j.relator,
     j.tema,
     j.trial_date,
+    j.publication_date,
     j.excerpt,
     j.full_text,
     j.pdf_path,
@@ -78,10 +83,10 @@ AS $$
   FROM public.jurisprudences j
   WHERE
     j.embedding IS NOT NULL
-    AND 1 - (j.embedding <=> query_embedding) >= similarity_thresh
+    AND 1 - (j.embedding <=> query_embedding) >= similarity_threshold
   ORDER BY j.embedding <=> query_embedding
-  LIMIT max_results;
+  LIMIT match_count;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.buscar_jurisprudencia(vector(3072), float, int)
+GRANT EXECUTE ON FUNCTION public.buscar_jurisprudencia(vector(3072), int, float)
   TO authenticated;
