@@ -130,31 +130,70 @@ export async function listarJurisprudencias(page = 0, limit = 20, orderBy = 'pub
   return { data: data ?? [], count: count ?? 0 };
 }
 
-// ─── Disparar scraping da TNU via local-scraper ───────────────────────────────
+// ─── Disparar scraping da TNU via Edge Function ──────────────────────────────
 /**
- * Dispara o scraping de acórdãos da TNU via local-scraper.
- * Requer que o local-scraper esteja rodando em VITE_SCRAPER_URL.
+ * Dispara o scraping de acórdãos da TNU via Edge Function scrape-tnu.
+ * Não requer servidor local — o scraping é feito diretamente pelo Supabase.
  *
- * @param {number} [maxAcordaos=50] - Limite de acórdãos a processar
- * @returns {Promise<{processados: number, ignorados: number, erros: string[]}>}
+ * @param {string} [termo='aposentadoria por incapacidade'] - Termo de busca
+ * @param {number} [pagina=0] - Página de resultados (0-indexed)
+ * @param {number} [tamanho=10] - Acórdãos por página (5-20)
+ * @returns {Promise<{success: boolean, coletados: number, total_tnu: number, proximo_disponivel: boolean}>}
  */
-export async function dispararScrapingTNU(maxAcordaos = 50) {
-  const scraperUrl = import.meta.env.VITE_SCRAPER_URL;
-  if (!scraperUrl) {
-    throw new Error('VITE_SCRAPER_URL não configurada. O scraper local não está disponível.');
-  }
-
-  const response = await fetch(`${scraperUrl}/api/jurisprudencia/scrape-tnu`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ maxAcordaos }),
-    signal: AbortSignal.timeout(300_000), // 5 minutos para scraping
+export async function dispararScrapingTNU(termo = 'aposentadoria por incapacidade', pagina = 0, tamanho = 10) {
+  const { data, error } = await supabase.functions.invoke('scrape-tnu', {
+    body: { termo, pagina, tamanho },
   });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(`Scraping falhou: ${err.error ?? response.statusText}`);
+  if (error) {
+    throw new Error(`Erro no scraping: ${error.message}`);
   }
 
-  return response.json();
+  if (!data?.success) {
+    throw new Error(data?.error ?? 'Scraping falhou sem mensagem de erro.');
+  }
+
+  return data;
+}
+
+// ─── Scraping em lote (múltiplas páginas) ─────────────────────────────────────
+/**
+ * Coleta múltiplas páginas de acórdãos da TNU sequencialmente.
+ * Usa a Edge Function scrape-tnu para cada página.
+ *
+ * @param {string} [termo='aposentadoria por incapacidade'] - Termo de busca
+ * @param {number} [totalPaginas=5] - Número de páginas a coletar (máx 10)
+ * @param {number} [tamanho=10] - Acórdãos por página
+ * @param {function} [onProgress] - Callback de progresso (pagina, total, coletados)
+ * @returns {Promise<{totalColetados: number, paginas: number}>}
+ */
+export async function dispararScrapingTNULote(
+  termo = 'aposentadoria por incapacidade',
+  totalPaginas = 5,
+  tamanho = 10,
+  onProgress = null
+) {
+  const maxPaginas = Math.min(Math.max(1, totalPaginas), 10);
+  let totalColetados = 0;
+  let paginasProcessadas = 0;
+
+  for (let pagina = 0; pagina < maxPaginas; pagina++) {
+    const resultado = await dispararScrapingTNU(termo, pagina, tamanho);
+    totalColetados += resultado.coletados ?? 0;
+    paginasProcessadas++;
+
+    if (onProgress) {
+      onProgress(pagina + 1, maxPaginas, totalColetados);
+    }
+
+    // Se não há mais páginas disponíveis, parar
+    if (!resultado.proximo_disponivel) break;
+
+    // Pausa de 1s entre páginas para não sobrecarregar o servidor da TNU
+    if (pagina < maxPaginas - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  return { totalColetados, paginas: paginasProcessadas };
 }

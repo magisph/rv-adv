@@ -341,11 +341,11 @@ function AbaBaseDados({ isAdmin }) {
   });
 
   const scrapingMutation = useMutation({
-    mutationFn: () => dispararScrapingTNU(50),
+    mutationFn: () => dispararScrapingTNU('aposentadoria por incapacidade', 0, 10),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['jurisprudencia', 'list'] });
       alert(
-        `Scraping concluído!\n✅ Inseridos: ${result.processados}\n⏭️ Ignorados: ${result.ignorados}\n❌ Erros: ${result.erros?.length ?? 0}`
+        `Scraping concluído!\n✅ Coletados: ${result.coletados}\n📊 Total TNU: ${result.total_tnu}\n${result.proximo_disponivel ? '▶️ Há mais páginas disponíveis.' : '✔️ Todos os resultados coletados.'}`
       );
     },
     onError: (err) => {
