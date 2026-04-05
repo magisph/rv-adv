@@ -1,0 +1,51 @@
+name: Deploy Supabase Edge Functions
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "supabase/functions/**"
+  workflow_dispatch:
+    inputs:
+      function_name:
+        description: "Nome da função a deployar (deixe vazio para todas)"
+        required: false
+        default: ""
+
+jobs:
+  deploy:
+    name: Deploy Edge Functions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy all changed Edge Functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: uxtgcarklizhwuotkwkd
+        run: |
+          if [ -n "${{ github.event.inputs.function_name }}" ]; then
+            echo "Deploying single function: ${{ github.event.inputs.function_name }}"
+            supabase functions deploy ${{ github.event.inputs.function_name }} \
+              --project-ref $PROJECT_REF
+          else
+            echo "Deploying all functions in supabase/functions/"
+            for dir in supabase/functions/*/; do
+              func=$(basename "$dir")
+              # Skip _shared directory
+              if [ "$func" = "_shared" ]; then
+                continue
+              fi
+              echo "→ Deploying $func..."
+              supabase functions deploy "$func" \
+                --project-ref $PROJECT_REF || echo "⚠️ Failed to deploy $func"
+            done
+          fi
