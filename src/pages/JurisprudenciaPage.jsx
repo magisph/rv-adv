@@ -3,6 +3,13 @@
 // Skill: senior-frontend (React Query, Suspense, error boundaries, a11y)
 // Skill: react-typescript (prop types, controlled state, event handlers)
 // Skill: coding-standards (named exports, JSDoc, consistent naming)
+//
+// DESIGN DECISIONS:
+// - Coleta de acórdãos é 100% automatizada via GitHub Actions (cron diário 03h BRT)
+// - Não há botão manual de coleta — o usuário não precisa interagir para manter a base
+// - Ementas são exibidas COMPLETAS (sem line-clamp) para facilitar cópia em peças
+// - Filtro: apenas acórdãos reais (sem decisões monocráticas, sem votos)
+// - Ordenação: data do julgamento (trial_date) decrescente
 // ============================================================================
 import React, { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,7 +18,6 @@ import {
   buscarJurisprudencia,
   chatJurisprudencia,
   listarJurisprudencias,
-  dispararScrapingTNULote,
   JURISPRUDENCIA_QUERY_KEYS,
 } from '@/services/jurisprudenciaService';
 import { Button } from '@/components/ui/button';
@@ -21,13 +27,14 @@ import {
   BookOpen,
   Search,
   MessageSquare,
-  RefreshCw,
   AlertCircle,
   Loader2,
   ChevronLeft,
   ChevronRight,
   Copy,
   Check,
+  Clock,
+  Database,
 } from 'lucide-react';
 
 // ─── Componente: Card de Acórdão ──────────────────────────────────────────────
@@ -44,13 +51,16 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
     ? `${(acordao.similarity * 100).toFixed(1)}%`
     : null;
 
+  // Usa trial_date com fallback para publication_date
+  const dataJulgamento = acordao.trial_date || acordao.publication_date;
+
   const handleCopiar = useCallback(() => {
     const linhas = [
       `Processo: ${acordao.process_number || 'Não informado'}`,
-      acordao.publication_date
-        ? `Data: ${new Date(acordao.publication_date).toLocaleDateString('pt-BR')}`
+      dataJulgamento
+        ? `Data do Julgamento: ${new Date(dataJulgamento).toLocaleDateString('pt-BR')}`
         : null,
-      acordao.relator ? `Relator: ${acordao.relator}` : null,
+      acordao.relator ? `Relator(a): ${acordao.relator}` : null,
       acordao.tema ? `Tema: ${acordao.tema}` : null,
       '',
       acordao.excerpt || '',
@@ -58,9 +68,9 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
 
     navigator.clipboard.writeText(linhas.join('\n')).then(() => {
       setCopiado(true);
-      setTimeout(() => setCopiado(false), 2000);
+      setTimeout(() => setCopiado(false), 2500);
     });
-  }, [acordao]);
+  }, [acordao, dataJulgamento]);
 
   return (
     <article
@@ -74,8 +84,8 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
             {acordao.process_number || 'Processo não informado'}
           </h3>
           <p className="text-sm text-slate-500 mt-0.5">
-            {acordao.publication_date
-              ? new Date(acordao.publication_date).toLocaleDateString('pt-BR')
+            {dataJulgamento
+              ? new Date(dataJulgamento).toLocaleDateString('pt-BR')
               : 'Data não informada'}
             {acordao.relator && ` · Rel. ${acordao.relator}`}
           </p>
@@ -83,7 +93,7 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
         <div className="flex items-center gap-2 shrink-0">
           {showSimilarity && similarityPct && (
             <Badge variant="secondary" className="text-xs">
-              {similarityPct}
+              {similarityPct} relevância
             </Badge>
           )}
           <Button
@@ -91,7 +101,7 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
             size="sm"
             onClick={handleCopiar}
             aria-label={`Copiar ementa do processo ${acordao.process_number}`}
-            title="Copiar ementa completa"
+            title="Copiar ementa completa para área de transferência"
           >
             {copiado ? (
               <Check className="w-3.5 h-3.5 text-green-600" />
@@ -110,7 +120,7 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
         </Badge>
       )}
 
-      {/* Ementa COMPLETA — sem line-clamp */}
+      {/* Ementa COMPLETA — sem line-clamp, exibição integral para facilitar cópia */}
       {acordao.excerpt ? (
         <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
           {acordao.excerpt}
@@ -347,13 +357,12 @@ function AbaChatRAG() {
 const PAGE_SIZE = 20;
 
 /**
- * Aba de gestão da base de dados de jurisprudência.
- * Exibe acórdãos com ementa completa e permite coleta em lote da TNU.
+ * Aba de visualização da base de dados de jurisprudência.
+ * A coleta é 100% automatizada via GitHub Actions (cron diário às 03h BRT).
+ * Exibe acórdãos com ementa COMPLETA e paginação.
  */
-function AbaBaseDados({ isAdmin }) {
+function AbaBaseDados() {
   const [page, setPage] = useState(0);
-  const [progressoColeta, setProgressoColeta] = useState(null);
-  const queryClient = useQueryClient();
 
   const {
     data,
@@ -362,82 +371,40 @@ function AbaBaseDados({ isAdmin }) {
     error,
   } = useQuery({
     queryKey: JURISPRUDENCIA_QUERY_KEYS.list(page, PAGE_SIZE),
-    queryFn: () => listarJurisprudencias(page, PAGE_SIZE),
+    queryFn: () => listarJurisprudencias(page, PAGE_SIZE, 'trial_date'),
     staleTime: 2 * 60 * 1000,
     placeholderData: (prev) => prev,
-  });
-
-  /**
-   * Coleta em lote: 5 páginas × 50 acórdãos = até 250 acórdãos por clique.
-   * Usa dispararScrapingTNULote com callback de progresso para feedback visual.
-   */
-  const scrapingMutation = useMutation({
-    mutationFn: () =>
-      dispararScrapingTNULote(
-        'aposentadoria por incapacidade',
-        5,   // 5 páginas
-        50,  // 50 acórdãos por página
-        (paginaAtual, totalPaginas, coletadosAteAgora) => {
-          setProgressoColeta({ paginaAtual, totalPaginas, coletadosAteAgora });
-        }
-      ),
-    onSuccess: (result) => {
-      setProgressoColeta(null);
-      queryClient.invalidateQueries({ queryKey: ['jurisprudencia', 'list'] });
-      alert(
-        `Coleta concluída!\n✅ Total coletado: ${result.totalColetados} acórdãos\n📄 Páginas processadas: ${result.paginas}`
-      );
-    },
-    onError: (err) => {
-      setProgressoColeta(null);
-      alert(`Erro na coleta: ${err.message}`);
-    },
   });
 
   const totalPages = data?.count ? Math.ceil(data.count / PAGE_SIZE) : 0;
 
   return (
     <div className="space-y-4">
-      {/* Header com contagem e botão de coleta (admin only) */}
-      <div className="flex items-center justify-between gap-4">
+      {/* Header: contagem e informação sobre coleta automática */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-sm text-slate-500">
-            {data?.count != null ? (
-              <>
-                <span className="font-medium text-slate-700">
-                  {data.count.toLocaleString('pt-BR')}
-                </span>{' '}
-                acórdão{data.count !== 1 ? 's' : ''} na base
-              </>
-            ) : (
-              'Carregando...'
-            )}
-          </p>
-          {/* Progresso da coleta em tempo real */}
-          {progressoColeta && (
-            <p className="text-xs text-blue-600 mt-0.5">
-              Coletando página {progressoColeta.paginaAtual}/{progressoColeta.totalPaginas}
-              {' '}— {progressoColeta.coletadosAteAgora} acórdãos coletados
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-slate-500" aria-hidden="true" />
+            <p className="text-sm text-slate-700">
+              {data?.count != null ? (
+                <>
+                  <span className="font-semibold text-slate-800">
+                    {data.count.toLocaleString('pt-BR')}
+                  </span>{' '}
+                  acórdão{data.count !== 1 ? 's' : ''} indexado{data.count !== 1 ? 's' : ''}
+                </>
+              ) : (
+                'Carregando...'
+              )}
             </p>
-          )}
+          </div>
+          <div className="flex items-center gap-1.5 mt-1">
+            <Clock className="w-3.5 h-3.5 text-green-600" aria-hidden="true" />
+            <p className="text-xs text-slate-500">
+              Coleta automática diária às 03h (horário de Brasília) · Apenas acórdãos com ementa
+            </p>
+          </div>
         </div>
-        {isAdmin && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => scrapingMutation.mutate()}
-            disabled={scrapingMutation.isPending}
-            aria-label="Coletar acórdãos da TNU em lote (até 250 por vez)"
-            title="Coleta até 250 acórdãos por clique (5 páginas × 50)"
-          >
-            {scrapingMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" aria-hidden="true" />
-            ) : (
-              <RefreshCw className="w-4 h-4 mr-2" aria-hidden="true" />
-            )}
-            {scrapingMutation.isPending ? 'Coletando...' : 'Coletar TNU'}
-          </Button>
-        )}
       </div>
 
       {isError && (
@@ -451,7 +418,7 @@ function AbaBaseDados({ isAdmin }) {
       )}
 
       {data?.data && data.data.length === 0 && !isFetching && (
-        <EmptyState message="Nenhum acórdão na base de dados. Use 'Coletar TNU' para importar." />
+        <EmptyState message="Nenhum acórdão na base de dados. A coleta automática ocorre diariamente às 03h." />
       )}
 
       {data?.data && data.data.length > 0 && (
@@ -506,23 +473,10 @@ const ABAS = [
 
 /**
  * Página de pesquisa jurisprudencial semântica da TNU.
- * Integra busca vetorial, chat RAG e gestão da base de acórdãos.
+ * Integra busca vetorial, chat RAG e visualização da base de acórdãos.
  */
 export default function JurisprudenciaPage() {
   const [abaAtiva, setAbaAtiva] = useState('busca');
-
-  // Verifica se há sessão ativa — botão de coleta visível para todos os usuários autenticados
-  const { data: session } = useQuery({
-    queryKey: ['auth-session'],
-    queryFn: async () => {
-      const { data } = await supabase.auth.getSession();
-      return data.session;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Qualquer usuário autenticado pode coletar acórdãos
-  const isAdmin = !!session?.user;
 
   return (
     <main className="p-6 max-w-5xl mx-auto">
@@ -580,7 +534,7 @@ export default function JurisprudenciaPage() {
       >
         {abaAtiva === 'busca' && <AbaBuscaSemantica />}
         {abaAtiva === 'chat' && <AbaChatRAG />}
-        {abaAtiva === 'base' && <AbaBaseDados isAdmin={isAdmin || true} />}
+        {abaAtiva === 'base' && <AbaBaseDados />}
       </div>
     </main>
   );

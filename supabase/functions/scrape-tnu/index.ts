@@ -1,9 +1,8 @@
 // ============================================================================
-// Supabase Edge Function: scrape-tnu
-// Extrai acórdãos diretamente do portal de jurisprudência da TNU
-// (https://eproctnu-jur.cjf.jus.br/eproc/) usando fetch puro.
-// O TNU retorna sempre 10 registros por página — este scraper faz loop
-// interno de múltiplas páginas por chamada para coletar em lote.
+// scrape-tnu — Supabase Edge Function
+// Coleta acórdãos do portal de jurisprudência da TNU.
+// Filtra APENAS acórdãos com ementa completa — exclui decisões monocráticas e votos.
+// Uma chamada = uma página (10 registros). O pg_cron faz as chamadas sequenciais.
 // Deploy: supabase functions deploy scrape-tnu --no-verify-jwt --use-api
 // ============================================================================
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -37,11 +36,45 @@ const TNU_RESULTS_URL =
   TNU_BASE +
   "externo_controlador.php?acao=jurisprudencia@jurisprudencia/listar_resultados";
 
-// O TNU sempre retorna 10 registros por página, independente do parâmetro
+// O TNU sempre retorna 10 registros por página
 const TNU_PAGE_SIZE = 10;
+
+// Termo amplo para coletar todos os acórdãos previdenciários da TNU
+const TERMO_PADRAO = "previdenciário";
 
 const SCRAPER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36";
+
+// ─── FILTROS DE QUALIDADE ──────────────────────────────────────────────────────
+/**
+ * Palavras-chave que identificam decisões monocráticas e votos.
+ * Qualquer ementa que contenha esses padrões é descartada.
+ */
+const PADROES_EXCLUSAO = [
+  /DECIS[ÃA]O MONOCR[ÁA]TICA/i,
+  /AGRAVO CONTRA DECIS[ÃA]O MONOCR[ÁA]TICA/i,
+  /^VOTO\b/i,
+  /^VOTO-VISTA\b/i,
+  /PEDIDO DE RECONSIDER/i,
+];
+
+/**
+ * Verifica se a ementa é de um acórdão válido (não monocrática, não voto).
+ * Retorna true se deve ser incluído, false se deve ser descartado.
+ */
+function isAcordaoValido(ementa: string): boolean {
+  if (!ementa || ementa.trim().length < 50) return false;
+  const upper = ementa.toUpperCase();
+  // Deve começar com EMENTA
+  if (!upper.startsWith("EMENTA")) return false;
+  // Não deve conter padrões de exclusão
+  for (const pattern of PADROES_EXCLUSAO) {
+    if (pattern.test(ementa)) return false;
+  }
+  return true;
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 /** Converte data no formato DD/MM/AAAA para AAAA-MM-DD */
 function parseBrDate(s: string | null): string | null {
@@ -90,16 +123,22 @@ interface AcordaoRow {
   trial_date: string | null;
   publication_date: string | null;
   relator: string | null;
-  excerpt: string;
-  full_text: string | null;
+  ementa: string;           // Ementa completa — campo principal
+  excerpt: string;          // Alias de ementa para compatibilidade
+  full_text: string | null; // Texto da decisão (campo DECISÃO do card)
   pdf_path: string | null;
   tema: string;
   embedding_status: string;
 }
 
-/** Parseia os cards de resultado do HTML */
-function parseResultCards(html: string, tema: string): AcordaoRow[] {
+/**
+ * Parseia os cards de resultado do HTML.
+ * Filtra APENAS acórdãos com ementa válida — exclui monocráticas e votos.
+ */
+function parseResultCards(html: string): AcordaoRow[] {
   const results: AcordaoRow[] = [];
+  let totalCards = 0;
+  let filtrados = 0;
 
   const cardRegex =
     /<div[^>]+class="[^"]*card[^"]*mb-3[^"]*resultadoItem[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]+class="[^"]*card[^"]*mb-3[^"]*resultadoItem|$)/gi;
@@ -107,9 +146,22 @@ function parseResultCards(html: string, tema: string): AcordaoRow[] {
 
   while ((match = cardRegex.exec(html)) !== null) {
     const cardHtml = match[1];
+    totalCards++;
 
     const numeroProcesso = extractProcesso(cardHtml);
     if (!numeroProcesso) continue;
+
+    // Ementa via data-citacao — portal TNU usa ISO-8859-1, não UTF-8
+    const citeMatch = cardHtml.match(/data-citacao="([^"]+)"/);
+    if (!citeMatch) continue;
+
+    const ementa = decodeIso8859Cite(citeMatch[1]);
+
+    // ── FILTRO PRINCIPAL: aceita apenas acórdãos com ementa válida ──
+    if (!isAcordaoValido(ementa)) {
+      filtrados++;
+      continue;
+    }
 
     const djMatch = cardHtml.match(
       /DATA DO JULGAMENTO[\s\S]*?resValue[^>]*>\s*(\d{2}\/\d{2}\/\d{4})/i
@@ -117,32 +169,29 @@ function parseResultCards(html: string, tema: string): AcordaoRow[] {
     const dpMatch = cardHtml.match(
       /DATA DA PUBLICA[\s\S]*?resValue[^>]*>\s*(\d{2}\/\d{2}\/\d{4})/i
     );
-
     const relatorMatch = cardHtml.match(
       /RELATOR[^<]*<\/div>\s*<div[^>]*resValue[^>]*>\s*([^<\n]+?)\s*<\/div>/i
     );
-
     const decisaoMatch = cardHtml.match(
       /DECIS[ÃA]O\s*<\/div>\s*<div[^>]*resValue[^>]*>([\s\S]*?)<\/div>/i
     );
-
-    // Ementa via data-citacao — portal TNU usa ISO-8859-1, não UTF-8
-    const citeMatch = cardHtml.match(/data-citacao="([^"]+)"/);
-    let ementa = "";
-    if (citeMatch) {
-      ementa = decodeIso8859Cite(citeMatch[1]);
-    }
-
     const decisaoText = decisaoMatch
       ? decisaoMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
       : null;
+
+    // Extrai tema a partir da ementa (primeira linha após "EMENTA:")
+    const temaMatch = ementa.match(/EMENTA:\s*([^\n.]+)/i);
+    const tema = temaMatch
+      ? temaMatch[1].trim().slice(0, 200).toLowerCase()
+      : "previdenciário";
 
     results.push({
       process_number: numeroProcesso,
       trial_date: parseBrDate(djMatch ? djMatch[1] : null),
       publication_date: parseBrDate(dpMatch ? dpMatch[1] : null),
       relator: relatorMatch ? relatorMatch[1].trim() : null,
-      excerpt: ementa || decisaoText || "",
+      ementa,
+      excerpt: ementa,   // Ementa completa — sem truncamento
       full_text: decisaoText,
       pdf_path: extractInteiroTeorUrl(cardHtml),
       tema,
@@ -150,13 +199,13 @@ function parseResultCards(html: string, tema: string): AcordaoRow[] {
     });
   }
 
+  console.log(`parseResultCards: ${totalCards} cards, ${filtrados} filtrados (monocrática/voto), ${results.length} acórdãos válidos`);
   return results;
 }
 
-/**
- * Obtém sessão PHP do portal TNU.
- * A sessão é necessária para autenticar as requisições de busca.
- */
+// ─── TNU FETCH ────────────────────────────────────────────────────────────────
+
+/** Obtém sessão PHP do portal TNU. */
 async function getTnuSession(): Promise<string> {
   const sessionResp = await fetch(TNU_SEARCH_PAGE, {
     headers: {
@@ -179,8 +228,7 @@ async function getTnuSession(): Promise<string> {
 
 /**
  * Busca uma página de resultados do TNU.
- * O TNU sempre retorna 10 registros por página (hdnInfraTamanho é ignorado).
- * Usa hdnInfraInicioRegistro para paginação offset.
+ * offset = hdnInfraInicioRegistro (0, 10, 20, ...)
  */
 async function fetchTnuPage(
   termoBusca: string,
@@ -248,11 +296,10 @@ serve(async (req: Request) => {
 
   let body: {
     termo?: string;
-    pagina_inicio?: number;
-    limite?: number;
-    // Parâmetros legados (compatibilidade)
-    pagina?: number;
-    tamanho?: number;
+    offset?: number;       // Offset direto (0, 10, 20, ...) — preferido pelo cron
+    pagina_inicio?: number; // Compatibilidade: pagina * 10
+    pagina?: number;        // Legado
+    tamanho?: number;       // Legado (ignorado — sempre 10)
   } = {};
   try {
     body = await req.json();
@@ -263,12 +310,17 @@ serve(async (req: Request) => {
     });
   }
 
-  const termo = (body.termo ?? "aposentadoria por incapacidade").slice(0, 200);
+  const termo = (body.termo ?? TERMO_PADRAO).slice(0, 200);
 
-  // Suporte a parâmetros legados (pagina/tamanho) e novos (pagina_inicio/limite)
-  const paginaInicio = body.pagina_inicio ?? body.pagina ?? 0;
-  // Limite máximo de 100 registros por chamada (10 páginas de 10)
-  const limite = Math.max(10, Math.min(body.limite ?? body.tamanho ?? 50, 100));
+  // Calcula o offset: suporta offset direto, pagina_inicio*10, ou pagina*10
+  let offset = 0;
+  if (typeof body.offset === "number") {
+    offset = Math.max(0, body.offset);
+  } else if (typeof body.pagina_inicio === "number") {
+    offset = body.pagina_inicio * TNU_PAGE_SIZE;
+  } else if (typeof body.pagina === "number") {
+    offset = body.pagina * TNU_PAGE_SIZE;
+  }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -277,56 +329,22 @@ serve(async (req: Request) => {
   );
 
   try {
-    // Obtém sessão PHP uma única vez para todas as páginas
     const phpSessId = await getTnuSession();
+    const { html, totalResultados } = await fetchTnuPage(termo, offset, phpSessId);
 
-    let totalResultados = 0;
-    const allAcordaos: AcordaoRow[] = [];
-    let currentOffset = paginaInicio * TNU_PAGE_SIZE;
-    const targetOffset = currentOffset + limite;
+    const acordaos = parseResultCards(html);
 
-    // Loop de paginação: coleta até `limite` registros em páginas de 10
-    while (currentOffset < targetOffset) {
-      const { html, totalResultados: total } = await fetchTnuPage(
-        termo,
-        currentOffset,
-        phpSessId
-      );
-
-      totalResultados = total;
-
-      const acordaos = parseResultCards(html, termo);
-      if (acordaos.length === 0) break;
-
-      allAcordaos.push(...acordaos);
-      currentOffset += TNU_PAGE_SIZE;
-
-      // Para se não há mais resultados no TNU
-      if (currentOffset >= total) break;
-
-      // Pausa mínima entre requisições para não sobrecarregar o portal
-      await new Promise((r) => setTimeout(r, 300));
-    }
-
-    // Deduplica por process_number — o TNU pode retornar o mesmo processo em páginas diferentes
-    // O PostgreSQL não permite upsert com a mesma chave conflitante duas vezes no mesmo batch
-    const seen = new Set<string>();
-    const uniqueAcordaos = allAcordaos.filter((a) => {
-      if (!a.process_number || seen.has(a.process_number)) return false;
-      seen.add(a.process_number);
-      return true;
-    });
-
-    if (uniqueAcordaos.length === 0) {
+    if (acordaos.length === 0) {
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Nenhum acórdão encontrado para o termo informado",
+          message: "Nenhum acórdão válido encontrado nesta página (todos filtrados como monocrática/voto ou sem ementa)",
           total_tnu: totalResultados,
           coletados: 0,
           salvos: 0,
-          pagina_inicio: paginaInicio,
-          proximo_disponivel: false,
+          offset,
+          proximo_offset: offset + TNU_PAGE_SIZE,
+          proximo_disponivel: offset + TNU_PAGE_SIZE < totalResultados,
         }),
         {
           status: 200,
@@ -337,7 +355,7 @@ serve(async (req: Request) => {
 
     const { data: upserted, error: upsertError } = await supabase
       .from("jurisprudences")
-      .upsert(uniqueAcordaos, {
+      .upsert(acordaos, {
         onConflict: "process_number",
         ignoreDuplicates: false,
       })
@@ -357,18 +375,18 @@ serve(async (req: Request) => {
       );
     }
 
-    const proximaPagina = Math.floor(currentOffset / TNU_PAGE_SIZE);
-    const proximoDisponivel = currentOffset < totalResultados;
+    const proximoOffset = offset + TNU_PAGE_SIZE;
+    const proximoDisponivel = proximoOffset < totalResultados;
 
     return new Response(
       JSON.stringify({
         success: true,
-          message: `${uniqueAcordaos.length} acórdão(s) coletado(s) com sucesso`,
-          total_tnu: totalResultados,
-          coletados: uniqueAcordaos.length,
-          salvos: upserted?.length ?? uniqueAcordaos.length,
-        pagina_inicio: paginaInicio,
-        proxima_pagina: proximaPagina,
+        message: `${acordaos.length} acórdão(s) coletado(s) com sucesso`,
+        total_tnu: totalResultados,
+        coletados: acordaos.length,
+        salvos: upserted?.length ?? acordaos.length,
+        offset,
+        proximo_offset: proximoOffset,
         proximo_disponivel: proximoDisponivel,
       }),
       {
@@ -379,9 +397,12 @@ serve(async (req: Request) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
     console.error("scrape-tnu error:", message);
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...headers, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: message }),
+      {
+        status: 500,
+        headers: { ...headers, "Content-Type": "application/json" },
+      }
+    );
   }
 });

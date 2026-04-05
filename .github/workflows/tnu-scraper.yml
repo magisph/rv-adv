@@ -1,0 +1,171 @@
+name: Coleta Automatizada TNU
+
+# Executa diariamente às 03:00 BRT (06:00 UTC) para coletar novos acórdãos da TNU.
+# Também pode ser disparado manualmente pelo painel do GitHub Actions.
+on:
+  schedule:
+    # 06:00 UTC = 03:00 BRT (horário de Brasília)
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      offset_inicio:
+        description: "Offset inicial (0 = início, 10 = segunda página, etc.)"
+        required: false
+        default: "0"
+      max_paginas:
+        description: "Número máximo de páginas a coletar (padrão: 20 = 200 acórdãos)"
+        required: false
+        default: "20"
+
+jobs:
+  scrape-tnu:
+    name: Coletar Acórdãos TNU
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Executar coleta paginada
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import urllib.request, json, os, time, sys
+
+          SUPABASE_URL = os.environ["SUPABASE_URL"]
+          SERVICE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          FUNCTION_URL = f"{SUPABASE_URL}/functions/v1/scrape-tnu"
+
+          offset_inicio = int("${{ github.event.inputs.offset_inicio || '0' }}")
+          max_paginas = int("${{ github.event.inputs.max_paginas || '20' }}")
+
+          print(f"🚀 Iniciando coleta TNU: offset={offset_inicio}, max_paginas={max_paginas}")
+          print(f"   Estimativa: até {max_paginas * 10} acórdãos por execução")
+          print()
+
+          total_coletados = 0
+          total_salvos = 0
+          offset = offset_inicio
+          paginas_processadas = 0
+
+          for pagina in range(max_paginas):
+              payload = json.dumps({
+                  "termo": "previdenciário",
+                  "offset": offset
+              }).encode()
+
+              req = urllib.request.Request(
+                  FUNCTION_URL,
+                  data=payload,
+                  headers={
+                      "Authorization": f"Bearer {SERVICE_KEY}",
+                      "Content-Type": "application/json",
+                      "x-region": "sa-east-1",
+                  },
+                  method="POST"
+              )
+
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      result = json.loads(r.read())
+              except urllib.error.HTTPError as e:
+                  body = e.read().decode()
+                  print(f"❌ Erro HTTP {e.code} na página offset={offset}: {body[:200]}")
+                  break
+              except Exception as e:
+                  print(f"❌ Erro na página offset={offset}: {e}")
+                  break
+
+              coletados = result.get("coletados", 0)
+              salvos = result.get("salvos", 0)
+              total_tnu = result.get("total_tnu", 0)
+              proximo_disponivel = result.get("proximo_disponivel", False)
+              proximo_offset = result.get("proximo_offset", offset + 10)
+
+              total_coletados += coletados
+              total_salvos += salvos
+              paginas_processadas += 1
+
+              print(f"  ✅ Página {pagina + 1}/{max_paginas} | offset={offset} | "
+                    f"coletados={coletados} | salvos={salvos} | total_tnu={total_tnu}")
+
+              if not proximo_disponivel:
+                  print(f"\n✅ Coleta completa — sem mais páginas disponíveis")
+                  break
+
+              offset = proximo_offset
+
+              # Pausa entre páginas para não sobrecarregar o portal TNU
+              time.sleep(2)
+
+          print()
+          print(f"📊 RESUMO DA COLETA:")
+          print(f"   Páginas processadas: {paginas_processadas}")
+          print(f"   Acórdãos coletados: {total_coletados}")
+          print(f"   Acórdãos salvos/atualizados: {total_salvos}")
+          print(f"   Próximo offset para continuar: {offset}")
+
+          if total_coletados == 0 and paginas_processadas > 0:
+              print("\n⚠️  Nenhum acórdão coletado — verificar logs acima")
+              sys.exit(1)
+          PYEOF
+
+      - name: Gerar embeddings para novos acórdãos
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import urllib.request, json, os, time
+
+          SUPABASE_URL = os.environ["SUPABASE_URL"]
+          SERVICE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          EMBED_URL = f"{SUPABASE_URL}/functions/v1/generate-embedding"
+
+          print("🔢 Gerando embeddings para acórdãos pendentes...")
+
+          # Busca IDs com embedding_status = 'pending'
+          query_url = f"{SUPABASE_URL}/rest/v1/jurisprudences?embedding_status=eq.pending&select=id&limit=50"
+          req = urllib.request.Request(
+              query_url,
+              headers={
+                  "Authorization": f"Bearer {SERVICE_KEY}",
+                  "apikey": SERVICE_KEY,
+              }
+          )
+
+          with urllib.request.urlopen(req, timeout=15) as r:
+              pendentes = json.loads(r.read())
+
+          print(f"   {len(pendentes)} acórdãos pendentes de embedding")
+
+          for i, row in enumerate(pendentes):
+              payload = json.dumps({"id": row["id"]}).encode()
+              req = urllib.request.Request(
+                  EMBED_URL,
+                  data=payload,
+                  headers={
+                      "Authorization": f"Bearer {SERVICE_KEY}",
+                      "Content-Type": "application/json",
+                  },
+                  method="POST"
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      result = json.loads(r.read())
+                  print(f"  ✅ [{i+1}/{len(pendentes)}] ID {row['id']}: embedding gerado")
+              except Exception as e:
+                  print(f"  ⚠️  [{i+1}/{len(pendentes)}] ID {row['id']}: {e}")
+
+              time.sleep(1)  # Rate limit do Gemini
+
+          print("✅ Embeddings concluídos")
+          PYEOF
