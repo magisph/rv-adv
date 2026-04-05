@@ -6,7 +6,7 @@
 // Deploy: npx supabase functions deploy generate-embedding
 // ============================================================================
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { authenticateRequest } from "../_shared/auth.ts";
 
 // ─── Configuração ─────────────────────────────────────────────────────────────
 
@@ -40,24 +40,8 @@ function getCorsHeaders(req: Request): Record<string, string> {
   };
 }
 
-// ─── JWT Auth — valida token Supabase antes de processar ─────────────────────
-// backend-security-coder: nunca processa sem autenticação válida
+// ─── JWT Auth — via _shared/auth.ts ─────────────────────────────────────────────────────────────────
 
-async function authenticateRequest(req: Request): Promise<{ userId: string } | null> {
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) return null;
-
-  const token = authHeader.replace("Bearer ", "");
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { global: { headers: { Authorization: `Bearer ${token}` } } }
-  );
-
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) return null;
-  return { userId: user.id };
-}
 
 // ─── Resposta de erro sanitizada ─────────────────────────────────────────────
 // backend-security-coder: nunca vaza stack traces ou detalhes internos

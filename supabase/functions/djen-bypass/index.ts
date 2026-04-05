@@ -16,7 +16,7 @@
 // ============================================
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { authenticateRequest } from "../_shared/auth.ts";
 
 // ============================================
 // CORS — restrito ao domínio de produção + localhost dev
@@ -45,28 +45,7 @@ function getCorsHeaders(req: Request) {
 }
 
 // ============================================
-// JWT Auth — valida token antes de processar
-// ============================================
-async function authenticateRequest(
-  req: Request
-): Promise<{ userId: string } | null> {
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-
-  const token = authHeader.replace("Bearer ", "");
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { global: { headers: { Authorization: `Bearer ${token}` } } }
-  );
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error || !user) return null;
-  return { userId: user.id };
-}
+// authenticateRequest imported from _shared/auth.ts
 
 // ============================================
 // DJEN API — Comunicações públicas do PJe (sem autenticação)
