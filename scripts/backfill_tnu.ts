@@ -68,8 +68,8 @@ async function runBackfill() {
 
     let consecutiveErrors = 0;
 
-    for (let i = 0; i < state.intervals_pending.length; i++) {
-        const interval = state.intervals_pending[i];
+    while (state.intervals_pending.length > 0) {
+        const interval = state.intervals_pending[0];
         console.log(`\n⏳ START CHUNK: ${interval.start} ao ${interval.end}`);
 
         let isFinished = false;
@@ -140,11 +140,10 @@ async function runBackfill() {
             }
         } // fim-while da Paginação
 
-        // Commit da operação de bloco 
+        // Commit da operação de bloco — shift() remove atômico o primeiro elemento da fila
         console.log(`✅ JANELA: ${interval.start} até ${interval.end} EXAURIDA. Extração 100%.`);
         state.intervals_done.push(interval);
-        state.intervals_pending.splice(i, 1);
-        i--; // Rebalanceando ponteiro após splice p/ n pular
+        state.intervals_pending.shift();
 
         // File Flush do State
         saveCheckpoint(state);

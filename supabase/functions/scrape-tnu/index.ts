@@ -10,7 +10,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-const ALLOWED_ORIGINS = [
+// Origins lidas de variável de ambiente para evitar re-deploy em mudança de domínio.
+// Formato esperado: "https://dominio1.com,https://dominio2.com"
+const ALLOWED_ORIGINS: string[] = Deno.env.get("ALLOWED_ORIGINS")
+  ?.split(",")
+  .map((o) => o.trim())
+  .filter(Boolean) || [
   "https://rafaelavasconcelos.adv.br",
   "https://www.rafaelavasconcelos.adv.br",
   "http://localhost:5173",

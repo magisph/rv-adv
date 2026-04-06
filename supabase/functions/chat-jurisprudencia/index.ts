@@ -117,10 +117,13 @@ async function gerarEmbedding(query: string): Promise<number[]> {
 interface JurisprudenciaResult {
   id: string;
   process_number: string;
-  publication_date: string;
+  court_id: string | null;
   relator: string;
   tema: string;
+  trial_date: string | null;
+  publication_date: string;
   excerpt: string;
+  full_text: string | null;
   pdf_path: string;
   similarity: number;
 }
