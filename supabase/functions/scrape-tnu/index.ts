@@ -250,17 +250,24 @@ async function getTnuSession(): Promise<string> {
 async function fetchTnuPage(
   termoBusca: string,
   offset: number,
-  phpSessId: string
+  phpSessId: string,
+  dtDecisaoInicio?: string,
+  dtDecisaoFim?: string
 ): Promise<{ html: string; totalResultados: number }> {
   // Para offset=0: usa hdnAcao=pesquisar (nova pesquisa)
   // Para offset>0: usa hdnAcao=paginar (navegar na sessão existente)
   const acao = offset === 0 ? "pesquisar" : "paginar";
-  const formData = new URLSearchParams({
+  const formDataParams: Record<string, string> = {
     hdnAcao: acao,
     txtPesquisaLivre: termoBusca,
     hdnInfraTamanho: String(TNU_PAGE_SIZE),
     hdnInfraInicioRegistro: String(offset),
-  });
+  };
+
+  if (dtDecisaoInicio) formDataParams.dtDecisaoInicio = dtDecisaoInicio;
+  if (dtDecisaoFim) formDataParams.dtDecisaoFim = dtDecisaoFim;
+
+  const formData = new URLSearchParams(formDataParams);
 
   const searchResp = await fetch(TNU_RESULTS_URL, {
     method: "POST",
@@ -319,6 +326,8 @@ serve(async (req: Request) => {
     pagina_inicio?: number; // Compatibilidade: pagina * 10
     pagina?: number;        // Legado
     tamanho?: number;       // Legado (ignorado — sempre 10)
+    dataInicio?: string;    // Formato ISO curto: YYYY-MM-DD
+    dataFim?: string;       // Formato ISO curto: YYYY-MM-DD
   } = {};
   try {
     body = await req.json();
@@ -330,6 +339,49 @@ serve(async (req: Request) => {
   }
 
   const termo = (body.termo ?? TERMO_PADRAO).slice(0, 200);
+
+  // Validação estrita de Segurança para recortes temporais
+  let dtDecisaoInicio: string | undefined;
+  let dtDecisaoFim: string | undefined;
+
+  if (body.dataInicio || body.dataFim) {
+    const regexDate = /^\d{4}-\d{2}-\d{2}$/;
+    
+    if (!body.dataInicio || !body.dataFim || !regexDate.test(body.dataInicio) || !regexDate.test(body.dataFim)) {
+      return new Response(JSON.stringify({ 
+        error: "Formato de data inválido. Use estritamente YYYY-MM-DD em dataInicio e dataFim." 
+      }), { status: 400, headers: { ...headers, "Content-Type": "application/json" } });
+    }
+
+    // Tratando no UTC-3 explicitamente para respeitar fuso do tribunal brasileiro
+    const msStart = Date.parse(`${body.dataInicio}T00:00:00-03:00`);
+    const msEnd = Date.parse(`${body.dataFim}T00:00:00-03:00`);
+
+    if (isNaN(msStart) || isNaN(msEnd)) {
+      return new Response(JSON.stringify({ 
+        error: "Datas fornecidas são inválidas ou irreais." 
+      }), { status: 400, headers: { ...headers, "Content-Type": "application/json" } });
+    }
+
+    if (msStart > msEnd) {
+      return new Response(JSON.stringify({ 
+        error: "dataInicio não pode ser posterior a dataFim." 
+      }), { status: 400, headers: { ...headers, "Content-Type": "application/json" } });
+    }
+
+    const gapDias = (msEnd - msStart) / (1000 * 60 * 60 * 24);
+    if (gapDias > 30) {
+      return new Response(JSON.stringify({ 
+        error: `O intervalo máximo permitido é de 30 dias. Fornecido: ${gapDias} dias.` 
+      }), { status: 400, headers: { ...headers, "Content-Type": "application/json" } });
+    }
+
+    // Converte de YYYY-MM-DD para DD/MM/YYYY exigido no portal TNU
+    const pI = body.dataInicio.split('-');
+    dtDecisaoInicio = `${pI[2]}/${pI[1]}/${pI[0]}`;
+    const pF = body.dataFim.split('-');
+    dtDecisaoFim = `${pF[2]}/${pF[1]}/${pF[0]}`;
+  }
 
   // Calcula o offset: suporta offset direto, pagina_inicio*10, ou pagina*10
   let offset = 0;
@@ -349,7 +401,7 @@ serve(async (req: Request) => {
 
   try {
     const phpSessId = await getTnuSession();
-    const { html, totalResultados } = await fetchTnuPage(termo, offset, phpSessId);
+    const { html, totalResultados } = await fetchTnuPage(termo, offset, phpSessId, dtDecisaoInicio, dtDecisaoFim);
 
     const { resultados: acordaos, rejeitados } = parseResultCards(html);
 
