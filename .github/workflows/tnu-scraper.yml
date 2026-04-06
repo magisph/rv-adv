@@ -1,6 +1,7 @@
 name: Coleta Automatizada TNU
 
 # Executa diariamente às 03:00 BRT (06:00 UTC) para coletar novos acórdãos da TNU.
+# Usa rotação de termos de busca para garantir diversidade na base de jurisprudência.
 # Também pode ser disparado manualmente pelo painel do GitHub Actions.
 on:
   schedule:
@@ -8,14 +9,14 @@ on:
     - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
-      offset_inicio:
-        description: "Offset inicial (0 = início, 10 = segunda página, etc.)"
+      termo_indice:
+        description: "Índice do termo de busca (0-29). Deixe vazio para usar rotação automática por data."
         required: false
-        default: "0"
-      max_paginas:
-        description: "Número máximo de páginas a coletar (padrão: 20 = 200 acórdãos)"
+        default: ""
+      paginas_por_termo:
+        description: "Páginas a coletar por termo (padrão: 5 = 50 acórdãos)"
         required: false
-        default: "20"
+        default: "5"
 
 jobs:
   scrape-tnu:
@@ -32,88 +33,140 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Executar coleta paginada
+      - name: Executar coleta com rotação de termos
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           python3 << 'PYEOF'
           import urllib.request, json, os, time, sys
+          from datetime import datetime
 
           SUPABASE_URL = os.environ["SUPABASE_URL"]
           SERVICE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
           FUNCTION_URL = f"{SUPABASE_URL}/functions/v1/scrape-tnu"
 
-          offset_inicio = int("${{ github.event.inputs.offset_inicio || '0' }}")
-          max_paginas = int("${{ github.event.inputs.max_paginas || '20' }}")
+          # Lista de 30 termos de busca cobrindo diferentes áreas do direito previdenciário
+          # Cada dia da semana usa um subconjunto diferente para maximizar a diversidade
+          TERMOS = [
+              # Benefícios por incapacidade
+              "auxílio-doença",
+              "aposentadoria por invalidez",
+              "incapacidade laborativa",
+              "nexo causal",
+              "laudo pericial",
+              # Benefícios assistenciais
+              "benefício de prestação continuada BPC LOAS",
+              "miserabilidade",
+              "pessoa com deficiência LOAS",
+              "idoso BPC",
+              "renda per capita",
+              # Benefícios por morte e família
+              "pensão por morte",
+              "dependente econômico",
+              "salário-maternidade",
+              "auxílio-reclusão",
+              "cônjuge divorciado",
+              # Aposentadorias
+              "aposentadoria especial",
+              "agente nocivo",
+              "tempo de serviço rural",
+              "segurado especial",
+              "carência",
+              # Acidentes e doenças
+              "auxílio-acidente",
+              "doença ocupacional",
+              "acidente de trabalho",
+              "sequela permanente",
+              "redução da capacidade",
+              # Questões processuais e de cálculo
+              "revisão de benefício",
+              "data de início do benefício DIB",
+              "salário de benefício",
+              "período de graça",
+              "qualidade de segurado",
+          ]
 
-          print(f"🚀 Iniciando coleta TNU: offset={offset_inicio}, max_paginas={max_paginas}")
-          print(f"   Estimativa: até {max_paginas * 10} acórdãos por execução")
+          # Determinar qual termo usar hoje (rotação por dia do ano)
+          termo_indice_input = "${{ github.event.inputs.termo_indice }}"
+          paginas_por_termo = int("${{ github.event.inputs.paginas_por_termo || '5' }}")
+
+          if termo_indice_input.strip():
+              # Índice manual especificado
+              termo_indice = int(termo_indice_input.strip()) % len(TERMOS)
+              print(f"📌 Termo manual especificado: índice {termo_indice}")
+          else:
+              # Rotação automática: 2 termos por dia (dia do ano % 15 = índice base)
+              dia_do_ano = datetime.utcnow().timetuple().tm_yday
+              termo_indice = (dia_do_ano * 2) % len(TERMOS)
+              print(f"🔄 Rotação automática: dia {dia_do_ano} → índice {termo_indice}")
+
+          # Coletar 2 termos consecutivos por execução para aumentar diversidade
+          termos_hoje = [
+              TERMOS[termo_indice % len(TERMOS)],
+              TERMOS[(termo_indice + 1) % len(TERMOS)],
+          ]
+
+          print(f"📚 Termos de hoje: {termos_hoje}")
+          print(f"📄 Páginas por termo: {paginas_por_termo}")
           print()
 
           total_coletados = 0
           total_salvos = 0
-          offset = offset_inicio
-          paginas_processadas = 0
 
-          for pagina in range(max_paginas):
-              payload = json.dumps({
-                  "termo": "previdenciário",
-                  "offset": offset
-              }).encode()
+          for termo in termos_hoje:
+              print(f"\n🔍 Coletando: '{termo}'")
+              for pagina in range(paginas_por_termo):
+                  offset = pagina * 10
+                  payload = json.dumps({
+                      "termo": termo,
+                      "offset": offset
+                  }).encode()
 
-              req = urllib.request.Request(
-                  FUNCTION_URL,
-                  data=payload,
-                  headers={
-                      "Authorization": f"Bearer {SERVICE_KEY}",
-                      "Content-Type": "application/json",
-                      "x-region": "sa-east-1",
-                  },
-                  method="POST"
-              )
+                  req = urllib.request.Request(
+                      FUNCTION_URL,
+                      data=payload,
+                      headers={
+                          "Authorization": f"Bearer {SERVICE_KEY}",
+                          "Content-Type": "application/json",
+                          "x-region": "sa-east-1",
+                      },
+                      method="POST"
+                  )
 
-              try:
-                  with urllib.request.urlopen(req, timeout=30) as r:
-                      result = json.loads(r.read())
-              except urllib.error.HTTPError as e:
-                  body = e.read().decode()
-                  print(f"❌ Erro HTTP {e.code} na página offset={offset}: {body[:200]}")
-                  break
-              except Exception as e:
-                  print(f"❌ Erro na página offset={offset}: {e}")
-                  break
+                  try:
+                      with urllib.request.urlopen(req, timeout=30) as r:
+                          result = json.loads(r.read())
+                  except urllib.error.HTTPError as e:
+                      body = e.read().decode()
+                      print(f"  ❌ Erro HTTP {e.code} (offset={offset}): {body[:200]}")
+                      break
+                  except Exception as e:
+                      print(f"  ❌ Erro (offset={offset}): {e}")
+                      break
 
-              coletados = result.get("coletados", 0)
-              salvos = result.get("salvos", 0)
-              total_tnu = result.get("total_tnu", 0)
-              proximo_disponivel = result.get("proximo_disponivel", False)
-              proximo_offset = result.get("proximo_offset", offset + 10)
+                  coletados = result.get("coletados", 0)
+                  salvos = result.get("salvos", 0)
+                  proximo_disponivel = result.get("proximo_disponivel", False)
 
-              total_coletados += coletados
-              total_salvos += salvos
-              paginas_processadas += 1
+                  total_coletados += coletados
+                  total_salvos += salvos
 
-              print(f"  ✅ Página {pagina + 1}/{max_paginas} | offset={offset} | "
-                    f"coletados={coletados} | salvos={salvos} | total_tnu={total_tnu}")
+                  print(f"  p{pagina+1}: {coletados} coletados, {salvos} salvos")
 
-              if not proximo_disponivel:
-                  print(f"\n✅ Coleta completa — sem mais páginas disponíveis")
-                  break
+                  if not proximo_disponivel:
+                      print(f"  ✅ Sem mais páginas para '{termo}'")
+                      break
 
-              offset = proximo_offset
-
-              # Pausa entre páginas para não sobrecarregar o portal TNU
-              time.sleep(2)
+                  time.sleep(2)
 
           print()
           print(f"📊 RESUMO DA COLETA:")
-          print(f"   Páginas processadas: {paginas_processadas}")
+          print(f"   Termos pesquisados: {len(termos_hoje)}")
           print(f"   Acórdãos coletados: {total_coletados}")
           print(f"   Acórdãos salvos/atualizados: {total_salvos}")
-          print(f"   Próximo offset para continuar: {offset}")
 
-          if total_coletados == 0 and paginas_processadas > 0:
+          if total_coletados == 0:
               print("\n⚠️  Nenhum acórdão coletado — verificar logs acima")
               sys.exit(1)
           PYEOF
@@ -130,42 +183,88 @@ jobs:
           SERVICE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
           EMBED_URL = f"{SUPABASE_URL}/functions/v1/generate-embedding"
 
+          HEADERS_SB = {
+              "Authorization": f"Bearer {SERVICE_KEY}",
+              "apikey": SERVICE_KEY,
+              "Content-Type": "application/json",
+          }
+
           print("🔢 Gerando embeddings para acórdãos pendentes...")
 
-          # Busca IDs com embedding_status = 'pending'
-          query_url = f"{SUPABASE_URL}/rest/v1/jurisprudences?embedding_status=eq.pending&select=id&limit=50"
+          # Busca registros com embedding_status = 'pending'
           req = urllib.request.Request(
-              query_url,
-              headers={
-                  "Authorization": f"Bearer {SERVICE_KEY}",
-                  "apikey": SERVICE_KEY,
-              }
+              f"{SUPABASE_URL}/rest/v1/jurisprudences?embedding_status=eq.pending&select=id,process_number,excerpt&limit=100",
+              headers=HEADERS_SB,
+              method="GET"
           )
 
           with urllib.request.urlopen(req, timeout=15) as r:
               pendentes = json.loads(r.read())
 
-          print(f"   {len(pendentes)} acórdãos pendentes de embedding")
+          total = len(pendentes)
+          print(f"   {total} acórdãos pendentes de embedding")
+
+          ok = 0
+          errs = 0
 
           for i, row in enumerate(pendentes):
-              payload = json.dumps({"id": row["id"]}).encode()
-              req = urllib.request.Request(
+              texto = (row.get("excerpt") or "").strip()
+              if len(texto) < 10:
+                  print(f"  [{i+1:03d}/{total}] {row['process_number'][:35]} — texto vazio, pulando")
+                  continue
+
+              # Gerar embedding via Edge Function
+              payload = json.dumps({
+                  "text": texto[:25000],
+                  "taskType": "RETRIEVAL_DOCUMENT"
+              }).encode()
+
+              embed_req = urllib.request.Request(
                   EMBED_URL,
                   data=payload,
                   headers={
                       "Authorization": f"Bearer {SERVICE_KEY}",
                       "Content-Type": "application/json",
+                      "x-region": "sa-east-1",
                   },
                   method="POST"
               )
+
               try:
-                  with urllib.request.urlopen(req, timeout=30) as r:
+                  with urllib.request.urlopen(embed_req, timeout=25) as r:
                       result = json.loads(r.read())
-                  print(f"  ✅ [{i+1}/{len(pendentes)}] ID {row['id']}: embedding gerado")
+                  embedding = result.get("embedding", [])
+                  if not embedding:
+                      raise ValueError(f"Embedding vazio: {result}")
               except Exception as e:
-                  print(f"  ⚠️  [{i+1}/{len(pendentes)}] ID {row['id']}: {e}")
+                  print(f"  [{i+1:03d}/{total}] ❌ {row['process_number'][:35]} — Gemini: {e}")
+                  errs += 1
+                  time.sleep(2)
+                  continue
 
-              time.sleep(1)  # Rate limit do Gemini
+              # Salvar embedding no banco
+              update_payload = json.dumps({
+                  "embedding": embedding,
+                  "embedding_status": "completed"
+              }).encode()
 
-          print("✅ Embeddings concluídos")
+              update_req = urllib.request.Request(
+                  f"{SUPABASE_URL}/rest/v1/jurisprudences?id=eq.{row['id']}",
+                  data=update_payload,
+                  headers={**HEADERS_SB, "Prefer": "return=minimal"},
+                  method="PATCH"
+              )
+
+              try:
+                  with urllib.request.urlopen(update_req, timeout=10) as r:
+                      r.read()
+                  ok += 1
+                  print(f"  [{i+1:03d}/{total}] ✅ {row['process_number'][:35]} — {len(embedding)} dims")
+              except Exception as e:
+                  print(f"  [{i+1:03d}/{total}] ❌ {row['process_number'][:35]} — Supabase: {e}")
+                  errs += 1
+
+              time.sleep(0.6)  # ~1.5 req/s para respeitar rate limit
+
+          print(f"\n📊 Embeddings: {ok} gerados | {errs} erros | {total} total")
           PYEOF

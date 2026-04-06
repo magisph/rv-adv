@@ -233,10 +233,12 @@ async function fetchTnuPage(
   offset: number,
   phpSessId: string
 ): Promise<{ html: string; totalResultados: number }> {
+  // Para offset=0: usa hdnAcao=pesquisar (nova pesquisa)
+  // Para offset>0: usa hdnAcao=paginar (navegar na sessão existente)
+  const acao = offset === 0 ? "pesquisar" : "paginar";
   const formData = new URLSearchParams({
-    txtPesquisa: termoBusca,
-    rdoCampo: "I",
-    hdnInfraPrefixoCookie: "TRF4_Eproc_",
+    hdnAcao: acao,
+    txtPesquisaLivre: termoBusca,
     hdnInfraTamanho: String(TNU_PAGE_SIZE),
     hdnInfraInicioRegistro: String(offset),
   });
