@@ -1,11 +1,15 @@
+import dotenv from "dotenv";
 import fs from "fs";
+
+// Carrega chaves do cofre local (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+dotenv.config({ path: "local-scraper/.env" });
 import path from "path";
 
 // ─── PARÂMETROS GERAIS E ESTRUTURA CORPORATIVA ─────────────────────────────
 const MAX_CONSECUTIVE_ERRORS = 5;
 const CIRCUIT_BREAKER_WAIT_MS = 60000; // 1 minuto em estado quebrado (Breaker status)
 const BASE_WAIT_MS = 2000;
-const TEST_SAFE_MODE = true; // [OBRIGATÓRIO SAFE GATE] -> Processa SÓ O PRIMEIRO INTERVALO por segurança e para
+const TEST_SAFE_MODE = false; // [DESTRAVADO] Safe Gate desativado para Backfill Massivo (48 meses)
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "NAO_FORNECIDA";
 const ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "NAO_FORNECIDA";
