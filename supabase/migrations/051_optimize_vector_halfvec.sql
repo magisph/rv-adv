@@ -109,7 +109,7 @@ GRANT EXECUTE ON FUNCTION public.buscar_jurisprudencia(halfvec(3072), int, float
 -- halfvec_cosine_ops → operador de similaridade cosseno para halfvec
 -- CONCURRENTLY     → não bloqueia escritas durante a indexação
 -- ═══════════════════════════════════════════════════════════════════════
-CREATE INDEX CONCURRENTLY idx_jurisprudences_embedding_hnsw
+CREATE INDEX idx_jurisprudences_embedding_hnsw
 ON public.jurisprudences
 USING hnsw (embedding halfvec_cosine_ops)
 WITH (
