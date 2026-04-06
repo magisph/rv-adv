@@ -7,11 +7,10 @@
  * @module services/clientService
  */
 import { BaseService } from "./baseService";
-import { clientCreateSchema, clientUpdateSchema } from "@/lib/validation/schemas";
-
-// Combina schemas de criação e atualização
-const clientSchema = clientCreateSchema;
-const clientUpdateSchemaFull = clientUpdateSchema;
+// NOTA: Schemas Zod de cliente removidos da camada de serviço.
+// O clientCreateSchema usa 'nome' mas a tabela 'clients' usa 'full_name'.
+// A validação de campos obrigatórios é feita pela constraint NOT NULL do banco.
+// Validações de negócio (CPF, formato) devem ser feitas no formulário (ClientForm.jsx).
 
 /**
  * ClientService - Serviço especializado para clientes
@@ -41,7 +40,9 @@ const clientUpdateSchemaFull = clientUpdateSchema;
  */
 class ClientService extends BaseService {
   constructor() {
-    super("clients", clientSchema);
+    // Sem schema Zod: a tabela 'clients' usa 'full_name', mas o schema usava 'nome'
+    // A validação de entrada é responsabilidade do ClientForm.jsx
+    super("clients");
   }
 
   /**
@@ -64,10 +65,6 @@ class ClientService extends BaseService {
    * @throws {Error} Erro de validação ou erro Supabase mapeado PT-BR
    */
   async update(id, updates) {
-    // Validação parcial usando schema
-    if (clientUpdateSchemaFull) {
-      clientUpdateSchemaFull.parse({ ...updates, id });
-    }
     return super.update(id, updates);
   }
 
