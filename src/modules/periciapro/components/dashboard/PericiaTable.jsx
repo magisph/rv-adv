@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -16,7 +16,6 @@ import {
   FileText,
   AlertCircle,
   Eye,
-  EyeOff,
   ExternalLink,
 } from "lucide-react";
 import { createPageUrl } from "@/utils";
@@ -46,12 +45,7 @@ export default function PericiaTable({
   onMarkAsSeen,
 }) {
   const navigate = useNavigate();
-  const [visiblePasswords, setVisiblePasswords] = useState({});
 
-  const togglePasswordVisibility = (id, e) => {
-    e.stopPropagation();
-    setVisiblePasswords((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     try {
@@ -275,28 +269,7 @@ export default function PericiaTable({
                         {formatCPF(pericia.cpf)}
                       </TableCell>
                       <TableCell className="text-slate-600 whitespace-nowrap font-mono text-sm">
-                        <div className="flex items-center gap-1">
-                          <span>
-                            {pericia.senha_inss
-                              ? visiblePasswords[pericia.id]
-                                ? pericia.senha_inss
-                                : "••••••••"
-                              : "-"}
-                          </span>
-                          {pericia.senha_inss && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5 p-0"
-                              onClick={(e) => togglePasswordVisibility(pericia.id, e)}
-                              title={visiblePasswords[pericia.id] ? "Ocultar senha" : "Mostrar senha"}
-                            >
-                              {visiblePasswords[pericia.id]
-                                ? <EyeOff className="w-3 h-3" />
-                                : <Eye className="w-3 h-3" />}
-                            </Button>
-                          )}
-                        </div>
+                        {pericia.senha_inss || "-"}
                       </TableCell>
                       <TableCell>
                         <Badge
