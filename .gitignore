@@ -58,3 +58,12 @@ build/
 local-scraper/.env
 local-scraper/storage/
 local-scraper/djen_seen.json
+
+# Memória da IA
+findings.md
+progress.md
+task_plan.md
+
+# Arquivos de teste temporários
+tnu_dump*.html
+validate_tnu.mjs

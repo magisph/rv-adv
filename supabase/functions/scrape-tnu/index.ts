@@ -7,6 +7,7 @@
 // ============================================================================
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
@@ -47,7 +48,7 @@ const SCRAPER_UA =
 
 // ─── FILTROS DE QUALIDADE ──────────────────────────────────────────────────────
 /**
- * Palavras-chave que identificam decisões monocráticas e votos.
+ * Palavras-chave que identificam decisões monocráticas, votos e incidentes não conhecidos.
  * Qualquer ementa que contenha esses padrões é descartada.
  */
 const PADROES_EXCLUSAO = [
@@ -56,22 +57,30 @@ const PADROES_EXCLUSAO = [
   /^VOTO\b/i,
   /^VOTO-VISTA\b/i,
   /PEDIDO DE RECONSIDER/i,
+  /INCIDENTE N[ÃA]O CONHECIDO/i,
+  /N[ÃA]O CONHECIMENTO DO INCIDENTE/i,
+  /N[ÃA]O CONHECER/i,
+  /N[ÃA]O CONHECIDO/i,
+  /N[ÃA]O CONHECIMENTO/i,
+  /N[ÃA]O ADMITIDO/i,
+  /N[ÃA]O ADMITIDA/i,
+  /N[ÃA]O ADMISS[ÃA]O/i,
 ];
 
 /**
- * Verifica se a ementa é de um acórdão válido (não monocrática, não voto).
- * Retorna true se deve ser incluído, false se deve ser descartado.
+ * Verifica por que a ementa não deve ser salva.
+ * Retorna uma string com o motivo da rejeição, ou null se for válido.
  */
-function isAcordaoValido(ementa: string): boolean {
-  if (!ementa || ementa.trim().length < 50) return false;
+function getMotivoRejeicao(ementa: string): string | null {
+  if (!ementa || ementa.trim().length < 50) return "EMENTA_CURTA";
   const upper = ementa.toUpperCase();
   // Deve começar com EMENTA
-  if (!upper.startsWith("EMENTA")) return false;
+  if (!upper.startsWith("EMENTA")) return "NAO_INICIA_EMENTA";
   // Não deve conter padrões de exclusão
   for (const pattern of PADROES_EXCLUSAO) {
-    if (pattern.test(ementa)) return false;
+    if (pattern.test(ementa)) return `PADRAO_EXCLUSAO (${pattern.source})`;
   }
-  return true;
+  return null;
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -118,26 +127,28 @@ function extractInteiroTeorUrl(cardHtml: string): string | null {
   return TNU_BASE + m[1].replace(/&amp;/g, "&");
 }
 
-interface AcordaoRow {
-  process_number: string;
-  trial_date: string | null;
-  publication_date: string | null;
-  relator: string | null;
-  excerpt: string;          // Ementa completa (coluna DB: excerpt)
-  full_text: string | null; // Texto da decisão (campo DECISÃO do card)
-  pdf_path: string | null;
-  tema: string;
-  embedding_status: string;
-}
+const AcordaoRowSchema = z.object({
+  process_number: z.string().min(1),
+  trial_date: z.string().nullable(),
+  publication_date: z.string().nullable(),
+  relator: z.string().nullable(),
+  excerpt: z.string().min(1),
+  full_text: z.string().nullable(),
+  pdf_path: z.string().nullable(),
+  tema: z.string(),
+  embedding_status: z.string(),
+});
+
+type AcordaoRow = z.infer<typeof AcordaoRowSchema>;
 
 /**
  * Parseia os cards de resultado do HTML.
- * Filtra APENAS acórdãos com ementa válida — exclui monocráticas e votos.
+ * Retorna os acórdãos válidos e a lista dos rejeitados (para auditoria).
  */
-function parseResultCards(html: string): AcordaoRow[] {
-  const results: AcordaoRow[] = [];
+function parseResultCards(html: string): { resultados: AcordaoRow[], rejeitados: { processo: string, motivo: string }[] } {
+  const resultados: AcordaoRow[] = [];
+  const rejeitados: { processo: string, motivo: string }[] = [];
   let totalCards = 0;
-  let filtrados = 0;
 
   const cardRegex =
     /<div[^>]+class="[^"]*card[^"]*mb-3[^"]*resultadoItem[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]+class="[^"]*card[^"]*mb-3[^"]*resultadoItem|$)/gi;
@@ -157,8 +168,9 @@ function parseResultCards(html: string): AcordaoRow[] {
     const ementa = decodeIso8859Cite(citeMatch[1]);
 
     // ── FILTRO PRINCIPAL: aceita apenas acórdãos com ementa válida ──
-    if (!isAcordaoValido(ementa)) {
-      filtrados++;
+    const motivoRej = getMotivoRejeicao(ementa);
+    if (motivoRej) {
+      rejeitados.push({ processo: numeroProcesso, motivo: motivoRej });
       continue;
     }
 
@@ -184,7 +196,7 @@ function parseResultCards(html: string): AcordaoRow[] {
       ? temaMatch[1].trim().slice(0, 200).toLowerCase()
       : "previdenciário";
 
-    results.push({
+    const rawData = {
       process_number: numeroProcesso,
       trial_date: parseBrDate(djMatch ? djMatch[1] : null),
       publication_date: parseBrDate(dpMatch ? dpMatch[1] : null),
@@ -194,11 +206,18 @@ function parseResultCards(html: string): AcordaoRow[] {
       pdf_path: extractInteiroTeorUrl(cardHtml),
       tema,
       embedding_status: "pending",
-    });
+    };
+
+    const parsed = AcordaoRowSchema.safeParse(rawData);
+    if (parsed.success) {
+      resultados.push(parsed.data);
+    } else {
+      rejeitados.push({ processo: numeroProcesso, motivo: `ZOD_ERROR: ${parsed.error.issues[0]?.message}` });
+    }
   }
 
-  console.log(`parseResultCards: ${totalCards} cards, ${filtrados} filtrados (monocrática/voto), ${results.length} acórdãos válidos`);
-  return results;
+  console.log(`parseResultCards: ${totalCards} cards processados, ${rejeitados.length} rejeitados, ${resultados.length} acórdãos válidos`);
+  return { resultados, rejeitados };
 }
 
 // ─── TNU FETCH ────────────────────────────────────────────────────────────────
@@ -332,7 +351,12 @@ serve(async (req: Request) => {
     const phpSessId = await getTnuSession();
     const { html, totalResultados } = await fetchTnuPage(termo, offset, phpSessId);
 
-    const acordaos = parseResultCards(html);
+    const { resultados: acordaos, rejeitados } = parseResultCards(html);
+
+    if (rejeitados.length > 0) {
+      console.info(`[Filtro de Qualidade] ${rejeitados.length} itens bloqueados na origem. Motivos de descarte:`);
+      rejeitados.forEach(r => console.info(` - Proc ${r.processo}: ${r.motivo}`));
+    }
 
     if (acordaos.length === 0) {
       return new Response(
