@@ -1,5 +1,4 @@
 import React, { useMemo, useEffect } from "react";
-import { format } from "date-fns";
 import { formatarNumeroCNJ } from "@/services/cnjService";
 import useDjenComunicacoes from "@/hooks/useDjenComunicacoes";
 import { useAuth } from "@/lib/AuthContext";
@@ -48,14 +47,30 @@ function getField(obj, keys, fallback = null) {
 }
 
 // ============================================================================
-// formatDate — Converte ISO / string de data para DD/MM/YYYY
+// formatDate — Converte ISO / string de data para DD/MM/YYYY (Padrão Pt-BR)
 // ============================================================================
 function formatDate(data_variavel) {
   if (!data_variavel) return null;
+
+  if (typeof data_variavel === 'string' && data_variavel.includes('/')) {
+    const parts = data_variavel.split(/[\/\s]/);
+    if (parts.length >= 3 && parts[0].length === 2 && parts[1].length === 2 && parts[2].length === 4) {
+      return data_variavel; // Retorna como veio se já estiver em padrão visual DD/MM/YYYY validado
+    }
+  }
+
   try {
     const d = new Date(data_variavel);
     if (isNaN(d.getTime())) return String(data_variavel);
-    return format(new Date(data_variavel), "dd/MM/yyyy");
+    
+    // Utiliza Intl.DateTimeFormat para pt-BR e timeZone='UTC' 
+    // previne que ISO YYYY-MM-DD retroceda um dia pelo offset local do navegador
+    return new Intl.DateTimeFormat('pt-BR', { 
+      timeZone: 'UTC', 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    }).format(d);
   } catch {
     return String(data_variavel);
   }
