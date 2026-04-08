@@ -87,9 +87,19 @@ export default function DiarioAtendimentosWidget() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => atendimentoService.delete(id),
-    onSuccess: () => {
+    onSuccess: (data, deletedId) => {
+      // Atualização otimista ("cirúrgica" via filter): remove do cache instantaneamente sem necessidade de reload
+      queryClient.setQueryData(["atendimentos", "widget"], (oldData) => {
+        if (!oldData) return [];
+        return oldData.filter((atendimento) => atendimento.id !== deletedId);
+      });
+      
+      // Invalida outras queries de atendimentos base para manter consistência no background
       queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
       toast.success("Atendimento excluído!");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Erro ao excluir atendimento");
     }
   });
 
