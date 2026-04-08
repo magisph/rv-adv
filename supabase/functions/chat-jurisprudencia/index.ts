@@ -186,12 +186,12 @@ async function carregarHistorico(
     return [];
   }
 
-  // Carrega as últimas N mensagens em ordem cronológica
-  const { data: messages, error } = await supabase
+  // Carrega as ÚLTIMAS N mensagens (mais recentes), depois inverte para ordem cronológica
+  const { data: rawMessages, error } = await supabase
     .from("jurisprudencia_chat_messages")
     .select("role, content")
     .eq("session_id", sessionId)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(MAX_HISTORY_MESSAGES);
 
   if (error) {
@@ -199,7 +199,8 @@ async function carregarHistorico(
     return [];
   }
 
-  return (messages as ChatMessage[]) ?? [];
+  const messages = (rawMessages as ChatMessage[]) ?? [];
+  return messages.reverse();
 }
 
 // ─── Gravar mensagens user + assistant ───────────────────────────────────────

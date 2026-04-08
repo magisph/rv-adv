@@ -324,6 +324,7 @@ function AbaChatRAG() {
   const [mensagens, setMensagens] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const bottomRef = useRef(null);
+  const pendingSessionRef = useRef(null);
 
   // Listar sessões do usuário
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
@@ -382,11 +383,16 @@ function AbaChatRAG() {
     if (sess.id === currentSessionId) return;
     setCurrentSessionId(sess.id);
     setMensagens([{ role: '_loading', content: '' }]);
+    pendingSessionRef.current = sess.id;
     try {
       const msgs = await loadSessionMessages(sess.id);
-      setMensagens(msgs.map((m) => ({ role: m.role, content: m.content })));
+      if (pendingSessionRef.current === sess.id) {
+        setMensagens(msgs.map((m) => ({ role: m.role, content: m.content })));
+      }
     } catch {
-      setMensagens([]);
+      if (pendingSessionRef.current === sess.id) {
+        setMensagens([]);
+      }
     }
   }, [currentSessionId]);
 
