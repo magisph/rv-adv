@@ -1,5 +1,10 @@
 {
-  "intervals_pending": [
+  "intervals_pending": [],
+  "intervals_done": [
+    {
+      "start": "2022-01-01",
+      "end": "2022-01-30"
+    },
     {
       "start": "2022-01-31",
       "end": "2022-03-01"
@@ -239,12 +244,6 @@
     {
       "start": "2026-12-06",
       "end": "2026-12-31"
-    }
-  ],
-  "intervals_done": [
-    {
-      "start": "2022-01-01",
-      "end": "2022-01-30"
     }
   ]
 }

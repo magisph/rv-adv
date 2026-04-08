@@ -27,7 +27,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BookOpen, PhoneCall, Plus, ArrowRight, Trash2, Search, Pencil } from "lucide-react";
 import { toast } from "sonner";
-
 export default function DiarioAtendimentosWidget() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -48,28 +47,23 @@ export default function DiarioAtendimentosWidget() {
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState(null);
-
   const { data: currentUser } = useQuery({
     queryKey: ["current-user"],
     queryFn: () => authService.getCurrentUser(),
     staleTime: 5 * 60 * 1000
   });
-
   const { data: users = [] } = useQuery({
     queryKey: ["users"],
     queryFn: () => userService.list(),
   });
-
   const { data: clients = [] } = useQuery({
     queryKey: ["clients", "lista-simples"],
     queryFn: () => clientService.list("full_name"),
   });
-
   const { data: atendimentos = [], isLoading } = useQuery({
     queryKey: ["atendimentos", "widget"],
     queryFn: () => atendimentoService.list("-created_at", 5), // limite de 5
   });
-
   const createMutation = useMutation({
     mutationFn: (newAtendimento) => atendimentoService.create(newAtendimento),
     onSuccess: () => {
@@ -84,7 +78,6 @@ export default function DiarioAtendimentosWidget() {
       toast.error(error.message || "Erro ao registrar atendimento");
     }
   });
-
   const deleteMutation = useMutation({
     mutationFn: (id) => atendimentoService.delete(id),
     onSuccess: (data, deletedId) => {
@@ -102,7 +95,6 @@ export default function DiarioAtendimentosWidget() {
       toast.error(error.message || "Erro ao excluir atendimento");
     }
   });
-
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => atendimentoService.update(id, data),
     onSuccess: () => {
@@ -116,7 +108,6 @@ export default function DiarioAtendimentosWidget() {
       toast.error(error.message || "Erro ao atualizar atendimento");
     }
   });
-
   const handleSave = async () => {
     setIsUploading(true);
     try {
@@ -135,12 +126,10 @@ export default function DiarioAtendimentosWidget() {
           }
         }
       }
-
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, data: formData });
       } else {
         await createMutation.mutateAsync(formData);
-
         if (encaminharAdmin) {
           const adminUser = users.find(u => u.role === 'admin');
           if (adminUser) {
@@ -162,7 +151,6 @@ export default function DiarioAtendimentosWidget() {
       setIsUploading(false);
     }
   };
-
   const handleEdit = (atendimento) => {
     setFormData({
       nome_contato: atendimento.nome_contato || "",
@@ -178,7 +166,6 @@ export default function DiarioAtendimentosWidget() {
     setEditingId(atendimento.id);
     setIsModalOpen(true);
   };
-
   const converterCliente = (atendimento) => {
     const params = new URLSearchParams({
       nome: atendimento.nome_contato || "",
@@ -187,7 +174,6 @@ export default function DiarioAtendimentosWidget() {
     });
     navigate(`/Clients?${params.toString()}`);
   };
-
   return (
     <Card className="flex flex-col h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -276,14 +262,12 @@ export default function DiarioAtendimentosWidget() {
                   </Select>
                 </div>
               )}
-
               {(!formData.client_id && (formData.origem === 'Indicação' || formData.origem === 'Parceiro')) && (
                 <div className="grid gap-2">
                   <Label>Nome de quem indicou / Parceiro</Label>
                   <Input value={formData.origem_nome} onChange={(e) => setFormData({...formData, origem_nome: e.target.value})} placeholder="Ex: Maria Pereira" />
                 </div>
               )}
-
               <div className="grid gap-2">
                 <Label>Assunto</Label>
                 <Select value={formData.assunto} onValueChange={(val) => setFormData({...formData, assunto: val})}>
@@ -304,21 +288,18 @@ export default function DiarioAtendimentosWidget() {
                   </SelectContent>
                 </Select>
               </div>
-
               {formData.assunto && (
                 <div className="grid gap-2">
                   <Label>Detalhes</Label>
                   <Textarea value={formData.detalhes} onChange={(e) => setFormData({...formData, detalhes: e.target.value})} placeholder="Descreva os detalhes..." rows={3} />
                 </div>
               )}
-
               {formData.assunto === "Entregar Documento" && (
                 <div className="grid gap-2">
                   <Label>Arquivos (Upload opcional)</Label>
                   <Input type="file" multiple onChange={(e) => setArquivos(Array.from(e.target.files))} />
                 </div>
               )}
-
               {currentUser?.role !== 'admin' && (
                 <div className="flex items-center space-x-2 mt-2">
                   <Checkbox id="encaminhar_admin" checked={encaminharAdmin} onCheckedChange={(val) => setEncaminharAdmin(val)} />
@@ -327,7 +308,6 @@ export default function DiarioAtendimentosWidget() {
                   </label>
                 </div>
               )}
-
               <div className="grid gap-2">
                 <Label>Status</Label>
                 <Select value={formData.status} onValueChange={(val) => setFormData({...formData, status: val})}>
@@ -350,7 +330,6 @@ export default function DiarioAtendimentosWidget() {
           </DialogContent>
         </Dialog>
       </CardHeader>
-
       <div className="px-4 pt-2 pb-0">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
@@ -362,7 +341,6 @@ export default function DiarioAtendimentosWidget() {
           />
         </div>
       </div>
-
       <CardContent className="flex-1 p-4 pt-2 space-y-3">
         {isLoading ? (
           <p className="text-sm text-slate-600 text-center py-4">Carregando atendimentos...</p>
