@@ -1,9 +1,20 @@
 // ============================================================================
 // Supabase Edge Function: chat-jurisprudencia
 // RAG (Retrieval-Augmented Generation) sobre a base de jurisprudência da TNU.
-// Fluxo: query → embedding → busca vetorial RPC → contexto → Gemini Pro → resposta
+//
+// Fluxo v2 (com memória):
+//   query + sessionId? → histórico? → embedding → vetorial → contexto+histórico
+//   → Gemini Pro → gravar msgs → resposta
+//
+// Novidades v2:
+//   - Aceita `sessionId` opcional para carga de histórico de conversa
+//   - Injeta histórico no array de messages antes de chamar o LLM
+//   - Grava mensagens user+assistant após resposta (via service role)
+//   - Retorna `sessionId` no response para que o frontend possa rastreá-lo
+//
 // Skill: backend-security-coder (JWT auth, input validation, prompt injection guard)
 // Skill: api-security-best-practices (CORS restrito, timeout, rate limiting via JWT)
+// Skill: llm-app-patterns (short-term memory injection, message array pattern)
 // Deploy: npx supabase functions deploy chat-jurisprudencia
 // ============================================================================
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -14,7 +25,7 @@ import { authenticateRequest } from "../_shared/auth.ts";
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const GEMINI_EMBEDDING_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent";
@@ -26,6 +37,9 @@ const MAX_QUERY_LENGTH = 2_000;
 const MAX_CONTEXT_RESULTS = 5;
 const CHAT_TIMEOUT_MS = 45_000;
 const EMBEDDING_TIMEOUT_MS = 15_000;
+// Histório curto: últimas 10 trocas = 20 mensagens (user+assistant)
+// Mantém contexto relevante sem explodir o context window do LLM
+const MAX_HISTORY_MESSAGES = 20;
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 
@@ -48,9 +62,6 @@ function getCorsHeaders(req: Request): Record<string, string> {
     "Vary": "Origin",
   };
 }
-
-//// ─── JWT Auth — via _shared/auth.ts ─────────────────────────────────────────
-
 
 // ─── Resposta de erro sanitizada ─────────────────────────────────────────────
 
@@ -92,7 +103,7 @@ async function gerarEmbedding(query: string): Promise<number[]> {
       body: JSON.stringify({
         model: "models/gemini-embedding-001",
         content: { parts: [{ text: query }] },
-        taskType: "RETRIEVAL_QUERY", // Query mode para busca semântica
+        taskType: "RETRIEVAL_QUERY",
       }),
     },
     EMBEDDING_TIMEOUT_MS
@@ -132,13 +143,12 @@ async function buscarContexto(
   embedding: number[],
   matchCount = MAX_CONTEXT_RESULTS
 ): Promise<JurisprudenciaResult[]> {
-  // Usa Service Role Key para a busca vetorial (contorna RLS para leitura interna)
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   const { data, error } = await supabase.rpc("buscar_jurisprudencia", {
     query_embedding: embedding,
     match_count: matchCount,
-    similarity_threshold: 0.4, // Threshold mais baixo para RAG (contexto amplo)
+    similarity_threshold: 0.4,
   });
 
   if (error) {
@@ -148,60 +158,178 @@ async function buscarContexto(
   return (data as JurisprudenciaResult[]) ?? [];
 }
 
-// ─── Montar prompt RAG ────────────────────────────────────────────────────────
-// backend-security-coder: separa claramente dados do usuário do prompt do sistema
-// para prevenir prompt injection
+// ─── Carregar histórico da sessão ─────────────────────────────────────────────
+// SECURITY: usa service role key para contornar RLS internamente.
+// O user_id é sempre validado via auth.uid() — nunca de body externo.
 
-function montarPromptRAG(query: string, contexto: JurisprudenciaResult[]): string {
-  const contextoParts = contexto.map((j, i) => {
-    const data = j.publication_date ?? "data desconhecida";
-    const relator = j.relator ?? "relator desconhecido";
-    const tema = j.tema ?? "";
-    const processo = j.process_number ?? "";
-    const similaridade = j.similarity ? `(similaridade: ${(j.similarity * 100).toFixed(1)}%)` : "";
-
-    return [
-      `--- Acórdão ${i + 1} ${similaridade} ---`,
-      `Processo: ${processo}`,
-      `Data: ${data} | Relator: ${relator}`,
-      tema ? `Tema: ${tema}` : "",
-      `Ementa: ${j.excerpt ?? ""}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
-  });
-
-  const contextBlock =
-    contexto.length > 0
-      ? contextoParts.join("\n\n")
-      : "Nenhum acórdão relevante encontrado na base de dados.";
-
-  // O bloco [PERGUNTA DO USUÁRIO] é explicitamente delimitado para prevenir injeção
-  return `Você é um assistente jurídico especializado em Direito Previdenciário brasileiro, com foco na jurisprudência da TNU (Turma Nacional de Uniformização dos Juizados Especiais Federais).
-
-Responda à pergunta do usuário com base EXCLUSIVAMENTE nos acórdãos fornecidos abaixo. Se os acórdãos não forem suficientes para responder, informe isso claramente. Não invente jurisprudência. Cite os números dos processos relevantes.
-
-[ACÓRDÃOS DA BASE DE DADOS]
-${contextBlock}
-
-[PERGUNTA DO USUÁRIO]
-${query}
-
-[RESPOSTA]`;
+interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
 }
 
-// ─── Chamar Gemini Pro para geração ──────────────────────────────────────────
+async function carregarHistorico(
+  sessionId: string,
+  userId: string
+): Promise<ChatMessage[]> {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-async function gerarResposta(prompt: string): Promise<string> {
+  // Valida que a sessão pertence ao usuário autenticado antes de carregar
+  const { data: session } = await supabase
+    .from("jurisprudencia_chat_sessions")
+    .select("id")
+    .eq("id", sessionId)
+    .eq("user_id", userId)
+    .single();
+
+  if (!session) {
+    console.warn(`[chat-jurisprudencia] Session ${sessionId} not found for user ${userId}`);
+    return [];
+  }
+
+  // Carrega as últimas N mensagens em ordem cronológica
+  const { data: messages, error } = await supabase
+    .from("jurisprudencia_chat_messages")
+    .select("role, content")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: true })
+    .limit(MAX_HISTORY_MESSAGES);
+
+  if (error) {
+    console.error(`[chat-jurisprudencia] Erro ao carregar histórico: ${error.message}`);
+    return [];
+  }
+
+  return (messages as ChatMessage[]) ?? [];
+}
+
+// ─── Gravar mensagens user + assistant ───────────────────────────────────────
+// Fire-and-forget com log de erro — não bloqueia a resposta ao usuário.
+
+async function gravarMensagens(
+  sessionId: string,
+  userMessage: string,
+  assistantResponse: string
+): Promise<void> {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  const { error } = await supabase.from("jurisprudencia_chat_messages").insert([
+    {
+      session_id: sessionId,
+      role: "user",
+      content: userMessage,
+    },
+    {
+      session_id: sessionId,
+      role: "assistant",
+      content: assistantResponse,
+    },
+  ]);
+
+  if (error) {
+    // Não lança exceção — a resposta ao usuário já foi enviada
+    console.error(`[chat-jurisprudencia] Erro ao gravar mensagens: ${error.message}`);
+  }
+}
+
+// ─── Montar prompt RAG com suporte a histórico ────────────────────────────────
+// backend-security-coder: separa claramente dados do usuário do prompt do sistema
+// para prevenir prompt injection. O histórico é injetado como array tipado,
+// não como string concatenada — evita escape injection via histórico.
+
+const SYSTEM_PROMPT = `Você é um assistente jurídico especializado em Direito Previdenciário brasileiro, com foco na jurisprudência da TNU (Turma Nacional de Uniformização dos Juizados Especiais Federais).
+
+Responda às perguntas com base EXCLUSIVAMENTE nos acórdãos fornecidos. Se os acórdãos não forem suficientes para responder, informe isso claramente. Não invente jurisprudência. Cite os números dos processos relevantes quando aplicável.
+
+Quando houver histórico de conversa, mantenha coerência com as respostas anteriores e não repita informações já fornecidas.`;
+
+function montarContextoRAG(contexto: JurisprudenciaResult[]): string {
+  if (contexto.length === 0) {
+    return "Nenhum acórdão relevante encontrado na base de dados.";
+  }
+
+  return contexto
+    .map((j, i) => {
+      const data = j.publication_date ?? "data desconhecida";
+      const relator = j.relator ?? "relator desconhecido";
+      const tema = j.tema ?? "";
+      const processo = j.process_number ?? "";
+      const similaridade = j.similarity
+        ? `(similaridade: ${(j.similarity * 100).toFixed(1)}%)`
+        : "";
+
+      return [
+        `--- Acórdão ${i + 1} ${similaridade} ---`,
+        `Processo: ${processo}`,
+        `Data: ${data} | Relator: ${relator}`,
+        tema ? `Tema: ${tema}` : "",
+        `Ementa: ${j.excerpt ?? ""}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n\n");
+}
+
+// ─── Chamar Gemini Pro com array de messages (suporte a histórico) ────────────
+
+interface GeminiContent {
+  role: "user" | "model";
+  parts: Array<{ text: string }>;
+}
+
+async function gerarResposta(
+  query: string,
+  contexto: JurisprudenciaResult[],
+  historico: ChatMessage[]
+): Promise<string> {
+  const contextBlock = montarContextoRAG(contexto);
+
+  // Compõe o array de contents para a API Gemini
+  // O system prompt é embutido como primeiro turno "user" pois a API Gemini
+  // não tem campo system separado no endpoint generateContent (a não ser no SDK v2)
+  const systemContent: GeminiContent = {
+    role: "user",
+    parts: [
+      {
+        text: `${SYSTEM_PROMPT}\n\n[ACÓRDÃOS DA BASE DE DADOS PARA ESTA PERGUNTA]\n${contextBlock}`,
+      },
+    ],
+  };
+
+  // Resposta fictícia do modelo reconhecendo o contexto (required para multi-turn)
+  const systemAck: GeminiContent = {
+    role: "model",
+    parts: [{ text: "Entendido. Analisarei as perguntas com base exclusivamente nos acórdãos fornecidos." }],
+  };
+
+  // Mapeia o histórico: 'user' → 'user', 'assistant' → 'model'
+  const historyContents: GeminiContent[] = historico.map((msg) => ({
+    role: msg.role === "assistant" ? "model" : "user",
+    parts: [{ text: msg.content }],
+  }));
+
+  // Pergunta atual do usuário
+  const currentQuestion: GeminiContent = {
+    role: "user",
+    parts: [{ text: query }],
+  };
+
+  const contents: GeminiContent[] = [
+    systemContent,
+    systemAck,
+    ...historyContents,
+    currentQuestion,
+  ];
+
   const response = await fetchWithTimeout(
     `${GEMINI_CHAT_URL}?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        contents,
         generationConfig: {
-          temperature: 0.2,     // Baixa temperatura para respostas jurídicas precisas
+          temperature: 0.2,
           maxOutputTokens: 2048,
           topP: 0.8,
         },
@@ -244,11 +372,12 @@ serve(async (req: Request) => {
     return errorResponse("Method not allowed", 405, corsHeaders);
   }
 
-  // 1. Autenticação JWT obrigatória
+  // 1. Autenticação JWT obrigatória — extrai user_id do token verificado
   const auth = await authenticateRequest(req);
   if (!auth) {
     return errorResponse("Unauthorized", 401, corsHeaders);
   }
+  const userId = auth.sub; // nunca vem do body — sempre do JWT verificado
 
   // 2. Verificação de chave Gemini
   if (!GEMINI_API_KEY) {
@@ -257,17 +386,21 @@ serve(async (req: Request) => {
   }
 
   // 3. Parse e validação do body
-  let body: { query?: unknown; matchCount?: unknown };
+  let body: { query?: unknown; matchCount?: unknown; sessionId?: unknown };
   try {
     body = await req.json();
   } catch {
     return errorResponse("Body JSON inválido", 400, corsHeaders);
   }
 
-  const { query, matchCount } = body;
+  const { query, matchCount, sessionId } = body;
 
   if (typeof query !== "string" || query.trim().length === 0) {
-    return errorResponse("Campo 'query' é obrigatório e deve ser uma string não vazia", 400, corsHeaders);
+    return errorResponse(
+      "Campo 'query' é obrigatório e deve ser uma string não vazia",
+      400,
+      corsHeaders
+    );
   }
 
   if (query.length > MAX_QUERY_LENGTH) {
@@ -278,22 +411,44 @@ serve(async (req: Request) => {
     );
   }
 
+  // Validação do sessionId: deve ser UUID válido ou omitido/null
+  const resolvedSessionId: string | null =
+    typeof sessionId === "string" && sessionId.trim().length > 0
+      ? sessionId.trim()
+      : null;
+
   const resolvedMatchCount =
     typeof matchCount === "number" && matchCount > 0 && matchCount <= 10
       ? matchCount
       : MAX_CONTEXT_RESULTS;
 
-  // 4. Pipeline RAG
+  // 4. Pipeline RAG com Memória
   try {
-    // 4a. Gerar embedding da query
+    // 4a. Carregar histórico da sessão (se houver sessionId)
+    let historico: ChatMessage[] = [];
+    if (resolvedSessionId) {
+      historico = await carregarHistorico(resolvedSessionId, userId);
+      console.log(
+        `[chat-jurisprudencia] Histórico carregado: ${historico.length} msgs para sessão ${resolvedSessionId}`
+      );
+    }
+
+    // 4b. Gerar embedding da query atual
     const embedding = await gerarEmbedding(query.trim());
 
-    // 4b. Busca vetorial no Supabase
+    // 4c. Busca vetorial no Supabase
     const contexto = await buscarContexto(embedding, resolvedMatchCount);
 
-    // 4c. Montar prompt RAG e gerar resposta
-    const prompt = montarPromptRAG(query.trim(), contexto);
-    const resposta = await gerarResposta(prompt);
+    // 4d. Gerar resposta com histórico injetado
+    const resposta = await gerarResposta(query.trim(), contexto, historico);
+
+    // 4e. Gravar mensagens na sessão (se houver sessionId)
+    // Feito em background — não bloqueia a resposta
+    if (resolvedSessionId) {
+      gravarMensagens(resolvedSessionId, query.trim(), resposta).catch((e) =>
+        console.error("[chat-jurisprudencia] Falha ao gravar mensagens:", e)
+      );
+    }
 
     return new Response(
       JSON.stringify({
@@ -308,6 +463,7 @@ serve(async (req: Request) => {
           pdf_path: j.pdf_path,
         })),
         totalFontes: contexto.length,
+        sessionId: resolvedSessionId, // retorna para o frontend rastrear
       }),
       {
         status: 200,

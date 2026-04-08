@@ -11,13 +11,16 @@
 // - Filtro: apenas acórdãos reais (sem decisões monocráticas, sem votos)
 // - Ordenação: data do julgamento (trial_date) decrescente
 // ============================================================================
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 import {
   buscarJurisprudencia,
   chatJurisprudencia,
   listarJurisprudencias,
+  createChatSession,
+  listChatSessions,
+  loadSessionMessages,
+  deleteChatSession,
   JURISPRUDENCIA_QUERY_KEYS,
 } from '@/services/jurisprudenciaService';
 import { Button } from '@/components/ui/button';
@@ -35,6 +38,9 @@ import {
   Check,
   Clock,
   Database,
+  Plus,
+  Trash2,
+  History,
 } from 'lucide-react';
 
 // ─── Componente: Card de Acórdão ──────────────────────────────────────────────
@@ -240,22 +246,155 @@ function AbaBuscaSemantica() {
   );
 }
 
-// ─── Aba: Chat RAG ────────────────────────────────────────────────────────────
+// ─── Componente: Painel lateral de sessões ────────────────────────────────────
+
+function SessionSidebar({ sessions, currentSessionId, onSelect, onDelete, onNew, isLoading }) {
+  const fmt = (iso) => {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  };
+
+  return (
+    <aside className="w-56 shrink-0 border-r border-slate-200 flex flex-col bg-slate-50">
+      <div className="p-3 border-b border-slate-200">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start gap-2 text-xs"
+          onClick={onNew}
+          aria-label="Iniciar nova conversa"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Nova conversa
+        </Button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto py-1">
+        {isLoading && (
+          <div className="flex justify-center py-6">
+            <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+          </div>
+        )}
+
+        {!isLoading && sessions.length === 0 && (
+          <p className="text-xs text-slate-400 text-center py-6 px-3">
+            Nenhuma conversa ainda.
+          </p>
+        )}
+
+        {sessions.map((sess) => (
+          <div
+            key={sess.id}
+            className={`group flex items-center gap-1 px-2 py-1.5 mx-1 my-0.5 rounded cursor-pointer transition-colors ${
+              sess.id === currentSessionId
+                ? 'bg-white shadow-sm text-slate-800 font-medium'
+                : 'text-slate-600 hover:bg-white/70'
+            }`}
+            onClick={() => onSelect(sess)}
+            role="button"
+            tabIndex={0}
+            aria-label={`Abrir: ${sess.title}`}
+            onKeyDown={(e) => e.key === 'Enter' && onSelect(sess)}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-xs truncate">{sess.title}</p>
+              <p className="text-[10px] text-slate-400">{fmt(sess.updated_at)}</p>
+            </div>
+            <button
+              className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-500 transition-all shrink-0"
+              onClick={(e) => { e.stopPropagation(); onDelete(sess.id); }}
+              aria-label={`Excluir conversa: ${sess.title}`}
+              title="Excluir conversa"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+// ─── Aba: Chat RAG com memória persistente ────────────────────────────────────
 
 function AbaChatRAG() {
+  const queryClient = useQueryClient();
   const [pergunta, setPergunta] = useState('');
-  const [historico, setHistorico] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [mensagens, setMensagens] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const bottomRef = useRef(null);
 
+  // Listar sessões do usuário
+  const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
+    queryKey: JURISPRUDENCIA_QUERY_KEYS.sessions(),
+    queryFn: listChatSessions,
+    staleTime: 60_000,
+  });
+
+  // Scroll automático para última mensagem
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [mensagens]);
+
+  // Mutation: envio de pergunta com criação lazy de sessão
   const mutation = useMutation({
-    mutationFn: (query) => chatJurisprudencia(query, 5),
-    onSuccess: (data, query) => {
-      setHistorico((prev) => [
-        ...prev,
-        { pergunta: query, resposta: data.resposta, fontes: data.fontes },
-      ]);
+    mutationFn: async (query) => {
+      let sid = currentSessionId;
+      if (!sid) {
+        const session = await createChatSession(query);
+        sid = session.id;
+        setCurrentSessionId(sid);
+      }
+      return chatJurisprudencia(query, 5, sid);
+    },
+    onMutate: (query) => {
+      setMensagens((prev) => [...prev, { role: 'user', content: query, _pending: true }]);
       setPergunta('');
     },
+    onSuccess: (data) => {
+      setMensagens((prev) => {
+        const withoutPending = prev.map((m) => m._pending ? { ...m, _pending: false } : m);
+        return [...withoutPending, { role: 'assistant', content: data.resposta, fontes: data.fontes }];
+      });
+      if (data.sessionId) setCurrentSessionId(data.sessionId);
+      queryClient.invalidateQueries({ queryKey: JURISPRUDENCIA_QUERY_KEYS.sessions() });
+    },
+    onError: () => {
+      setMensagens((prev) => prev.filter((m) => !m._pending));
+    },
   });
+
+  // Mutation: deletar sessão
+  const deleteMutation = useMutation({
+    mutationFn: deleteChatSession,
+    onSuccess: (_, deletedId) => {
+      queryClient.invalidateQueries({ queryKey: JURISPRUDENCIA_QUERY_KEYS.sessions() });
+      if (deletedId === currentSessionId) {
+        setCurrentSessionId(null);
+        setMensagens([]);
+      }
+    },
+  });
+
+  // Selecionar sessão existente: carrega mensagens do BD
+  const handleSelectSession = useCallback(async (sess) => {
+    if (sess.id === currentSessionId) return;
+    setCurrentSessionId(sess.id);
+    setMensagens([{ role: '_loading', content: '' }]);
+    try {
+      const msgs = await loadSessionMessages(sess.id);
+      setMensagens(msgs.map((m) => ({ role: m.role, content: m.content })));
+    } catch {
+      setMensagens([]);
+    }
+  }, [currentSessionId]);
+
+  const handleNewChat = useCallback(() => {
+    setCurrentSessionId(null);
+    setMensagens([]);
+    setPergunta('');
+  }, []);
 
   const handleSubmit = useCallback(
     (e) => {
@@ -268,86 +407,137 @@ function AbaChatRAG() {
     [pergunta, mutation]
   );
 
-  return (
-    <div className="space-y-6">
-      {/* Histórico de conversas */}
-      {historico.length > 0 && (
-        <div className="space-y-6">
-          {historico.map((item, idx) => (
-            <div key={idx} className="space-y-3">
-              {/* Pergunta do usuário */}
-              <div className="flex justify-end">
-                <div className="bg-legal-blue text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%]">
-                  <p className="text-sm">{item.pergunta}</p>
-                </div>
-              </div>
+  const isLoadingSession = mensagens.some((m) => m.role === '_loading');
 
-              {/* Resposta do assistente */}
-              <div className="flex justify-start">
-                <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]">
-                  <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
-                    {item.resposta}
-                  </p>
-                  {item.fontes && item.fontes.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-slate-200">
-                      <p className="text-xs text-slate-500 mb-2">
-                        Fontes ({item.fontes.length}):
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {item.fontes.map((fonte) => (
-                          <Badge
-                            key={fonte.id}
-                            variant="outline"
-                            className="text-xs cursor-default"
-                            title={`Similaridade: ${fonte.similarity ? (fonte.similarity * 100).toFixed(1) + '%' : 'N/A'}`}
-                          >
-                            {fonte.process_number}
-                          </Badge>
-                        ))}
+  return (
+    <div className="flex h-[600px] border border-slate-200 rounded-lg overflow-hidden bg-white">
+      {/* Painel lateral */}
+      {sidebarOpen && (
+        <SessionSidebar
+          sessions={sessions}
+          currentSessionId={currentSessionId}
+          onSelect={handleSelectSession}
+          onDelete={(id) => deleteMutation.mutate(id)}
+          onNew={handleNewChat}
+          isLoading={sessionsLoading}
+        />
+      )}
+
+      {/* Área principal */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 bg-slate-50 shrink-0">
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="p-1 rounded hover:bg-slate-200 transition-colors"
+            aria-label={sidebarOpen ? 'Ocultar histórico' : 'Exibir histórico'}
+            title="Alternar painel de histórico"
+          >
+            <History className="w-4 h-4 text-slate-500" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-slate-700 truncate">
+              {currentSessionId
+                ? (sessions.find((s) => s.id === currentSessionId)?.title ?? 'Consulta jurídica')
+                : 'Nova consulta'}
+            </p>
+            <p className="text-[10px] text-slate-400">
+              {currentSessionId ? 'Sessão ativa · histórico salvo' : 'Sessão criada ao enviar a 1ª mensagem'}
+            </p>
+          </div>
+        </div>
+
+        {/* Mensagens */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          {isLoadingSession && (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+            </div>
+          )}
+
+          {!isLoadingSession && mensagens.length === 0 && (
+            <EmptyState message="Faça uma pergunta jurídica sobre a jurisprudência da TNU." />
+          )}
+
+          {!isLoadingSession && mensagens.map((msg, idx) => (
+            <div key={idx}>
+              {msg.role === 'user' && (
+                <div className="flex justify-end">
+                  <div className={`bg-legal-blue text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%] ${msg._pending ? 'opacity-70' : ''}`}>
+                    <p className="text-sm">{msg.content}</p>
+                  </div>
+                </div>
+              )}
+              {msg.role === 'assistant' && (
+                <div className="flex justify-start">
+                  <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]">
+                    <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    {msg.fontes && msg.fontes.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-slate-200">
+                        <p className="text-xs text-slate-500 mb-2">Fontes ({msg.fontes.length}):</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {msg.fontes.map((fonte) => (
+                            <Badge
+                              key={fonte.id}
+                              variant="outline"
+                              className="text-xs cursor-default"
+                              title={fonte.similarity ? `Similaridade: ${(fonte.similarity * 100).toFixed(1)}%` : ''}
+                            >
+                              {fonte.process_number}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {mutation.isPending && (
+            <div className="flex justify-start">
+              <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+                  <p className="text-xs text-slate-500">Consultando jurisprudência...</p>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {historico.length === 0 && (
-        <EmptyState message="Faça uma pergunta jurídica sobre a jurisprudência da TNU." />
-      )}
-
-      {mutation.isError && (
-        <ErrorState
-          message={mutation.error?.message ?? 'Erro ao processar pergunta. Tente novamente.'}
-        />
-      )}
-
-      {/* Input de pergunta */}
-      <form onSubmit={handleSubmit} className="flex gap-3 sticky bottom-0 bg-slate-50 pt-2">
-        <Input
-          value={pergunta}
-          onChange={(e) => setPergunta(e.target.value)}
-          placeholder="Faça uma pergunta jurídica..."
-          className="flex-1"
-          aria-label="Pergunta jurídica"
-          maxLength={2000}
-          disabled={mutation.isPending}
-        />
-        <Button
-          type="submit"
-          disabled={mutation.isPending || pergunta.trim().length === 0}
-          className="shrink-0"
-        >
-          {mutation.isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <MessageSquare className="w-4 h-4" aria-hidden="true" />
           )}
-          <span className="ml-2">{mutation.isPending ? 'Processando...' : 'Perguntar'}</span>
-        </Button>
-      </form>
+
+          {mutation.isError && (
+            <ErrorState message={mutation.error?.message ?? 'Erro ao processar pergunta. Tente novamente.'} />
+          )}
+
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input */}
+        <form onSubmit={handleSubmit} className="flex gap-2 p-3 border-t border-slate-200 shrink-0">
+          <Input
+            value={pergunta}
+            onChange={(e) => setPergunta(e.target.value)}
+            placeholder="Faça uma pergunta jurídica..."
+            className="flex-1"
+            aria-label="Pergunta jurídica"
+            maxLength={2000}
+            disabled={mutation.isPending}
+          />
+          <Button
+            type="submit"
+            disabled={mutation.isPending || pergunta.trim().length === 0}
+            className="shrink-0"
+          >
+            {mutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <MessageSquare className="w-4 h-4" aria-hidden="true" />
+            )}
+            <span className="ml-2">{mutation.isPending ? 'Processando...' : 'Perguntar'}</span>
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

@@ -16,6 +16,8 @@ export const JURISPRUDENCIA_QUERY_KEYS = {
   search: (query) => ['jurisprudencia', 'search', query],
   chat: (query) => ['jurisprudencia', 'chat', query],
   list: (page, limit) => ['jurisprudencia', 'list', page, limit],
+  sessions: () => ['jurisprudencia', 'chat-sessions'],
+  sessionMessages: (sessionId) => ['jurisprudencia', 'chat-messages', sessionId],
 };
 
 // ─── Busca semântica via Edge Function + RPC ──────────────────────────────────
@@ -72,23 +74,26 @@ export async function buscarJurisprudencia(query, matchCount = 10) {
 /**
  * Envia uma pergunta jurídica para o pipeline RAG (chat-jurisprudencia).
  * A Edge Function recupera contexto vetorial e gera resposta via Gemini Pro.
+ * Suporta memória persistente via sessionId.
  *
  * @param {string} query - Pergunta jurídica do usuário
  * @param {number} [matchCount=5] - Número de acórdãos de contexto (1-10)
- * @returns {Promise<{resposta: string, fontes: Array, totalFontes: number}>}
+ * @param {string|null} [sessionId=null] - ID da sessão para memória persistente
+ * @returns {Promise<{resposta: string, fontes: Array, totalFontes: number, sessionId: string|null}>}
  * @throws {Error} Se a Edge Function retornar erro
  */
-export async function chatJurisprudencia(query, matchCount = 5) {
+export async function chatJurisprudencia(query, matchCount = 5, sessionId = null) {
   if (!query || typeof query !== 'string' || query.trim().length === 0) {
     throw new Error('A pergunta não pode ser vazia.');
   }
 
-  const { data, error } = await supabase.functions.invoke('chat-jurisprudencia', {
-    body: {
-      query: query.trim(),
-      matchCount: Math.min(Math.max(1, matchCount), 10),
-    },
-  });
+  const body = {
+    query: query.trim(),
+    matchCount: Math.min(Math.max(1, matchCount), 10),
+  };
+  if (sessionId) body.sessionId = sessionId;
+
+  const { data, error } = await supabase.functions.invoke('chat-jurisprudencia', { body });
 
   if (error) {
     throw new Error(`Falha no chat jurisprudencial: ${error.message}`);
@@ -99,6 +104,80 @@ export async function chatJurisprudencia(query, matchCount = 5) {
   }
 
   return data;
+}
+
+// ─── Gestão de sessões de Chat ────────────────────────────────────────────────
+
+/**
+ * Cria uma nova sessão de chat com título derivado da primeira pergunta.
+ *
+ * @param {string} titulo - Título da sessão (normalmente a 1ª pergunta truncada)
+ * @returns {Promise<{id: string, title: string, created_at: string}>}
+ */
+export async function createChatSession(titulo) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Usuário não autenticado.');
+
+  const title = (titulo || 'Nova consulta').slice(0, 100);
+
+  const { data, error } = await supabase
+    .from('jurisprudencia_chat_sessions')
+    .insert({ user_id: user.id, title })
+    .select('id, title, created_at')
+    .single();
+
+  if (error) throw new Error(`Erro ao criar sessão: ${error.message}`);
+  return data;
+}
+
+/**
+ * Lista todas as sessões de chat do usuário autenticado, ordenadas pela mais recente.
+ *
+ * @returns {Promise<Array<{id: string, title: string, created_at: string, updated_at: string}>>}
+ */
+export async function listChatSessions() {
+  const { data, error } = await supabase
+    .from('jurisprudencia_chat_sessions')
+    .select('id, title, created_at, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(50);
+
+  if (error) throw new Error(`Erro ao listar sessões: ${error.message}`);
+  return data ?? [];
+}
+
+/**
+ * Carrega as mensagens de uma sessão de chat específica.
+ *
+ * @param {string} sessionId - ID da sessão
+ * @returns {Promise<Array<{id: string, role: string, content: string, created_at: string}>>}
+ */
+export async function loadSessionMessages(sessionId) {
+  if (!sessionId) return [];
+
+  const { data, error } = await supabase
+    .from('jurisprudencia_chat_messages')
+    .select('id, role, content, created_at')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw new Error(`Erro ao carregar mensagens: ${error.message}`);
+  return data ?? [];
+}
+
+/**
+ * Deleta uma sessão de chat (e suas mensagens, via CASCADE).
+ *
+ * @param {string} sessionId - ID da sessão a deletar
+ * @returns {Promise<void>}
+ */
+export async function deleteChatSession(sessionId) {
+  const { error } = await supabase
+    .from('jurisprudencia_chat_sessions')
+    .delete()
+    .eq('id', sessionId);
+
+  if (error) throw new Error(`Erro ao deletar sessão: ${error.message}`);
 }
 
 // ─── Listagem paginada de jurisprudências ─────────────────────────────────────
