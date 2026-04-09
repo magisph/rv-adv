@@ -67,3 +67,8 @@ task_plan.md
 # Arquivos de teste temporários
 tnu_dump*.html
 validate_tnu.mjs
+
+# Skill Seekers
+skill_seekers_scripts
+cache
+.skill-seekers

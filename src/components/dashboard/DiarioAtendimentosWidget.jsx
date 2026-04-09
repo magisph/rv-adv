@@ -109,29 +109,50 @@ export default function DiarioAtendimentosWidget() {
     }
   });
   const handleSave = async () => {
+    if (!formData.nome_contato || !formData.assunto) {
+      toast.error("Por favor, preencha o nome do contato e o assunto.");
+      return;
+    }
+
     setIsUploading(true);
     try {
+      // 1. Upload de arquivos se houver
       if (arquivos.length > 0) {
         toast.info("Fazendo upload de documentos, aguarde...");
         for (const file of arquivos) {
-          const file_url = await aiService.uploadFile(file, 'outros');
-          if (formData.client_id) {
-            await documentService.create({
-              parent_type: 'client',
-              parent_id: formData.client_id,
-              category: 'outros',
-              name: file.name,
-              file_url
-            });
+          try {
+            const file_url = await aiService.uploadFile(file, 'outros');
+            if (formData.client_id) {
+              await documentService.create({
+                parent_type: 'client',
+                parent_id: formData.client_id,
+                category: 'outros',
+                name: file.name,
+                file_url
+              });
+            }
+          } catch (uploadErr) {
+            console.error("Erro no upload de arquivo:", uploadErr);
+            toast.error(`Falha ao carregar arquivo: ${file.name}`);
           }
         }
       }
+
+      // 2. Preparar payload com created_by
+      const payload = { 
+        ...formData,
+        created_by: currentUser?.id || null
+      };
+
+      // 3. Salvar (Criar ou Atualizar)
       if (editingId) {
-        await updateMutation.mutateAsync({ id: editingId, data: formData });
+        await updateMutation.mutateAsync({ id: editingId, data: payload });
       } else {
-        await createMutation.mutateAsync(formData);
+        await createMutation.mutateAsync(payload);
+        
+        // 4. Encaminhamento opcional para admin
         if (encaminharAdmin) {
-          const adminUser = users.find(u => u.role === 'admin');
+          const adminUser = users.find(u => u.role === 'admin' || u.role === 'dono');
           if (adminUser) {
             await taskService.create({
               title: "Atendimento: " + formData.nome_contato,
@@ -145,8 +166,12 @@ export default function DiarioAtendimentosWidget() {
         }
       }
     } catch (e) {
-      toast.error(e.message || "Erro ao salvar atendimento");
-      console.error(e);
+      console.error("Erro ao salvar atendimento:", e);
+      // O toast de erro já é disparado pelo onError do mutation, 
+      // mas garantimos aqui caso o erro ocorra fora da mutation
+      if (!e.isSupabaseError) {
+        toast.error(e.message || "Erro inesperado ao salvar");
+      }
     } finally {
       setIsUploading(false);
     }
@@ -377,11 +402,23 @@ export default function DiarioAtendimentosWidget() {
                         }`}>
                           {atendimento.status}
                         </span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-600 hover:text-blue-600" onClick={(e) => { e.stopPropagation(); handleEdit(atendimento); }}>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 text-slate-600 hover:text-blue-600" 
+                          onClick={(e) => { e.stopPropagation(); handleEdit(atendimento); }}
+                          aria-label="Editar atendimento"
+                        >
                           <Pencil className="w-3 h-3" />
                         </Button>
                         {(currentUser?.role === 'admin' || currentUser?.role === 'dono') && (
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-600 hover:text-red-600" onClick={(e) => { e.stopPropagation(); if(window.confirm('Excluir este atendimento?')) deleteMutation.mutate(atendimento.id); }}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-slate-600 hover:text-red-600" 
+                            onClick={(e) => { e.stopPropagation(); if(window.confirm('Excluir este atendimento?')) deleteMutation.mutate(atendimento.id); }}
+                            aria-label="Excluir atendimento"
+                          >
                             <Trash2 className="w-3 h-3" />
                           </Button>
                         )}
