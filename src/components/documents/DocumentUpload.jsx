@@ -21,6 +21,7 @@ const DOCUMENT_TYPES = {
   laudo: "Laudo Médico",
   contrato: "Contrato",
   procuracao: "Procuração",
+  diversos: "Diversos",
   outros: "Outros",
 };
 
@@ -108,7 +109,7 @@ export default function DocumentUpload({
               type="file"
               onChange={handleFileChange}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.docm,.dotx"
             />
             <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-slate-50 transition-colors">
               <Upload className="w-8 h-8 text-slate-600 mb-2" />

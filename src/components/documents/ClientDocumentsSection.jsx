@@ -391,6 +391,26 @@ const DOCUMENT_TYPES = {
       },
     ],
   },
+  diversos: {
+    name: "Diversos",
+    color: "#607D8B",
+    bgColor: "#ECEFF1",
+    icon: Archive,
+    types: [
+      {
+        id: "diversos_geral",
+        label: "Documentos Gerais",
+        allowMultiple: true,
+        fields: [{ name: "descricao", label: "Descrição", type: "text" }],
+      },
+      {
+        id: "diversos_outros",
+        label: "Outros",
+        allowMultiple: true,
+        fields: [{ name: "descricao", label: "Descrição", type: "text" }],
+      },
+    ],
+  },
 };
 
 function DocumentTypeCard({

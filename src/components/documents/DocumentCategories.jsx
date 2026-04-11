@@ -12,6 +12,7 @@ import {
   Sprout,
   ChevronRight,
   LineChart,
+  Archive,
 } from "lucide-react";
 
 // Configuração das categorias com cores e subcategorias
@@ -130,6 +131,18 @@ export const DOCUMENT_CATEGORIES = {
       { id: "calculo_previdenciario", label: "Cálculo Previdenciário" },
       { id: "parecer_tecnico", label: "Parecer Técnico" },
       { id: "outros_analises", label: "Outros" },
+    ],
+  },
+  diversos: {
+    name: "Diversos",
+    color: "#607D8B",
+    bgColor: "#ECEFF1",
+    borderColor: "#607D8B",
+    icon: Archive,
+    description: "Documentos Gerais, Diversos",
+    subcategories: [
+      { id: "diversos_geral", label: "Documentos Gerais" },
+      { id: "diversos_outros", label: "Outros" },
     ],
   },
 };
