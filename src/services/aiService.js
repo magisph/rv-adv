@@ -10,13 +10,13 @@ import { supabase } from '@/lib/supabase';
 // Upload Service (Supabase Storage — unchanged)
 // ============================================
 
-async function uploadFileToStorage(file) {
+async function uploadFileToStorage(file, bucket = 'client-documents', folder = 'documents') {
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-  const filePath = `documents/${fileName}`;
+  const filePath = `${folder}/${fileName}`;
 
   const { data, error } = await supabase.storage
-    .from('client-documents')
+    .from(bucket)
     .upload(filePath, file, {
       cacheControl: '3600',
       upsert: false
@@ -25,10 +25,10 @@ async function uploadFileToStorage(file) {
   if (error) throw error;
 
   const { data: urlData } = supabase.storage
-    .from('client-documents')
+    .from(bucket)
     .getPublicUrl(data.path);
 
-  return { file_url: urlData.publicUrl, path: data.path };
+  return { file_url: urlData.publicUrl, path: data.path, name: file.name };
 }
 
 // ============================================
@@ -61,8 +61,8 @@ export const aiService = {
   // UPLOAD DE ARQUIVO
   // Usa: Supabase Storage (local, sem proxy)
   // ----------------------------------------
-  async uploadFile({ file }) {
-    return uploadFileToStorage(file);
+  async uploadFile({ file, bucket, folder }) {
+    return uploadFileToStorage(file, bucket, folder);
   },
 
   // ----------------------------------------

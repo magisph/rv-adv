@@ -14,13 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, X, Crown } from "lucide-react";
+import { Save, X, Crown, Paperclip, FileText, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".doc", ".jpg", ".jpeg", ".png"];
 
 export default function TaskForm({ task, onSave, onCancel, isSaving }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [arquivos, setArquivos] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [existingAttachments, setExistingAttachments] = useState(task?.attachments || []);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -29,6 +33,7 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
     };
     loadUser();
   }, []);
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -41,8 +46,6 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
     client_name: "",
     process_id: "",
     process_number: "",
-    beneficio_id: "",
-    beneficio_tipo: "",
     ...task,
   });
 
@@ -52,7 +55,6 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
   });
 
   const userRole = currentUser?.role?.toLowerCase() || "";
-  const _isAdmin = userRole === "admin" || userRole === "dono";
   const isAssistant = userRole === "secretaria" || userRole === "assistente";
   const isCollaborativeMode = users.length > 0;
 
@@ -71,7 +73,6 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
     queryFn: () => beneficioService.list(),
   });
 
-  // Auto-assign secretaria/assistente to themselves
   useEffect(() => {
     if (isAssistant && currentUser?.email && !task) {
       setFormData((prev) => ({
@@ -80,13 +81,7 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
         assigned_name: currentUser.full_name || currentUser.email,
       }));
     }
-  }, [isAssistant, currentUser]);
-
-  useEffect(() => {
-    if (task) {
-      setFormData({ ...formData, ...task });
-    }
-  }, [task]);
+  }, [isAssistant, currentUser, task]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -119,49 +114,83 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
     }));
   };
 
-  const handleBeneficioChange = (beneficioId) => {
-    const beneficio = beneficios.find((b) => b.id === beneficioId);
-    setFormData((prev) => ({
-      ...prev,
-      beneficio_id: beneficioId,
-      beneficio_tipo: beneficio?.tipo_beneficio || "",
-    }));
+  const validateFile = (file) => {
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`O arquivo ${file.name} excede o limite de 5MB.`);
+      return false;
+    }
+    const ext = `.${file.name.split(".").pop().toLowerCase()}`;
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      toast.error(`Extensão ${ext} não permitida.`);
+      return false;
+    }
+    return true;
+  };
+
+  const handleFileChange = (e) => {
+    const selected = Array.from(e.target.files);
+    const validFiles = selected.filter(validateFile);
+    
+    if (validFiles.length + arquivos.length + existingAttachments.length > 10) {
+      toast.error("Máximo de 10 anexos permitidos por tarefa.");
+      return;
+    }
+    
+    setArquivos((prev) => [...prev, ...validFiles]);
+    e.target.value = ""; // Reset input
+  };
+
+  const removeFile = (index) => {
+    setArquivos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingAttachment = (index) => {
+    setExistingAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // --- Data Sanitation ---
     const payload = { ...formData };
-
-    // 1. Remove ghost columns not present in the 'tasks' table (PGRST204 fix)
+    
+    // Cleanup ghost columns from task object if any
     delete payload.beneficio_id;
     delete payload.beneficio_tipo;
 
-    // 2. Null Safety: PostgreSQL rejects empty strings in UUID and DATE fields
+    // Null Safety for UUID/Date fields
     const nullableFields = ["client_id", "process_id", "due_date", "assigned_to"];
     nullableFields.forEach((field) => {
-      if (payload[field] === "") payload[field] = null;
+      if (payload[field] === "" || payload[field] === "none") payload[field] = null;
     });
 
-    // 3. Upload attachments before saving
-    if (arquivos.length > 0) {
-      setIsUploading(true);
-      try {
-        const uploadedUrls = [];
-        for (const file of arquivos) {
-          const url = await aiService.uploadFile({ file });
-          uploadedUrls.push(url);
-        }
-        payload.attachments = uploadedUrls;
-      } catch (err) {
-        console.error("Erro no upload:", err);
-      } finally {
-        setIsUploading(false);
+    setIsUploading(true);
+    try {
+      const uploadedUrls = [...existingAttachments];
+      
+      // Upload new files
+      for (const file of arquivos) {
+        const result = await aiService.uploadFile({ 
+          file, 
+          bucket: 'task-attachments', 
+          folder: 'tasks' 
+        });
+        uploadedUrls.push({
+          name: file.name,
+          url: result.file_url,
+          path: result.path,
+          size: file.size,
+          uploaded_at: new Date().toISOString()
+        });
       }
+      
+      payload.attachments = uploadedUrls;
+      onSave(payload);
+    } catch (err) {
+      console.error("Erro no processamento da tarefa:", err);
+      toast.error("Falha ao processar anexos. Tente novamente.");
+    } finally {
+      setIsUploading(false);
     }
-
-    onSave(payload);
   };
 
   return (
@@ -201,6 +230,7 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
             <SelectContent>
               <SelectItem value="todo">A Fazer</SelectItem>
               <SelectItem value="in_progress">Em Progresso</SelectItem>
+              <SelectItem value="in_review">Em Revisão</SelectItem>
               <SelectItem value="done">Concluída</SelectItem>
             </SelectContent>
           </Select>
@@ -229,56 +259,61 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
           <Input
             id="due_date"
             type="date"
-            value={formData.due_date}
+            value={formData.due_date || ""}
             onChange={(e) => handleChange("due_date", e.target.value)}
           />
         </div>
       </div>
 
-      {isCollaborativeMode && (
-        <div className="space-y-2">
-          <Label htmlFor="assigned_to">Responsável</Label>
-          {isAssistant ? (
-            <Input
-              value={currentUser?.full_name || currentUser?.email || ""}
-              disabled
-              className="bg-slate-100 cursor-not-allowed"
-            />
-          ) : (
-            <Select
-              value={
-                users.find((u) => u.email === formData.assigned_to)?.id || ""
-              }
-              onValueChange={handleUserChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um responsável" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    <div className="flex items-center gap-2">
-                      {user.full_name || user.email}
-                      {(user.role === "admin" || user.role === "dono") && (
-                        <Crown className="w-3 h-3 text-amber-500" />
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {isCollaborativeMode && (
+          <div className="space-y-2">
+            <Label htmlFor="assigned_to">Responsável</Label>
+            {isAssistant ? (
+              <Input
+                value={currentUser?.full_name || currentUser?.email || ""}
+                disabled
+                className="bg-slate-50 cursor-not-allowed"
+              />
+            ) : (
+              <Select
+                value={
+                  users.find((u) => u.email === formData.assigned_to)?.id || "none"
+                }
+                onValueChange={handleUserChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não atribuído</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      <div className="flex items-center gap-2">
+                        {user.full_name || user.email}
+                        {(user.role === "admin" || user.role === "dono") && (
+                          <Crown className="w-3 h-3 text-amber-500" />
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
 
-      <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="client_id">Cliente (opcional)</Label>
-          <Select value={formData.client_id} onValueChange={handleClientChange}>
+          <Select 
+            value={formData.client_id || "none"} 
+            onValueChange={(val) => handleClientChange(val === "none" ? null : val)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione um cliente" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="none">Nenhum cliente</SelectItem>
               {clients.map((client) => (
                 <SelectItem key={client.id} value={client.id}>
                   {client.full_name}
@@ -287,83 +322,116 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
             </SelectContent>
           </Select>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="process_id">Processo (opcional)</Label>
-            <Select
-              value={formData.process_id}
-              onValueChange={handleProcessChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um processo" />
-              </SelectTrigger>
-              <SelectContent>
-                {processes.map((process) => (
-                  <SelectItem key={process.id} value={process.id}>
-                    {process.process_number}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      {/* Attachments Section */}
+      <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+        <div className="flex items-center justify-between">
+          <Label className="flex items-center gap-2 text-slate-700 font-semibold">
+            <Paperclip className="w-4 h-4" />
+            Anexos
+          </Label>
+          <span className="text-[10px] text-slate-500 uppercase font-medium">
+            PDF, DOCX, Imagens (Max 5MB)
+          </span>
+        </div>
 
+        {/* Existing Attachments */}
+        {existingAttachments.length > 0 && (
           <div className="space-y-2">
-            <Label htmlFor="beneficio_id">Benefício (opcional)</Label>
-            <Select
-              value={formData.beneficio_id}
-              onValueChange={handleBeneficioChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um benefício" />
-              </SelectTrigger>
-              <SelectContent>
-                {beneficios.map((beneficio) => (
-                  <SelectItem key={beneficio.id} value={beneficio.id}>
-                    {beneficio.tipo_beneficio} - {beneficio.client_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Arquivos Salvos</p>
+            {existingAttachments.map((file, idx) => (
+              <div key={`existing-${idx}`} className="flex items-center justify-between bg-white p-2 rounded border border-slate-100 text-xs">
+                <div className="flex items-center gap-2 truncate">
+                  <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <span className="truncate text-slate-700">{file.name}</span>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 text-slate-400 hover:text-red-500"
+                  onClick={() => removeExistingAttachment(idx)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ))}
           </div>
+        )}
+
+        {/* New Files Queue */}
+        {arquivos.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] text-blue-500 font-bold uppercase">Novos Arquivos</p>
+            {arquivos.map((file, idx) => (
+              <div key={`new-${idx}`} className="flex items-center justify-between bg-blue-50/50 p-2 rounded border border-blue-100 text-xs">
+                <div className="flex items-center gap-2 truncate">
+                  <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span className="truncate text-slate-700">{file.name}</span>
+                  <span className="text-[10px] text-slate-400">({(file.size / 1024).toFixed(0)} KB)</span>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 text-slate-400 hover:text-red-500"
+                  onClick={() => removeFile(idx)}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="relative">
+          <input
+            id="attachments"
+            type="file"
+            multiple
+            accept={ALLOWED_EXTENSIONS.join(",")}
+            className="hidden"
+            onChange={handleFileChange}
+            disabled={isUploading}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-dashed border-2 hover:border-legal-blue hover:bg-blue-50/30 transition-all h-12"
+            onClick={() => document.getElementById("attachments").click()}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Paperclip className="w-4 h-4 mr-2" />
+            )}
+            {isUploading ? "Processando..." : "Clique para anexar arquivos"}
+          </Button>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="attachments">Anexos (PDF, DOCX)</Label>
-        <input
-          id="attachments"
-          type="file"
-          multiple
-          accept=".pdf,.docx"
-          className="block w-full text-sm text-slate-600 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
-          onChange={(e) => {
-            const selected = Array.from(e.target.files);
-            if (selected.length > 5) {
-              toast.error("Máximo de 5 arquivos permitidos.");
-              e.target.value = "";
-              return;
-            }
-            setArquivos(selected);
-          }}
-        />
-        {arquivos.length > 0 && (
-          <p className="text-xs text-slate-600">{arquivos.length} arquivo(s) selecionado(s)</p>
-        )}
-      </div>
-
-      <div className="flex items-center justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          <X className="w-4 h-4 mr-2" />
+      <div className="flex items-center justify-end gap-3 pt-4 border-t">
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={isSaving || isUploading}>
           Cancelar
         </Button>
         <Button
           type="submit"
           disabled={isSaving || isUploading}
-          className="bg-legal-blue hover:bg-legal-blue-light"
+          className="bg-legal-blue hover:bg-legal-blue-light min-w-[120px]"
         >
-          <Save className="w-4 h-4 mr-2" />
-          {isUploading ? "Enviando..." : isSaving ? "Salvando..." : "Salvar"}
+          {isSaving || isUploading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Salvando...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              Salvar Tarefa
+            </>
+          )}
         </Button>
       </div>
     </form>

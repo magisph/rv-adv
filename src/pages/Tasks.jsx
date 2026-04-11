@@ -32,6 +32,7 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Paperclip,
 } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
@@ -158,6 +159,24 @@ function TaskCard({ task, urgency, onEdit, onDelete, onStatusChange, userRole })
                 )}
                 {task.assigned_name && (
                   <span className="truncate">Resp: {task.assigned_name}</span>
+                )}
+                {task.attachments && task.attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2 pt-1.5 border-t border-slate-100">
+                    {task.attachments.map((att, idx) => (
+                      <a
+                        key={idx}
+                        href={att.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded hover:bg-blue-100 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                        title={att.name}
+                      >
+                        <Paperclip className="w-2.5 h-2.5" />
+                        <span className="max-w-[80px] truncate">{att.name}</span>
+                      </a>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
