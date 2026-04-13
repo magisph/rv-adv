@@ -976,7 +976,7 @@ export default function ClientDocumentsSection({
 
   const filteredCategories = React.useMemo(() => {
     if (areaAtuacao === "Cível") {
-      const allowed = ["pessoais", "comprovacao", "analises"];
+      const allowed = ["pessoais", "comprovacao", "analises", "diversos"];
       return Object.entries(DOCUMENT_TYPES).filter(([key]) => allowed.includes(key));
     }
     return Object.entries(DOCUMENT_TYPES).filter(([key]) => key !== "comprovacao");
