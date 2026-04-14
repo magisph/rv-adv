@@ -25,8 +25,14 @@ export type PagamentoStatus = 'pago' | 'pendente';
 
 export interface Pericia {
   id: string;
-  nome: string;
-  cpf: string;
+  client_id?: string;
+  clients?: {
+    id: string;
+    full_name: string;
+    cpf_cnpj: string;
+  };
+  nome?: string;
+  cpf?: string;
   senha_inss?: string;
   esfera: PericiaEsfera;
   status: PericiaStatus;

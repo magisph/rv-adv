@@ -63,6 +63,9 @@ local-scraper/djen_seen.json
 findings.md
 progress.md
 task_plan.md
+task_plan_task2.md
+task_plan_task3.md
+auditoria_execucao_rvadv.md
 
 # Arquivos de teste temporários
 tnu_dump*.html
@@ -72,3 +75,7 @@ validate_tnu.mjs
 skill_seekers_scripts
 cache
 .skill-seekers
+
+# Open Code
+.opencode-router
+.opencode

@@ -13,7 +13,6 @@ import React, { Suspense } from "react";
 // PericiaPro module pages — carregadas sob demanda (code splitting)
 // Reduz o bundle inicial excluindo o módulo PericiaPro até a primeira navegação
 const PericiasDashboard = React.lazy(() => import("@/modules/periciapro/pages/Dashboard"));
-const PericiasCadastro  = React.lazy(() => import("@/modules/periciapro/pages/CadastroCliente"));
 const PericiasCalendario = React.lazy(() => import("@/modules/periciapro/pages/Calendario"));
 const PericiasAlertas   = React.lazy(() => import("@/modules/periciapro/pages/Alertas"));
 const PericiasDetalhes  = React.lazy(() => import("@/modules/periciapro/pages/DetalhesCliente"));
@@ -113,18 +112,7 @@ const AuthenticatedApp = () => {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/pericias/cadastro"
-        element={
-          <ProtectedRoute>
-            <LayoutWrapper currentPageName="pericias-cadastro">
-              <Suspense fallback={<PageLoader />}>
-                <PericiasCadastro />
-              </Suspense>
-            </LayoutWrapper>
-          </ProtectedRoute>
-        }
-      />
+
       <Route
         path="/pericias/calendario"
         element={

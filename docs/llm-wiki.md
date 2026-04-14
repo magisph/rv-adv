@@ -1,293 +1,810 @@
-# LLM Wiki: RV-Adv (Plataforma de Gestão Jurídica Inteligente)
+# RV-Adv — LLM Wiki
 
-Este documento define o padrão de arquitetura de conhecimento e as diretrizes operacionais para agentes LLM que atuam como co-desenvolvedores e mantenedores do ecossistema RV-Adv. Ele serve como a "alma" da documentação dinâmica, estabelecendo como o conhecimento sobre o projeto é acumulado, interligado e mantido atualizado pelo agente LLM.
-
-O RV-Adv é um ecossistema complexo (LegalTech) construído sob o paradigma de um Monólito Modular. Em vez de exigir que o agente "redescubra" a arquitetura, as regras de negócio e os padrões de código a cada novo prompt, o agente LLM deve construir, consultar e manter uma wiki persistente localizada na pasta `docs/`. Sempre que novas funcionalidades são implementadas ou bugs são corrigidos, o agente não apenas produz o código necessário, mas também atualiza proativamente as páginas da wiki relevantes. Isso garante que o contexto histórico, as decisões de design (ADRs) e os requisitos do sistema permaneçam perpetuamente sincronizados com a base de código.
+> Base de conhecimento estruturada do projeto RV-Adv (RV Advocacia), uma plataforma LegalTech completa para gestao de escritorios de advocacia brasileiros, com foco nas areas Previdenciario, Civel e Trabalhista.
 
 ---
 
-## 1. Arquitetura da Base de Conhecimento
+## Visao Geral
 
-A base de conhecimento do RV-Adv é estruturada em três camadas fundamentais que separam a verdade bruta da interpretação sintetizada e das regras estritas de operação do agente.
+**RV-Adv** e um ecossistema LegalTech modular construido como SPA (Single Page Application) com React, projetado para automatizar o fluxo de trabalho diario de escritorios de advocacia brasileiros. A plataforma integra gestao de clientes, processos judiciais, prazos, documentos, financeiro, tarefas, agenda, inteligencia artificial, integracoes com APIs governamentais (DataJud/CNJ, DJEN, TNU) e um modulo dedicado de pericias previdenciarias (PericiaPro). Toda a interface e em portugues brasileiro (pt-BR).
 
-| Camada | Componentes Principais | Função e Propriedade |
-| :--- | :--- | :--- |
-| **Fontes Brutas (Raw Sources)** | Código-fonte (`src/`, `supabase/functions/`, `local-scraper/`), Migrações SQL (`supabase/migrations/`), Esquemas JSON (`entities/`), Workflows GitHub (`.github/workflows/`). | Representam a verdade absoluta e imutável do sistema. A wiki as reflete fielmente, mas não as substitui. |
-| **A Wiki (Documentação Dinâmica)** | Arquivos Markdown na pasta `docs/` (ex: `architecture.md`, `prd.md`, `Plano_Implementacao_Modulo_Jurisprudencia.md`, `Formulario_BPC.md`). | Documentação dinâmica e sintetizada mantida e atualizada continuamente pelo agente LLM conforme o sistema evolui. |
-| **O Esquema (Regras do Agente)** | `.antigravity/rules.md`, `.aiox-core/constitution.md`, `.aiox-core/core-config.yaml`. | Define os princípios inegociáveis: o desenvolvimento é estritamente guiado por histórias (Story-Driven), prioriza o CLI (CLI First) e impõe rigorosos padrões de qualidade (Quality First). |
+**Stack primario**: React 18.2 + Vite 6.1 + Tailwind CSS 3.4 + shadcn/ui + Supabase (PostgreSQL + Auth + Storage + Edge Functions) + TanStack Query v5.
+
+**Repositorio**: [github.com/magisph/rv-adv](https://github.com/magisph/rv-adv)
 
 ---
 
-## 2. Stack Tecnológica Completa
+## Arquitetura do Sistema
 
-O ecossistema RV-Adv utiliza uma stack tecnológica moderna e bem definida, que o agente LLM deve respeitar rigorosamente durante a execução de qualquer tarefa.
+### Padrao: Modular Monolith SPA com Camadas
 
-### 2.1. Frontend
+```
+┌───────────────────────────────────────────────────────────┐
+│  CAMADA DE APRESENTACAO (React Pages + Components)        │
+│  16 Paginas │ 100+ Componentes │ Widgets de Dashboard     │
+├───────────────────────────────────────────────────────────┤
+│  CAMADA DE ROTEAMENTO (React Router v6 + pages.config.js) │
+│  Rotas Protegidas │ Lazy Loading │ Code Splitting          │
+├───────────────────────────────────────────────────────────┤
+│  GERENCIAMENTO DE ESTADO (TanStack Query v5 + Context)    │
+│  staleTime Estrategico │ Prefetch │ Cache Invalidation    │
+├───────────────────────────────────────────────────────────┤
+│  CAMADA DE SERVICOS (BaseService + 20+ Servicos Espec.)   │
+│  CRUD Generico │ Validacao Zod │ Mapeamento de Erros      │
+├───────────────────────────────────────────────────────────┤
+│  INFRAESTRUTURA (Supabase SDK + Edge Functions)           │
+│  PostgreSQL │ Auth │ Storage │ Serverless Functions       │
+├───────────────────────────────────────────────────────────┤
+│  INTEGRACOES EXTERNAS                                    │
+│  Scraper Server │ AI Proxy │ APIs Gov. │ Google Calendar  │
+└───────────────────────────────────────────────────────────┘
+```
 
-O **Frontend** é construído com **React 18** e empacotado via **Vite**, utilizando **Tailwind CSS v4** para estilização com um Design System jurídico personalizado (cores `legal-blue`, `legal-gold`) e a biblioteca de componentes **shadcn/ui** (baseada em Radix UI). O gerenciamento de estado assíncrono e cache é tratado pelo **TanStack Query v5** (React Query), com estratégias de `staleTime`, `gcTime` e prefetch ao hover nos links de navegação. O roteamento é gerenciado pelo **React Router DOM v6**. O projeto inclui suporte a **Progressive Web App (PWA)** com manifest, `InstallButton.jsx` e `IOSInstallPrompt.jsx` para instalação nativa. Animações são implementadas com **Framer Motion**. Ícones utilizam a biblioteca **Lucide React**.
+### Principios Arquiteturais
 
-| Tecnologia | Versão/Detalhe | Função |
-| :--- | :--- | :--- |
-| React | 18.x | Biblioteca de UI |
-| Vite | 6.x | Bundler e dev server |
-| Tailwind CSS | 4.x | Estilização utilitária |
-| shadcn/ui (Radix) | Última | Componentes acessíveis |
-| TanStack Query | v5 | Cache e estado assíncrono |
-| React Router DOM | v6 | Roteamento SPA |
-| Framer Motion | Última | Animações |
-| Lucide React | Última | Iconografia |
-| PizZip + Docxtemplater | Última | Geração de documentos `.docx` |
-| date-fns | Última | Manipulação de datas e prazos |
-
-### 2.2. Backend (Supabase)
-
-O **Backend** é suportado primariamente pelo **Supabase** (PostgreSQL). A lógica de negócio crítica, esquemas e políticas de segurança são definidos através de **57 migrações SQL** sequenciais em `supabase/migrations/`. As integrações externas, webhooks e lógicas que exigem ocultação de credenciais são implementadas como **Edge Functions** em **Deno/TypeScript** (`supabase/functions/`). O deploy das Edge Functions é automatizado via GitHub Actions (`deploy-edge-functions.yml`), com distinção automática entre funções que requerem `--no-verify-jwt` e as que utilizam verificação JWT padrão.
-
-O banco de dados utiliza extensões especializadas como **pgcrypto** (UUIDs e criptografia), **pgvector** (busca vetorial semântica com índices HNSW), **pg_cron** (agendamento de tarefas noturnas) e **Full-Text Search** nativo do PostgreSQL com configuração para o idioma português.
-
-### 2.3. Microsserviço de Scraping
-
-O **local-scraper** é um microsserviço Node.js independente (`local-scraper/server.ts`) que roda na máquina local do escritório. Ele utiliza **Crawlee** e **Playwright** com técnicas de stealth (rotação de fingerprints, desabilitação de detecção de automação) para varredura de sistemas judiciais. Expõe endpoints REST para extração de processos do PJe (com suporte a 2FA/OTP), proxy para DataJud e DJEN, e scraping de acórdãos da TNU. Inclui um **Vigia DJEN** que executa polling periódico (a cada 5 minutos) para detectar novas intimações e inseri-las como notificações diretamente no Supabase.
-
-### 2.4. Inteligência Artificial
-
-A camada de IA é orquestrada pela Edge Function **`ai-proxy`**, que centraliza todas as chamadas de IA server-side, eliminando a exposição de chaves de API no frontend. O proxy implementa um sistema de fallback multi-provedor com timeout de 45 segundos por requisição.
-
-| Ação | Provedor Primário | Provedor Backup | Modelo |
-| :--- | :--- | :--- | :--- |
-| Geração de Documentos Jurídicos | OpenRouter | DeepSeek R1 | `deepseek/deepseek-r1` |
-| Invocação LLM Genérica | Groq | — | `llama-3.3-70b-versatile` |
-| OCR Inteligente (Multimodal) | Gemini | Qwen2.5 VL (OpenRouter) | `gemini-2.5-flash` |
-| Classificação de Documentos | Groq | Cohere Command R+ | `llama-3.1-8b` |
-| Análise Processual (Longo Contexto) | NVIDIA Nemotron | DeepSeek R1 | `nemotron-3-nano-30b` |
-| Embeddings Vetoriais | Gemini | — | `gemini-embedding-001` |
-| Chat RAG Jurisprudência | Gemini | — | `gemini-2.5-flash-lite` |
+- **Config-driven routing**: paginas sao registradas centralmente em `pages.config.js`, com metadados de visibilidade por role e lazy loading
+- **Heranca de servicos**: `BaseService` fornece CRUD generico; servicos especializados estendem com logica de dominio
+- **Sem SSR/SSG**: renderizacao exclusivamente client-side
+- **Code splitting**: modulo PericiaPro possui 5 rotas lazy-loaded separadamente
+- **Design system semantico**: tokens customizados `legal-blue` (#1e3a5f), `legal-gold` (#c9a227), `legal-gray`, com suporte a dark mode via classe CSS
 
 ---
 
-## 3. Modelo de Dados e Schema do Banco
+## Stack Tecnologico Completo
 
-O schema do banco de dados é extenso e reflete a complexidade do domínio jurídico previdenciário. As tabelas são organizadas em domínios funcionais claros.
+### Framework e Build
+| Tecnologia | Versao | Papel |
+|---|---|---|
+| React | 18.2 | Biblioteca UI |
+| Vite | 6.1 | Build tool e dev server |
+| React Router DOM | 6.26 | Roteamento client-side |
+| JavaScript/JSX | — | Linguagem primaria |
+| TypeScript | 5.8 (dev) | Schemas, tipos, edge functions |
 
-### 3.1. Domínio Core (Gestão Jurídica)
+### UI e Design
+| Tecnologia | Papel |
+|---|---|
+| Tailwind CSS v3.4 | Framework utility-first |
+| shadcn/ui (New York) | Componentes acessiveis sobre Radix UI |
+| Radix UI (20+ primitives) | Primitives headless |
+| Lucide React | Icones |
+| Framer Motion v11 | Animacoes (Kanban, PWA) |
+| Recharts v2 | Graficos de dashboard |
+| react-day-picker v8 | Seletor de datas |
+| react-markdown v9 | Renderizacao markdown |
+| cmdk | Command palette |
+| embla-carousel-react | Carrossel |
+| react-resizable-panels | Paineis redimensionaveis |
+| vaul | Drawer |
 
-| Tabela | Descrição | Campos-Chave |
-| :--- | :--- | :--- |
-| `clients` | Cadastro de clientes do escritório | `full_name`, `cpf_cnpj`, `email`, `phone`, `address`, `status`, `created_by` |
-| `processes` | Processos judiciais e administrativos | `client_id`, `process_number`, `court`, `status`, `area`, `created_by` |
-| `deadlines` | Prazos processuais com cálculo de dias úteis | `process_id`, `due_date`, `status`, `type` |
-| `tasks` | Tarefas internas do escritório | `client_id`, `process_id`, `status`, `due_date`, `assigned_to` |
-| `financials` | Controle financeiro (honorários, custas) | `client_id`, `type`, `value`, `date`, `status` |
-| `documents` | Documentos anexados a clientes/processos | `parent_type`, `parent_id`, `storage_path`, `folder_id` |
-| `templates` | Templates de documentos jurídicos | `name`, `category`, `file_url` |
-| `process_moves` | Movimentações processuais | `process_id`, `date`, `description` |
-| `users` | Usuários do sistema com papéis | `auth_id`, `email`, `role`, `name` |
-| `atendimentos` | Diário de atendimentos e prospecção | `nome_contato`, `categoria`, `status`, `client_id` |
+### Estado e Dados
+| Tecnologia | Papel |
+|---|---|
+| TanStack Query v5 | Estado server-side, caching, background refetch |
+| React Context | Estado de autenticacao (`AuthContext`) |
+| React Hook Form v7.54 | Gerenciamento de formularios |
+| Zod v3.24 | Validacao de schemas |
 
-### 3.2. Domínio PeríciaPro
+### Backend (BaaS)
+| Tecnologia | Papel |
+|---|---|
+| Supabase (PostgreSQL) | Banco de dados, autenticacao, storage, edge functions |
+| @supabase/supabase-js v2.99 | SDK cliente |
 
-| Tabela | Descrição | Campos-Chave |
-| :--- | :--- | :--- |
-| `pericias` | Perícias previdenciárias | `nome`, `cpf`, `esfera`, `status`, `dcb`, `data_pericia`, `google_calendar_event_id` |
-| `pericia_pagamentos` | Pagamentos vinculados a perícias | `pericia_id`, `valor`, `status` |
-| `pericia_documentos` | Documentos de perícia com classificação IA | `pericia_id`, `storage_path`, `classificacao_ia` |
-| `activity_logs` | Log de atividades por perícia | `pericia_id`, `type`, `description`, `metadata` |
-| `lembretes` | Lembretes vinculados a perícias | `pericia_id`, `titulo`, `data_lembrete`, `concluido` |
-| `notifications` | Notificações de DCB e perícias | `pericia_id`, `type`, `priority`, `days_until`, `event_date` |
-| `notification_preferences` | Preferências de alerta por usuário | `dcb_alert_days`, `pericia_alert_days`, `email_notifications_enabled` |
+### IA/ML
+| Provider | Modelo | Uso |
+|---|---|---|
+| Google Gemini 2.5 Flash | Multimodal | Parsing de emails INSS, OCR, embeddings para jurisprudencia |
+| Groq + Llama 3.3 70B | LLM | Geracao de documentos juridicos (primario) |
+| OpenRouter + DeepSeek R1 | LLM | Geracao de documentos (fallback), raciocinio |
+| Groq + Llama 3.1 8B | LLM | Classificacao de documentos (ultra-rapido) |
+| NVIDIA Nemotron | LLM | Analise de processos (contexto longo) |
+| Qwen2.5 VL | Vision-Language | OCR (fallback) |
+| Cohere Command R+ | LLM | Classificacao de documentos (fallback) |
 
-### 3.3. Domínio Benefícios Previdenciários
+Todas as chamadas de IA passam pelo Edge Function `ai-proxy` — nenhuma chave de API e exposta no client-side.
 
-O sistema suporta múltiplos tipos de benefícios previdenciários, cada um com um schema especializado definido em `entities/*.json` e tabelas dedicadas no banco de dados.
+### Documentos
+| Biblioteca | Papel |
+|---|---|
+| docxtemplater + pizzip | Geracao de documentos .docx |
+| jsPDF | Geracao de PDF |
+| html2canvas | Exportacao HTML-para-canvas |
+| JSZip + file-saver | Download em lote como .zip |
 
-| Tabela | Tipo de Benefício | Campos Específicos |
-| :--- | :--- | :--- |
-| `beneficios` | Tabela-mãe de benefícios | `client_id`, `categoria`, `tipo_beneficio`, `status` |
-| `beneficios_aposentadoria_rural` | Aposentadoria Rural | `reside_zona`, `trabalha_exclusivo_agricultura`, `membros_grupo_familiar` |
-| `beneficios_bpc_idoso` | BPC/LOAS Idoso | `cadunico_atualizado`, `renda_declarada_cadunico`, `triagem_elegibilidade`, `cif_pcd` |
-| `beneficios_incapacidade_rural` | Incapacidade Rural | Campos específicos de incapacidade laboral rural |
-| `beneficios_salario_maternidade_rural` | Salário-Maternidade Rural | Campos específicos de maternidade rural |
+### Scraper/Automacao
+| Tecnologia | Papel |
+|---|---|
+| Crawlee v3 | Framework de web scraping |
+| Playwright v1.58 | Automacao de navegador (stealth) |
+| Express v5 | Servidor local de scraper (porta 3001) |
 
-### 3.4. Domínio Jurisprudência (Vetorial)
-
-| Tabela | Descrição | Campos-Chave |
-| :--- | :--- | :--- |
-| `courts` | Tribunais cadastrados | `acronym`, `name` |
-| `jurisprudences` | Acórdãos com FTS e embeddings vetoriais | `process_number`, `excerpt`, `full_text`, `fts_vector`, `embedding` (vector 3072), `embedding_status` |
-| `jurisprudencia_chat_sessions` | Sessões de chat RAG | `user_id`, `title`, `updated_at` |
-| `jurisprudencia_chat_messages` | Mensagens de chat RAG | `session_id`, `role`, `content`, `sources` |
-
-A função RPC `buscar_jurisprudencia(query_embedding, match_count, similarity_threshold)` realiza a busca vetorial via operador `<=>` (distância cosseno) sobre o índice HNSW da coluna `embedding`.
-
----
-
-## 4. Edge Functions: Catálogo Completo
-
-As Edge Functions são o backbone de integração do RV-Adv. Cada função é deployada como um serviço serverless no Supabase e utiliza o módulo compartilhado `_shared/auth.ts` para autenticação JWT (ES256 via JWKS e HS256 para service_role).
-
-| Edge Function | Responsabilidade | Autenticação | Detalhes |
-| :--- | :--- | :--- | :--- |
-| `ai-proxy` | Proxy centralizado para todas as chamadas de IA | JWT (`--no-verify-jwt`) | Multi-provedor com fallback (Groq, Gemini, OpenRouter, NVIDIA, Cohere). Timeout de 45s. |
-| `generate-embedding` | Geração de embeddings vetoriais | JWT (`--no-verify-jwt`) | Gemini Embedding API (`gemini-embedding-001`). Suporta `taskType` (RETRIEVAL_QUERY / RETRIEVAL_DOCUMENT). |
-| `chat-jurisprudencia` | Chat RAG sobre jurisprudência da TNU | JWT (`--no-verify-jwt`) | Pipeline: query → embedding → busca vetorial → contexto + histórico → Gemini Pro → resposta. Memória de sessão (últimas 20 mensagens). |
-| `scrape-tnu` | Scraping de acórdãos da TNU | JWT (`--no-verify-jwt`) | Filtros de qualidade (13 padrões de exclusão). Upsert idempotente por `process_number`. Validação de formato de data. |
-| `ocr-classify-document` | OCR e classificação de documentos | JWT (verificado) | Extrai texto de PDFs via Gemini Vision. Classifica em 10 categorias (pessoais, inss, medicos, judicial, etc.). |
-| `djen-bypass` | Proxy seguro para API pública do DJEN (CNJ) | JWT (`--no-verify-jwt`) | Resolve Mixed Content (HTTP/HTTPS) e Geo-Block (403). Rate limit: 100 req/min por IP. |
-| `datajud-bypass` | Proxy seguro para API do DataJud (CNJ) | JWT (`--no-verify-jwt`) | Suporta tribunais TJCE e TRF5. Encaminha queries ElasticSearch ao WSO2 Gateway do CNJ. |
-| `sync-google-calendar` | Sincronização de perícias com Google Calendar | JWT (`--no-verify-jwt`) | Cria/atualiza eventos no Google Calendar com dados da perícia (data, horário, local, paciente). |
-| `delete-google-calendar` | Remoção de eventos do Google Calendar | JWT (`--no-verify-jwt`) | Remove evento vinculado a uma perícia quando ela é cancelada ou excluída. |
-| `inss-webhook` | Receptor de webhooks do INSS | HMAC-SHA256 | Valida assinatura HMAC timing-safe. Rate limit: 5 req/min. Idempotência via header `X-Idempotency-Key`. |
-| `ti-webhook-receiver` | Receptor de webhooks da Tramitação Inteligente | HMAC-SHA256 | Extrai número de processo de múltiplos formatos de payload (campos diretos e aninhados). |
-| `import-tramita-clients` | Importação de clientes da API Tramitação Inteligente | Dual (API Key ou JWT) | Batch upsert em chunks de 100. Circuit breaker (max 100 páginas). Null Safety rigorosa. |
-
-O módulo compartilhado `_shared/` contém três utilitários críticos reutilizados por todas as funções: `auth.ts` (autenticação JWT dual ES256/HS256 com cache JWKS), `cors.ts` (whitelist de origens com headers de segurança HSTS, X-Frame-Options, X-Content-Type-Options) e `rate-limit.ts` (limitador de taxa em memória por IP com janela de 1 minuto).
-
----
-
-## 5. Pipelines de Automação (CI/CD e Cron)
-
-O projeto utiliza três workflows GitHub Actions e agendamentos `pg_cron` para automação contínua.
-
-### 5.1. GitHub Actions
-
-| Workflow | Trigger | Função |
-| :--- | :--- | :--- |
-| `deploy-edge-functions.yml` | Push em `master` (paths: `supabase/functions/**`) ou manual | Deploy automático de todas as Edge Functions. Distingue automaticamente funções `--no-verify-jwt` das padrão. |
-| `tnu-scraper.yml` | Cron diário às 03:00 BRT (06:00 UTC) ou manual | Coleta automatizada de acórdãos da TNU com rotação de 30 termos de busca. Gera embeddings para acórdãos pendentes via Gemini. |
-| `security-scan.yml` | Push/PR em `main`/`dev` + cron diário às 02:00 | Auditoria NPM, ESLint Security Scan e testes de segurança Vitest. |
-
-### 5.2. pg_cron (Banco de Dados)
-
-| Job | Horário | Função |
-| :--- | :--- | :--- |
-| `periciapro-deadline-alerts` | 08:00 diariamente | Verifica DCBs e perícias próximas, gera notificações com prioridade escalonada (low → critical) conforme dias restantes. |
-| `nightly-audit` | 03:00 diariamente | Inspetor noturno que detecta processos parados (>6 meses sem movimentação) e cadastros incompletos (sem CPF/CNPJ). |
+### DevOps
+| Tecnologia | Papel |
+|---|---|
+| Netlify | Hosting estatico, CI/CD, SPA redirects |
+| Cloudflare | DNS, SSL, Email Routing |
+| Hetzner CX33 | Servidor dedicado de scraping (Ubuntu 24.04) |
+| N8N | Automacao de workflows |
+| Husky | Git hooks |
+| Vitest | Testes de seguranca |
+| ESLint v9 + eslint-plugin-security | Linting de seguranca |
 
 ---
 
-## 6. Segurança: Modelo Defense-in-Depth
+## Estrutura de Diretorios
 
-A segurança do RV-Adv é implementada em múltiplas camadas sobrepostas, seguindo o princípio de Defense-in-Depth.
-
-### 6.1. Row Level Security (RLS)
-
-Todas as tabelas críticas possuem RLS habilitado com padrão **Fail-Close** (acesso negado por padrão). As políticas utilizam `auth.uid()` para ownership e verificam o papel do usuário via claims JWT (`auth.jwt() ->> 'user_role'`). Administradores e advogados possuem acesso irrestrito, enquanto secretárias e assistentes têm escopo limitado. A migração `20260330000000_audit_rls_security.sql` implementa a auditoria completa de RLS em todas as tabelas, e a migração `055_robust_roles_and_atendimentos_rls.sql` introduz a função `get_user_role()` para resolução robusta de papéis.
-
-### 6.2. Autenticação JWT Dual
-
-O módulo `_shared/auth.ts` implementa verificação JWT em dois algoritmos. Tokens **ES256** (novo padrão Supabase desde 2025) são verificados criptograficamente via JWKS remoto com cache. Tokens **HS256** (legado) são aceitos apenas para `service_role` (chamadas internas) e usuários autenticados, com verificação de expiração. Tokens anônimos (`role === 'anon'`) são sempre rejeitados.
-
-### 6.3. Proteções Adicionais
-
-O sistema implementa Rate Limiting em memória por IP em todas as Edge Functions expostas, CORS restritivo com whitelist de origens permitidas, validação HMAC-SHA256 timing-safe para webhooks externos (INSS e Tramitação Inteligente), headers de segurança HTTP (HSTS, X-Frame-Options, X-Content-Type-Options) e criptografia de senhas INSS via `pgcrypto` no banco de dados.
+```
+rv-adv-src/
+├── public/                          # Assets estaticos
+│   ├── favicon.svg
+│   └── _redirects                   # Netlify SPA redirect
+├── src/
+│   ├── main.jsx                     # Entry point React
+│   ├── App.jsx                      # App root com routing
+│   ├── Layout.jsx                   # Layout com sidebar
+│   ├── index.css                    # CSS globals
+│   ├── globals.css                  # Tailwind layers
+│   ├── pages.config.js              # Config centralizada de paginas
+│   ├── pages/                       # 16 paginas da aplicacao
+│   │   ├── Home.jsx                 # Dashboard principal
+│   │   ├── Clients.jsx              # Gestao de clientes
+│   │   ├── ClientDetail.jsx         # Detalhe do cliente
+│   │   ├── Processes.jsx            # Gestao de processos
+│   │   ├── ProcessDetail.jsx        # Detalhe do processo
+│   │   ├── Tasks.jsx                # Kanban de tarefas
+│   │   ├── Deadlines.jsx            # Gestao de prazos
+│   │   ├── Documents.jsx            # GED documental
+│   │   ├── Templates.jsx            # Templates de documentos
+│   │   ├── Financial.jsx            # Financeiro (admin-only)
+│   │   ├── JurisprudenciaPage.jsx   # Busca juridica com IA
+│   │   ├── IntimacoesDJEN.jsx       # Diario de Justica Eletronico
+│   │   ├── RadarCNJ.jsx             # DataJud/CNJ radar
+│   │   ├── Settings.jsx             # Configuracoes do usuario
+│   │   ├── CalendarSettings.jsx     # Config Google Calendar
+│   │   ├── NotificationSettings.jsx # Preferencias de notificacao
+│   │   └── AuthPage.jsx             # Login
+│   ├── components/                  # Componentes de dominio
+│   │   ├── ui/                      # 40+ componentes shadcn/ui
+│   │   ├── dashboard/               # Widgets: StatsCard, Charts, TasksWidget
+│   │   │   └── tasks/               # KanbanBoard, KanbanCard, BoardColumn, FiltersPanel
+│   │   ├── processes/               # ProcessForm, ProcessMoveForm, RadarDataJud
+│   │   ├── clients/                 # ClientForm, ClientPDFDocument, FinancialSection
+│   │   │   └── pdf/sections/        # Secoes do PDF: Pessoal, Civeis, Beneficios
+│   │   ├── beneficios/              # Forms por tipo de beneficio (5 tipos)
+│   │   ├── documents/               # Upload, Viewer, OCR, Categories, Versions
+│   │   ├── notifications/           # NotificationPanel, Monitor, Service
+│   │   ├── templates/               # TemplateForm, TemplateEditor
+│   │   ├── calendar/                # CalendarWidget
+│   │   ├── financial/               # FinancialList, FinancialForm
+│   │   ├── deadlines/               # DeadlineForm
+│   │   ├── appointments/            # AppointmentForm
+│   │   ├── tasks/                   # TaskForm
+│   │   ├── djen/                    # PainelDJEN, CalculadoraCpcModal
+│   │   ├── scraper/                 # PjeConfigModal
+│   │   ├── settings/                # HolidayManager
+│   │   └── pwa/                     # InstallButton, IOSInstallPrompt, PWADetector
+│   ├── services/                    # Camada de servicos (12 arquivos)
+│   │   ├── baseService.js           # CRUD generico (BaseService)
+│   │   ├── authService.js           # Autenticacao Supabase
+│   │   ├── clientService.js         # CRUD clientes + busca
+│   │   ├── aiService.js             # Proxy de IA (geracao, OCR, classificacao)
+│   │   ├── calendarService.js       # Google Calendar sync
+│   │   ├── cnjService.js            # CNJ/DJEN/DataJud integracoes
+│   │   ├── jurisprudenciaService.js # Busca vetorial + chat RAG
+│   │   ├── scraperService.js        # Config MNI, OTP, sincronizacao
+│   │   ├── holidayService.js        # Feriados
+│   │   ├── atendimentoService.js    # Diario de atendimentos
+│   │   └── index.js                 # Instanciacao de todos os servicos
+│   ├── lib/                         # Utilitarios e infra
+│   │   ├── supabase.js              # Singleton Supabase client
+│   │   ├── AuthContext.jsx           # Context de autenticacao
+│   │   ├── query-provider.jsx        # TanStack Query provider
+│   │   ├── query-client.js          # Configuracao do query client
+│   │   ├── constants/areas.js       # Areas juridicas
+│   │   ├── validation/schemas/      # Schemas Zod de validacao
+│   │   │   ├── index.ts             # CPF/CNPJ, domain objects
+│   │   │   └── security-schemas.js  # Payload/upload/security validation
+│   │   ├── PageNotFound.jsx         # 404 handler
+│   │   ├── NavigationTracker.jsx    # Rastreamento de navegacao
+│   │   └── utils.js                 # Utilitarios gerais
+│   ├── hooks/                       # Custom hooks
+│   │   ├── use-mobile.jsx           # Detecção de mobile
+│   │   └── useDjenComunicacoes.jsx  # Hook DJEN
+│   ├── utils/                       # Utilitarios de negocio
+│   │   ├── index.ts                 # Helpers gerais
+│   │   ├── businessDays.js          # Calculo de dias uteis (CPC)
+│   │   ├── pdfExporter.js           # Geracao PDF com jsPDF (610+ linhas)
+│   │   ├── documentGenerator.js     # Geracao DOCX com docxtemplater
+│   │   └── clientDataExtractor.js   # Extracao de dados do cliente (426+ linhas)
+│   ├── types/
+│   │   └── radix-components.d.ts    # Tipos Radix UI
+│   └── modules/
+│       └── periciapro/              # Modulo PericiaPro (feature module)
+│           ├── types/index.ts       # Tipos: Pericia, Pagamento, Lembrete, Notification
+│           ├── pages/               # 6 paginas do modulo
+│           ├── components/          # Componentes especificos
+│           ├── services/            # 8 servicos do modulo
+│           ├── hooks/               # use-mobile
+│           └── lib/                 # AuthContext, utils, iframe-messaging, VisualEditAgent
+├── supabase/
+│   ├── functions/                   # 10 Edge Functions
+│   │   ├── ai-proxy/index.ts       # Gateway de IA centralizado
+│   │   ├── chat-jurisprudencia/     # Chat RAG juridico
+│   │   ├── generate-embedding/      # Geracao de embeddings
+│   │   ├── djen-bypass/             # Proxy DJEN (CNJ)
+│   │   ├── datajud-bypass/          # Proxy DataJud (CNJ)
+│   │   ├── scrape-tnu/              # Scraper TNU
+│   │   ├── ti-webhook-receiver/     # Webhook Tramitacao Inteligente
+│   │   ├── inss-webhook/            # Webhook email INSS
+│   │   ├── import-tramita-clients/  # Importacao clientes Tramita
+│   │   ├── ocr-classify-document/   # OCR + classificacao
+│   │   ├── sync-google-calendar/    # Sync Google Calendar
+│   │   ├── delete-google-calendar/  # Delete Google Calendar
+│   │   └── _shared/                 # Auth, CORS, Rate Limit
+│   └── migrations/                  # 58 migracoes SQL
+│       ├── 001_periciapro_schema.sql
+│       ├── 002_periciapro_rls.sql
+│       ├── 008_core_rvadv_schema.sql  # Schema principal (16 tabelas)
+│       ├── 045_jurisprudencia_vetorial.sql  # Busca vetorial
+│       ├── 047_clients_shared_visibility.sql
+│       ├── 055_robust_roles_and_atendimentos_rls.sql
+│       ├── 058_atendimentos_full_crud_all_users.sql
+│       └── 20260330000000_audit_rls_security.sql  # Auditoria RLS
+├── local-scraper/                   # Servidor de scraping local
+│   ├── server.ts                    # Express API (porta 3001)
+│   ├── crawlers/
+│   │   ├── pje-crawler.ts          # Crawler PJe (Crawlee + Playwright)
+│   │   └── tnu-crawler.ts          # Crawler TNU (Crawlee + Playwright)
+│   └── tsconfig.json
+├── entities/                        # Definicoes JSON das entidades
+│   ├── Client.json                  # 30+ campos
+│   ├── Process.json
+│   ├── Deadline.json
+│   ├── Task.json
+│   ├── Financial.json
+│   ├── Document.json
+│   ├── Beneficio.json              # Entidade pai
+│   ├── BeneficioAposentadoriaRural.json  # 60+ campos
+│   ├── BeneficioBPC_Idoso.json
+│   ├── BeneficioIncapacidadeRural.json
+│   ├── BeneficioSalarioMaternidadeRural.json
+│   ├── Appointment.json
+│   ├── Notification.json
+│   ├── Template.json
+│   ├── DocumentVersion.json
+│   ├── DocumentFolder.json
+│   └── ProcessMove.json
+├── scripts/                         # Scripts utilitarios
+├── tests/security/                  # Testes de seguranca
+├── docs/                            # Documentacao do projeto
+├── package.json
+├── vite.config.js
+├── tailwind.config.js
+├── netlify.toml
+├── components.json                  # Config shadcn/ui
+└── eslint.config.js
+```
 
 ---
 
-## 7. Mapa de Rotas e Páginas do Frontend
+## Modelo de Dados (Entidades)
 
-O roteamento do frontend é definido em `src/pages.config.js` e renderizado pelo `App.jsx` com um layout compartilhado (`Layout.jsx`) que inclui sidebar, notificações e prefetch estratégico.
+### Entidades Core
 
-| Rota (pageName) | Componente | Descrição |
-| :--- | :--- | :--- |
-| `Home` | `Home.jsx` | Dashboard principal com KPIs e atividade recente |
-| `Clients` | `Clients.jsx` | Listagem e gestão de clientes |
-| `ClientDetail` | `ClientDetail.jsx` | Detalhes completos de um cliente |
-| `Processes` | `Processes.jsx` | Listagem e gestão de processos |
-| `ProcessDetail` | `ProcessDetail.jsx` | Detalhes e movimentações de um processo |
-| `RadarCNJ` | `RadarCNJ.jsx` | Consulta ao DataJud (TJCE, TRF5) |
-| `Jurisprudencia` | `JurisprudenciaPage.jsx` | Busca semântica e chat RAG sobre jurisprudência |
-| `IntimacoesDJEN` | `IntimacoesDJEN.jsx` | Monitoramento de intimações do DJEN |
-| `Tasks` | `Tasks.jsx` | Gestão de tarefas internas |
-| `Templates` | `Templates.jsx` | Templates de documentos jurídicos |
-| `Deadlines` | `Deadlines.jsx` | Controle de prazos processuais |
-| `Financial` | `Financial.jsx` | Controle financeiro (restrito por role) |
-| `Documents` | `Documents.jsx` | Gestão de documentos com GED |
-| `Settings` | `Settings.jsx` | Configurações do sistema |
-| `CalendarSettings` | `CalendarSettings.jsx` | Configuração do Google Calendar |
-| `NotificationSettings` | `NotificationSettings.jsx` | Preferências de notificação |
+#### Client (clientes)
+- **Campos obrigatorios**: `full_name`, `cpf_cnpj`, `data_nascimento`, `estado_civil`, `phone`, `address`
+- **Campos INSS**: `senha_meu_inss`, `senha_gov`, `inscrito_cadunico`, `possui_senha_gov`, `possui_biometria`, `pedido_anterior_inss`
+- **Enums**: `estado_civil` (casado/solteiro/divorciado/viuvo/uniao_estavel), `grau_escolaridade` (8 niveis), `area` (previdenciario/civel/trabalhista/outros), `status` (ativo/inativo/processo_andamento/processo_concluido/prospecto)
+- **Campos especiais**: `dados_civeis` (JSONB), `documents_checklist` (JSONB)
+- **RLS**: Delete para admin + dono (created_by)
 
-O módulo **PeríciaPro** possui roteamento interno próprio (`src/modules/periciapro/pages/`) com páginas dedicadas: `Dashboard`, `CadastroCliente`, `DetalhesCliente`, `Calendario`, `Alertas`, `NotificationSettings` e `Home`.
+#### Process (processes)
+- **Campos obrigatorios**: `process_number`, `client_id`, `area`
+- **FK**: `clients(id)` ON DELETE SET NULL
+- **Enums**: `status` (ativo/arquivado/suspenso/encerrado), `area` (4 valores)
+- **Denormalizacao**: `client_name` para listagem sem join
+- **Indice normalizado**: `process_number_normalized` (apenas digitos) para busca
 
----
+#### Deadline (deadlines)
+- **Campos obrigatorios**: `process_id`, `due_date`, `description`
+- **FK**: `processes(id)` ON DELETE CASCADE
+- **Enums**: `priority` (baixa/media/alta/urgente), `status` (pendente/concluido/cancelado)
+- **RLS**: Delete restrito a **admin apenas**
 
-## 8. Padrões de Código e Convenções
+#### Task (tasks)
+- **Campos obrigatorios**: `title`, `status`
+- **Colunas Kanban**: `todo`, `in_progress`, `in_review`, `done`
+- **FKs opcionais**: `clients(id)`, `processes(id)`
+- **Denormalizacao**: `client_name`, `process_number`
+- **RBAC**: `secretaria/assistente` so visualizam proprias tarefas e nao podem mover para "done"
 
-### 8.1. Camada de Serviços (Service Layer)
+#### Financial (financials)
+- **Campos obrigatorios**: `description`, `amount`, `date`, `type`, `category`
+- **Enums**: `type` (receita/despesa), `category` (honorarios/custas_processuais/aluguel/salarios/fornecedores/impostos/outros), `payment_method` (dinheiro/pix/transferencia/cartao/boleto)
+- **RLS**: Create para usuario; Read/Update/Delete **apenas admin** (mais restritivo)
 
-Todos os serviços do frontend herdam de `BaseService` (`src/services/baseService.js`), que encapsula operações CRUD genéricas sobre o Supabase com validação Zod opcional, mapeamento de erros para PT-BR (`SUPABASE_ERROR_MAP`) e suporte a paginação por offset. Serviços especializados como `clientService`, `processService` e `periciaService` estendem o `BaseService` adicionando métodos específicos do domínio.
+#### Document (documents)
+- **Campos obrigatorios**: `name`, `parent_type`, `parent_id`
+- **Pai polimorfico**: `parent_type` (client/process), `parent_id` (UUID)
+- **Categorias**: pessoais, inss, medicos, judicial, diversos, comprovacao
+- **OCR**: `ocr_content` (text), `ocr_processed` (bool)
+- **Versionamento**: `current_version` (int), versoes em tabela separada
 
-### 8.2. Utilitários Compartilhados
+### Entidades de Beneficios Previdenciarios
 
-O utilitário `businessDays.js` implementa cálculo de dias úteis conforme o CPC (Código de Processo Civil), desconsiderando sábados, domingos e feriados nacionais. O `documentGenerator.js` utiliza PizZip e Docxtemplater para gerar documentos `.docx` a partir de templates, com upload automático ao Supabase Storage.
+#### Beneficio (beneficios) — Entidade pai
+- **Campos obrigatorios**: `client_id`, `categoria`, `tipo_beneficio`
+- **Categorias**: `bpc_loas`, `rural`, `urbano`
+- **Workflow de status**: `em_analise` → `documentacao_pendente` → `aguardando_protocolo` → `protocolado` → `deferido`|`indeferido`|`cancelado`
+- **JSONB**: `dados_especificos`, `checklist_documentos`
 
-### 8.3. Convenções de Commit e Branching
+#### BeneficioAposentadoriaRural (60+ campos)
+- Perfil completo do trabalhador rural para aposentadoria por idade
+- Secoes: residencia, historico emprego, grupo familiar (JSONB), propriedades (JSONB), producao rural, filiacao sindical, DAP/CAF, testemunhas (JSONB)
+- **Enum `situacao_propriedade`**: proprietario/arrendatario/meeiro/posseiro
+- **Enum `transporte_roca`**: 6 tipos (a pe, bicicleta, moto, carro, onibus, outros)
 
-O projeto segue **Conventional Commits** (`feat:`, `fix:`, `docs:`, `refactor:`) com referência ao ID da story nos commits (ex: `feat: implement IDE detection [Story 2.1]`). O branch principal é `master`, com 227 commits no histórico. O deploy do frontend é realizado via **Netlify** (configurado em `netlify.toml`), com build via `pnpm run build` e publicação do diretório `dist/`.
+#### BeneficioBPC_Idoso (35+ campos)
+- Avaliacao socioeconomica para BPC/LOAS idoso
+- Campos: CadUnico, renda familiar, beneficios governamentais, habitacao, veiculos (JSONB), bens, fotos
 
----
+#### BeneficioIncapacidadeRural (40+ campos)
+- Avaliacao medica + comprovacao laboral rural
+- Secao medica: CID, sintomas, acidente, tratamento, medicamentos, documentos (JSONB)
+- Secao rural: campos compartilhados com aposentadoria_rural
 
-## 9. Framework AIOX e Governança de Agentes
+#### BeneficioSalarioMaternidadeRural (40+ campos)
+- Tipos de evento: parto, adocao, guarda_judicial, aborto_nao_criminoso
+- Dados gestacionais, tipo de parto, beneficios anteriores
+- Analise do conjugue (urbano vs rural)
 
-O RV-Adv utiliza o framework **Synkra AIOX** (AI-Orchestrated System) para orquestrar o desenvolvimento autônomo. O framework define uma hierarquia de agentes com autoridades exclusivas.
+### Entidades de Suporte
 
-| Agente | Autoridade Exclusiva | Função |
-| :--- | :--- | :--- |
-| `@dev` | Implementação de código | Desenvolve features seguindo stories |
-| `@qa` | Veredictos de qualidade | Valida implementações e executa testes |
-| `@architect` | Decisões de arquitetura | Define padrões e estrutura do sistema |
-| `@devops` | `git push`, PRs, releases | Único agente autorizado a publicar código |
-| `@po` / `@sm` | Criação de stories | Define requisitos e prioridades |
-| `@analyst` | Análise de dados | Pesquisa e validação de requisitos |
-| `@data-engineer` | Engenharia de dados | Schema, migrações e otimização de banco |
-| `@ux-expert` | Design de experiência | Interface e usabilidade |
+#### ProcessMove (process_moves)
+- **Fonte**: `source` (datajud/manual/sistema)
+- **Tipos**: despacho, sentenca, decisao, peticao, intimacao, citacao, audiencia, outros
 
-### 9.1. Princípios Constitucionais (constitution.md)
+#### Appointment (appointments)
+- **Status**: agendado/realizado/cancelado
+- `alerts_enabled` (bool), `alert_days` (integer array)
 
-A `constitution.md` do AIOX estabelece seis princípios inegociáveis que todo agente deve respeitar. O princípio **CLI First** determina que toda funcionalidade deve funcionar via CLI antes de qualquer UI. O princípio **Agent Authority** garante que nenhum agente assuma a autoridade de outro. O princípio **Story-Driven Development** exige que nenhum código seja escrito sem uma story associada. O princípio **No Invention** proíbe que especificações inventem requisitos não derivados de fontes verificadas. O princípio **Quality First** impõe que todo código passe por lint, typecheck, testes e build antes de merge. O princípio **Absolute Imports** recomenda o uso de imports absolutos com alias `@/` em vez de caminhos relativos.
+#### Template (templates)
+- **Categorias**: peticao_inicial, recurso, contestacao, contrato, procuracao, notificacao, outros
+- `variables` (string array), `content` (HTML)
 
----
+#### DocumentVersion (document_versions)
+- Rastreamento de versoes por documento
 
-## 10. Diretrizes Operacionais para o Agente LLM
-
-O agente LLM deve interagir com o repositório RV-Adv através de um ciclo contínuo e rigoroso de planejamento, execução e atualização.
-
-### 10.1. Ingestão e Planejamento
-
-Antes de escrever qualquer linha de código para uma nova funcionalidade, o agente deve ler completamente as histórias de usuário na pasta `docs/stories/`, consultar os padrões de código estabelecidos em `docs/framework/coding-standards.md` e sintetizar um plano de implementação detalhado. A `constitution.md` do framework AIOX dita que "nenhum código é escrito sem uma story associada". O agente deve também verificar se existem migrações SQL relacionadas e entidades JSON que definam o modelo de dados esperado.
-
-### 10.2. Execução
-
-Durante a implementação, o agente deve sempre verificar as migrações SQL em `supabase/migrations/`, pois a lógica de negócio crítica (RLS, Triggers, Functions) reside exclusivamente lá. Qualquer integração externa, chamada de API de terceiros ou processamento de IA deve ser roteada através de Edge Functions em `supabase/functions/`, garantindo que lógicas sensíveis nunca sejam expostas no código do cliente. O agente deve reutilizar o `BaseService` para operações de banco de dados, os componentes `shadcn/ui` para interface, e o `aiService` para chamadas de IA. Novos serviços devem seguir o padrão de herança do `BaseService` com mapeamento de erros PT-BR.
-
-### 10.3. Saneamento e Atualização
-
-Após concluir a implementação, o agente é obrigado a atualizar a história correspondente marcando os itens concluídos (`[ ]` → `[x]`), manter a lista de arquivos modificados (`File List`) atualizada e revisar a documentação arquitetural e a wiki para garantir que reflitam com precisão as novas implementações. O custo de manutenção da wiki é integralmente transferido para o LLM, garantindo que o conhecimento do projeto permaneça sempre atual e confiável.
-
-### 10.4. Regras Críticas de Implementação
-
-O campo de ownership nas tabelas do RV-Adv é `created_by` (não `user_id`), e as políticas RLS devem sempre referenciar esse campo. As Edge Functions que utilizam `_shared/auth.ts` devem ser deployadas com `--no-verify-jwt`, pois a verificação é feita internamente pelo módulo. O frontend nunca deve armazenar ou expor chaves de API; toda comunicação com provedores de IA passa pelo `ai-proxy`. Novas migrações SQL devem seguir a numeração sequencial existente (atualmente em `055_`) e incluir `IF NOT EXISTS` / `IF EXISTS` para garantir idempotência. Todas as tabelas novas devem ter RLS habilitado com políticas Fail-Close desde a criação.
-
----
-
-## 11. Variáveis de Ambiente e Provedores
-
-O arquivo `.env.example` documenta todas as variáveis de ambiente necessárias para o funcionamento do ecossistema. As variáveis são organizadas por domínio funcional.
-
-| Domínio | Variáveis Principais | Uso |
-| :--- | :--- | :--- |
-| **LLM Providers** | `DEEPSEEK_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `NVIDIA_API_KEY`, `COHERE_API_KEY` | Provedores de IA para o `ai-proxy` |
-| **Supabase** | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Conexão com o banco de dados e autenticação |
-| **Scraping** | `VITE_SCRAPER_URL` (default: `http://localhost:3001`) | URL do microsserviço local de scraping |
-| **Google Calendar** | `GOOGLE_CALENDAR_ACCESS_TOKEN` | Integração com Google Calendar para perícias |
-| **Webhooks** | `INSS_WEBHOOK_SECRET`, `TI_WEBHOOK_SECRET` | Segredos HMAC para validação de webhooks |
-| **CI/CD** | `SUPABASE_ACCESS_TOKEN`, `GITHUB_TOKEN` | Deploy de Edge Functions e automação GitHub |
+#### DocumentFolder (document_folders)
+- Hierarquia de pastas com auto-referencia FK
+- `parent_type` (client/process/general)
 
 ---
 
-## 12. Domínios de Produção e Deploy
+## Schema do Banco de Dados
 
-O frontend é deployado via **Netlify** com build `pnpm run build` e publicação do diretório `dist/`. O redirect universal (`/* → /index.html`) garante o funcionamento do roteamento SPA. Os domínios de produção configurados nas políticas CORS são `rv-adv.app`, `www.rv-adv.app`, `rafaelavasconcelos.adv.br` e `www.rafaelavasconcelos.adv.br`. O ambiente de desenvolvimento utiliza `localhost:5173` (Vite) e `localhost:3000` (alternativo). O projeto Supabase é identificado pelo ref `uxtgcarklizhwuotkwkd`.
+### Tabelas Principais (Migration 008)
+
+| Tabela | PK | FKs | Colunas Chave |
+|---|---|---|---|
+| `clients` | uuid | → auth.users(id) | 30+ colunas, CHECK constraints |
+| `processes` | uuid | → clients(id) SET NULL | process_number, area, status |
+| `deadlines` | uuid | → processes(id) CASCADE | due_date, priority, alert_active |
+| `tasks` | uuid | → clients/processes SET NULL | kanban_column, assigned_to, attachments |
+| `financials` | uuid | → clients/processes SET NULL | amount numeric(14,2), payment_method |
+| `documents` | uuid | parent_id (polimorfo) | tags text[], ocr_content, file_size |
+| `document_folders` | uuid | self-ref CASCADE | parent_type, parent_ref_id |
+| `document_versions` | uuid | → documents(id) CASCADE | version_number, uploaded_by |
+| `appointments` | uuid | → clients(id) SET NULL | date timestamptz, alert_days int[] |
+| `templates` | uuid | → auth.users(id) | variables text[], content text |
+| `process_moves` | uuid | → processes(id) CASCADE | source, move_type |
+| `beneficios` | uuid | → clients(id) CASCADE | dados_especificos jsonb |
+| `beneficios_aposentadoria_rural` | uuid | → beneficios, clients CASCADE | ~55 colunas |
+| `beneficios_bpc_idoso` | uuid | → beneficios, clients CASCADE | ~35 colunas |
+| `beneficios_incapacidade_rural` | uuid | → beneficios, clients CASCADE | ~40 colunas |
+| `beneficios_salario_maternidade_rural` | uuid | → beneficios, clients CASCADE | ~40 colunas |
+
+### Tabelas PericiaPro (Migration 001)
+
+| Tabela | Proposito |
+|---|---|
+| `pericias` | Gestao de pericias (CPF, esfera, status, DCB, datas) |
+| `pericia_pagamentos` | Pagamentos por pericia |
+| `pericia_documentos` | Documentos por pericia com classificacao IA |
+| `activity_logs` | Log de auditoria |
+| `lembretes` | Lembretes vinculados a pericias |
+| `notifications` | Notificacoes (DCB, pericia) |
+| `notification_preferences` | Config de notificacao por usuario |
+
+### Tabelas de Jurisprudencia (Migration 045)
+
+| Tabela | Proposito |
+|---|---|
+| `courts` | Lookup de tribunais (acronimo, nome) |
+| `jurisprudences` | Acordaos com embedding vector(768), fts_vector tsvector |
+| `jurisprudencia_chat_sessions` | Sessoes de chat RAG |
+| `jurisprudencia_chat_messages` | Historico de mensagens do chat |
+
+### Tabelas de Suporte
+
+| Tabela | Proposito |
+|---|---|
+| `users` | Perfis de usuario |
+| `client_inss_emails` | Emails INSS recebidos |
+| `holidays` | Calendario de feriados |
+| `atendimentos` | Diario de atendimentos/CRM |
+
+### Colunas Padrao
+
+Todas as tabelas possuem: `id` (uuid PK), `created_by` (uuid → auth.users), `created_at` (timestamptz), `updated_at` (timestamptz via trigger).
 
 ---
 
-*Nota para o LLM: Este arquivo consolida a essência completa do RV-Adv. Utilize-o como seu ponto de partida fundamental para compreender o contexto, as regras e a arquitetura do projeto antes de iniciar qualquer tarefa de desenvolvimento, refatoração ou manutenção. Ao modificar qualquer aspecto do sistema, atualize as seções relevantes deste documento para manter a wiki perpetuamente sincronizada com a base de código.*
+## Camada de Servicos
+
+### BaseService (CRUD Generico)
+
+Classe base que fornece operacoes genericas para qualquer tabela:
+
+- `list(orderBy, limit, filters, offset)` — listagem paginada com ordenacao
+- `create(recordData)` — insercao com validacao Zod opcional
+- `update(id, updates)` — atualizacao com validacao parcial Zod
+- `delete(id)` — exclusao
+- `getById(id)` — busca por ID
+- `getByField(field, value)` — busca por campo
+- `getAllByField(field, value, orderBy)` — multi-registros por campo
+- `filter(filters, orderBy, limit, offset)` — filtragem generica
+- `count(filters)` — contagem
+
+Erros sao mapeados de codigos Supabase/PostgreSQL para mensagens em portugues via `SUPABASE_ERROR_MAP`.
+
+### Servicos Especializados
+
+| Servico | Estende | Funcionalidades Especificas |
+|---|---|---|
+| `authService` | — | Login/logout, sessao, mapeamento de user metadata |
+| `clientService` | BaseService("clients") | `getByCPF`, `getByEmail`, `searchByName`, `listByArea`, soft delete |
+| `aiService` | — | Proxy de IA: geracao de docs, OCR, classificacao, analise |
+| `calendarService` | — | CRUD Google Calendar via Edge Functions |
+| `cnjService` | — | Parser CNJ, busca DataJud, comunicacoes DJEN |
+| `jurisprudenciaService` | — | Busca vetorial, chat RAG, scraping TNU, gestao de sessoes |
+| `scraperService` | — | Config MNI, OTP, sincronizacao de processos |
+| `holidayService` | — | CRUD de feriados |
+| `atendimentoService` | — | Diario de atendimentos |
+
+### Servicos Simples (instancias de BaseService)
+
+`processService`, `deadlineService`, `taskService`, `financialService`, `documentService`, `appointmentService`, `notificationService`, `templateService`, `userService`, `inssEmailService`, `beneficioService`, `documentFolderService`, `documentVersionService`, `processMoveService`, e 4 servicos de subtipos de beneficio.
+
+---
+
+## Sistema de Roteamento
+
+### Rotas Principais
+
+| Caminho | Pagina | Descricao |
+|---|---|---|
+| `/` | Home | Dashboard principal |
+| `/Clients` | Clients | Gestao de clientes |
+| `/ClientDetail` | ClientDetail | Detalhe do cliente |
+| `/Processes` | Processes | Gestao de processos |
+| `/ProcessDetail` | ProcessDetail | Detalhe do processo |
+| `/Tasks` | Tasks | Kanban de tarefas |
+| `/Deadlines` | Deadlines | Gestao de prazos |
+| `/Documents` | Documents | GED documental |
+| `/Templates` | Templates | Templates juridicos |
+| `/Financial` | Financial | Financeiro (admin-only) |
+| `/Settings` | Settings | Configuracoes do usuario |
+| `/CalendarSettings` | CalendarSettings | Config Google Calendar |
+| `/NotificationSettings` | NotificationSettings | Preferencias de notificacao |
+| `/IntimacoesDJEN` | IntimacoesDJEN | Diario de Justica Eletronico |
+| `/Jurisprudencia` | JurisprudenciaPage | Busca juridica com IA |
+| `/RadarCNJ` | RadarCNJ | Radar DataJud/CNJ |
+| `/login` | AuthPage | Autenticacao |
+
+### Rotas PericiaPro (Lazy-Loaded)
+
+| Caminho | Pagina | Descricao |
+|---|---|---|
+| `/pericias/painel` | PericiasDashboard | Dashboard de pericias |
+| `/pericias/cadastro` | PericiasCadastro | Cadastro de cliente |
+| `/pericias/calendario` | PericiasCalendario | Calendario de pericias |
+| `/pericias/alertas` | PericiasAlertas | Alertas de pericias |
+| `/pericias/detalhes/:id` | PericiasDetalhes | Detalhe do cliente |
+
+### Navegacao
+
+- Sidebar colapsavel com filtragem por role
+- Modulo PericiaPro como sub-grupo colapsavel
+- Prefetching estrategico ao hover nos links de navegacao
+- Layout responsivo mobile com header fixo e overlay
+
+---
+
+## Edge Functions (Supabase)
+
+### ai-proxy — Gateway de IA Centralizado
+
+Elimina exposicao de chaves de API no frontend. Roteia chamadas para multiplos providers.
+
+**Acoes**: `generate` (docs juridicos), `invoke_llm` (LLM geral com JSON schema), `ocr` (OCR de documentos), `classify` (classificacao), `analyze` (analise de processos).
+
+**Cadeia de fallback**:
+- Geracao: Groq → DeepSeek R1 (OpenRouter)
+- Vision/OCR: Gemini → Qwen2.5 VL (OpenRouter)
+- Classificacao: Groq → Cohere
+- Analise: NVIDIA → DeepSeek R1
+
+**Seguranca**: JWT auth, timeout 45s, CORS restrito.
+
+### chat-jurisprudencia — Chat RAG Juridico
+
+Pipeline: query + sessionId → carrega historico → gera embedding (Gemini) → busca vetorial (RPC Supabase) → prompt RAG → Gemini Flash → salva mensagens.
+
+- Memoria de curto prazo: ultimas 20 mensagens por sessao
+- Propriedade de sessao validada via JWT
+- Threshold de similaridade 0.4, max 5 resultados de contexto
+
+### djen-bypass — Proxy DJEN
+
+Proxy para API publica do CNJ (DJEN). Remove headers de autorizacao (WSO2 rejeita qualquer Authorization). Rate limit: 100 req/IP/min.
+
+### datajud-bypass — Proxy DataJud
+
+Proxy para API DataJud (ElasticSearch). Tribunais suportados: TJCE, TRF5 (configuravel via `TRIBUNAL_ENDPOINT_MAP`). Autenticacao via `DATAJUD_API_KEY`.
+
+### scrape-tnu — Scraper TNU
+
+Scraping do portal TNU para acordaos. Filtros de qualidade: rejeita decisoes monocraticas, votos, pedidos de reconsideracao, ementas < 50 chars. Codificacao ISO-8859-1. Range maximo de 30 dias.
+
+### ti-webhook-receiver — Webhook Tramitacao Inteligente
+
+Recebe eventos de webhook. Seguranca: rate limit 5 req/IP/min, HMAC-SHA256 com timing-safe verification, body bruto extraido ANTES de JSON.parse. Normaliza numero de processo e insere em `process_moves`.
+
+### Bibliotecas Compartilhadas (_shared/)
+
+- **auth.ts**: Verificacao JWT dual (ES256 via JWKS + HS256 legado). Rejeita role `anon`.
+- **cors.ts**: Whitelist estrita de origens + security headers (nosniff, DENY, HSTS).
+- **rate-limit.ts**: Sliding window de 1 minuto por IP.
+
+---
+
+## Seguranca
+
+### Defense in Depth
+
+| Camada | Medida | Detalhes |
+|---|---|---|
+| **CSP** | Content Security Policy | Definida em `index.html` |
+| **RLS** | Row Level Security | Politicas JWT-based fail-close |
+| **HMAC** | Webhook Signatures | Validacao HMAC-SHA256 timing-safe |
+| **AI Vault** | Protecao de API Keys | Keys no Supabase Vault, proxy via Edge Functions |
+| **Validacao** | Schemas Zod | 10+ schemas domain (CPF/CNPJ matematico) |
+| **Upload** | Allowlist estrito | PDF, JPEG, PNG, WebP, DOC, DOCX |
+| **RBAC** | Controle por role | admin/advogado/user/secretaria/assistente |
+| **Geo-routing** | Edge Functions regionais | Header `x-region: sa-east-1` para APIs gov |
+| **Sanitizacao OAB** | Normalizacao | Zero-padding 7 digitos, strip nao-numericos |
+| **Rate Limiting** | Edge Functions | In-memory sliding window por IP |
+| **Testes** | Vitest | Suite de testes de seguranca |
+
+### RBAC
+
+| Role | Acesso |
+|---|---|
+| `admin`/`dono` | Acesso total a todos os modulos |
+| `advogado` | Acesso total conforme auditoria RLS |
+| `user` | CRUD na maioria das entidades |
+| `secretaria`/`assistente` | "Visao tunelada" em tarefas, nao concluem tarefas, sem acesso ao Financeiro |
+
+### Modelo RLS
+
+- `get_user_role()`: Funcao PostgreSQL SECURITY DEFINER que extrai role de multiplas paths JWT (`user_role`, `role`, `user_metadata.role`, `app_metadata.user_role`). Fallback: `'advogado'`.
+- Padrao principal: `auth.uid() = created_by OR get_user_role() IN ('admin', 'advogado')`
+- Excecoes: Financial (admin-only read/update/delete), Deadlines (admin-only delete)
+
+---
+
+## Integracoes com APIs Governamentais
+
+### DataJud (CNJ)
+- Proxy via Edge Function `datajud-bypass`
+- Busca de processos por numero CNJ
+- Tribunais configuraveis (TJCE, TRF5)
+- Normalizacao de numero de processo (digitos apenas)
+
+### DJEN (Diario de Justica Eletronico Nacional)
+- Proxy via Edge Function `djen-bypass`
+- Consulta de publicacoes por OAB
+- **DJEN Vigia**: Worker que roda a cada 60 minutos no scraper server, busca novas publicacoes e cria notificacoes
+- Deduplicacao via arquivo `djen_seen.json`
+
+### TNU (Turma Nacional de Uniformizacao)
+- Scraper via Edge Function `scrape-tnu`
+- Coleta automatica de acordaos com filtros de qualidade
+- Pipeline: scraping → DB → embedding → indexacao vetorial
+- Coleta agendada via pg_cron (diario 03h BRT)
+
+---
+
+## Sistema de IA
+
+### Geracao de Documentos Juridicos
+- Prompt especializado para geracao de peticoes, recursos, contestacoes
+- Templates com variaveis `{{FULL_NAME}}`, `{{cpf}}`, `{{endereco_completo}}`, etc.
+- Fallback automatico entre providers
+
+### OCR (Reconhecimento de Texto)
+- Gemini 2.5 Flash (primario, multimodal) ou Qwen2.5 VL (fallback)
+- Processamento de documentos PDF/images
+- Conteudo extraido armazenado em `documents.ocr_content`
+
+### Classificacao de Documentos
+- Llama 3.1 8B via Groq (ultra-rapido) ou Cohere Command R+ (fallback)
+- Categorizacao automatica de documentos por tipo
+
+### Jurisprudencia com Busca Vetorial
+- Embeddings: Gemini embedding-001 (768 dimensoes)
+- Armazenamento: `pgvector` com indice HNSW (m=16, ef_construction=64)
+- Busca: RPC `buscar_jurisprudencia` com cosine similarity
+- Threshold: 0.5 (padrao), retorna top 10
+- Full-text search: GIN index com tsvector portugues
+
+### Chat RAG Juridico
+- Pipeline completo: query → embedding → busca vetorial → contexto → LLM → resposta
+- Memoria de sessao: ultimas 20 mensagens
+- Citacoes de fontes com links para acordaos
+
+---
+
+## Modulo PericiaPro
+
+### Proposito
+Gestao do ciclo de vida completo de pericias INSS (pericias medicas previdenciarias) para advogados.
+
+### Entidades
+| Entidade | Descricao |
+|---|---|
+| `Pericia` | Cliente em pericia: CPF, esfera (Admin/Judicial), status, DIB/DCB, data/hora/local da pericia |
+| `PericiaPagamento` | Pagamentos vinculados (pago/pendente) |
+| `PericiaDocumento` | Documentos com classificacao IA opcional |
+| `ActivityLog` | Auditoria (status_change, payment, document, update, reminder, creation) |
+| `Lembrete` | Lembretes manuais por cliente |
+| `Notification` | Notificacoes push com prioridade (low/medium/high/critical) |
+| `NotificationPreferences` | Config por usuario: dias de alerta, templates customizados |
+
+### Google Calendar (3 niveis)
+1. **Server-side sync** via Edge Function (automatico ao criar/agendar pericia)
+2. **Client-side URL** para adicao manual ao Google Calendar
+3. **Exportacao ICS** para download de arquivo de calendario
+
+### Notificacoes
+- Geradas via pg_cron no servidor (nao mais no client)
+- Entregue via Supabase Realtime (push, nao polling)
+- Permissoes de navegador para Notification API
+
+### PWA
+- Prompt de instalacao para Android/iOS/Desktop
+- Suporte iOS com instrucoes passo-a-passo
+- Detecao de modo standalone
+- Service worker registrado ao conceder permissao de notificacao
+
+---
+
+## Ferramentas e Utilitarios
+
+### Geracao de PDF (`pdfExporter.js`, 610+ linhas)
+- Baseado em jsPDF
+- Paginacao A4 com `checkPageBreak()`
+- Tipografia unificada (Helvetica 10pt corpo, 14pt titulos)
+- Tabelas com linhas alternadas e quebra de pagina por linha
+- Header/footer com branding e paginacao
+- Formatters: data, CPF, moeda, booleano, label
+
+### Geracao de DOCX (`documentGenerator.js`)
+- Baseado em docxtemplater + PizZip
+- Download de template + substituicao de variaveis
+- Upload automatico para Supabase Storage
+
+### Dias Uteis (`businessDays.js`)
+- `addBusinessDays(startDate, days, holidaysArray)`
+- Salta sabados, domingos e feriados
+- Inicia contagem do dia seguinte (interpretacao legal CPC)
+
+### Extracao de Dados do Cliente (`clientDataExtractor.js`, 426+ linhas)
+- Suporte a 10 tipos de beneficio
+- Switch por `tipo_beneficio` para funcoes de extracao especificas
+- Label maps para exibicao em portugues
+- Null safety: campos ausentes default '-'
+
+### Calculo de CPC (`CalculadoraCpcModal.jsx`)
+- Calculadora de prazos processuais (Codigo de Processo Civil)
+- Integrado ao painel DJEN
+
+---
+
+## Regras de Negocio
+
+### Workflow de Beneficios
+```
+em_analise → documentacao_pendente → aguardando_protocolo → protocolado → deferido|indeferido|cancelado
+```
+
+### Regras de Visibilidade
+- Clientes: visibilidade compartilhada entre todos os autenticados (migration 047)
+- Tarefas: visao tunelada para secretaria/assistente
+- Financeiro: isolado ao admin
+- Pericias: proprietario (created_by) OU admin
+
+### Automacoes do Banco de Dados
+- **pg_cron** (03h diariamente): varredura de processos obsoletos (>6 meses) e clientes sem CPF/CNPJ
+- **Trigger AFTER INSERT documents**: resolve automaticamente appointments pendentes
+- **pg_cron TNU**: coleta diaria de jurisprudencia
+
+### Seguranca de Documentos
+- Max upload: 50MB (security schema)
+- MIME types permitidos: PDF, JPEG, PNG, WebP, DOC, DOCX
+- Senhas INSS: campo criptografado (migration 005)
+- Strings vazias convertidas para null antes de operacoes DB
+
+---
+
+## Configuracao e Deploy
+
+### Variaveis de Ambiente (.env.example)
+- `VITE_SUPABASE_URL` — URL do projeto Supabase
+- `VITE_SUPABASE_ANON_KEY` — Chave anonima do Supabase
+- `VITE_SCRAPER_URL` — URL do servidor de scraping
+
+### Deploy
+- **Frontend**: Netlify (SPA hosting, `netlify.toml` com redirects)
+- **Backend**: Supabase (PostgreSQL + Edge Functions + Storage)
+- **Scraper**: Hetzner CX33 (Ubuntu 24.04, 4 vCPU, 8GB RAM)
+- **DNS/SSL**: Cloudflare (DNS Only mode)
+
+### Scripts
+- `pnpm run dev` — Inicia frontend + scraper em paralelo
+- `pnpm run build` — Build de producao Vite
+- `pnpm run security` — Testes de seguranca (Vitest)
+- `pnpm run security:audit` — npm audit nivel alto
+
+### Configuracao de Ferramentas
+- **opencode.jsonc**: Config do OpenCode agent com AIOX skill
+- **jsconfig.json**: Alias `@/*` → `./src/*`
+- **components.json**: Config shadcn/ui (New York style)
+
+---
+
+## Historico de Migracoes (Evolucao)
+
+| Fase | Migracoes | Descricao |
+|---|---|---|
+| **1 — PericiaPro** | 001-003 | Schema, RLS e indices do modulo original |
+| **2 — Core** | 004-007 | Cron alerts, senha INSS, RLS fixes, RPC pagamentos |
+| **3 — Core RVAdv** | 008-011 | Schema principal (16 tabelas), buckets publicos, templates |
+| **4 — Jurisprudencia** | 012-014 | Schema, limpeza de dados |
+| **5 — Fases INSS** | 015-025 | Roles, CadUnico, atendimentos, feriados, trigger, inspetor |
+| **6 — Documentos** | 026-034 | Arquivados emails, fix constraints, novos users, area civel |
+| **7 — Auditoria** | 035-044 | Fixes diversos, indices de performance, busca normalizada |
+| **8 — Vetorial** | 045-050 | Busca vetorial, visibilidade clientes, embeddings |
+| **9 — Robustez** | 051-058 | Chat memory, atendimentos CRUD completo, documentos diversos |
+| **10 — Seguranca** | 202603* | Auditoria RLS, vault estrito |
+
+---
+
+## Notas de Manutencao e Problemas Conhecidos
+
+### Duplicacao PericiaPro
+O modulo `src/modules/periciapro/` possui copias paralelas de componentes UI, servicos e lib files — indicando integracao em andamento ou merge incompleto com o modulo principal.
+
+### RLS Conflitantes
+Tres migracoes conflitantes (008, 047, audit) aplicam politicas diferentes. A ultima migracao aplicada vence para cada nome de politica.
+
+### PWA Incompleto
+Codigo de instalacao PWA existe (InstallButton, IOSInstallPrompt, PWADetector) mas `manifest.json` e `service-worker.js` nao estao no repositorio — a funcionalidade nao opera sem esses arquivos.
+
+### Hooks Duplicados
+`src/hooks/use-mobile.jsx` e `src/modules/periciapro/hooks/use-mobile.jsx` sao identicos.
+
+### Query Clients Duplicados
+`src/lib/query-client.js` e `src/lib/query-provider.jsx` exportam `queryClientInstance` — potencial confusao.

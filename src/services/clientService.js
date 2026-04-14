@@ -128,7 +128,8 @@ class ClientService extends BaseService {
     const { data, error } = await supabase
       .from(this.table)
       .select("*")
-      .ilike("nome", `%${searchTerm}%`)
+      .or(`full_name.ilike.%${searchTerm}%,cpf_cnpj.ilike.%${searchTerm}%`)
+      .eq('status', 'ativo')
       .limit(limit);
     
     if (error) {

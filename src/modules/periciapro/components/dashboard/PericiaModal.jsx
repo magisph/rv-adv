@@ -33,6 +33,11 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { clientService } from "@/services/clientService";
+import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function PericiaModal({
   isOpen,
@@ -42,8 +47,7 @@ export default function PericiaModal({
   isLoading,
 }) {
   const [formData, setFormData] = useState({
-    nome: "",
-    cpf: "",
+    client_id: "",
     senha_inss: "",
     esfera: "Administrativa",
     status: "Benefício Ativo",
@@ -62,12 +66,69 @@ export default function PericiaModal({
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [showPagamentos, setShowPagamentos] = useState(false);
+  
+  const [clientes, setClientes] = useState([]);
+  const [openClientCombo, setOpenClientCombo] = useState(false);
+  const [isLoadingClients, setIsLoadingClients] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let timeoutId;
+    async function loadClients() {
+      setIsLoadingClients(true);
+      try {
+        let res = [];
+        if (!searchTerm) {
+          res = await clientService.listAtivos('-created_at', 30);
+        } else {
+          res = await clientService.searchByName(searchTerm, 30);
+        }
+        
+        setClientes(res.map(c => ({
+            id: c.id,
+            label: `${c.full_name || 'Sem nome'} ${c.cpf_cnpj ? `(${c.cpf_cnpj})` : ''}`,
+            value: c.id,
+            raw: c
+        })));
+      } catch (err) {
+        console.error("Erro ao carregar clientes", err);
+      } finally {
+        setIsLoadingClients(false);
+      }
+    }
+    
+    timeoutId = setTimeout(() => {
+      loadClients();
+    }, 400);
+
+    return () => clearTimeout(timeoutId);
+  }, [isOpen, searchTerm]);
+
+  // Garante que o cliente da perícia já existente não seja perdido se não vier nas 30 top
+  useEffect(() => {
+    if (pericia?.client_id && pericia?.clients && clientes.length > 0) {
+      setClientes(prev => {
+        const exists = prev.find(c => c.value === pericia.client_id);
+        if (exists) return prev;
+        return [
+          {
+            id: pericia.clients.id,
+            label: `${pericia.clients.full_name || 'Sem nome'} ${pericia.clients.cpf_cnpj ? `(${pericia.clients.cpf_cnpj})` : ''}`,
+            value: pericia.clients.id,
+            raw: pericia.clients
+          },
+          ...prev
+        ];
+      });
+    }
+  }, [pericia, openClientCombo]);
 
   useEffect(() => {
     if (pericia) {
       setFormData({
-        nome: pericia.nome || "",
-        cpf: pericia.cpf || "",
+        client_id: pericia.client_id || "",
         senha_inss: pericia.senha_inss || "",
         esfera: pericia.esfera || "Administrativa",
         status: pericia.status || "Benefício Ativo",
@@ -84,8 +145,7 @@ export default function PericiaModal({
       });
     } else {
       setFormData({
-        nome: "",
-        cpf: "",
+        client_id: "",
         senha_inss: "",
         esfera: "Administrativa",
         status: "Benefício Ativo",
@@ -114,40 +174,6 @@ export default function PericiaModal({
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: null }));
     }
-  };
-
-  const isValidCPF = (value) => {
-    const digits = value.replace(/\D/g, "");
-    if (digits.length !== 11) return false;
-    // Rejeita sequências repetidas (ex: 000...000, 111...111)
-    if (/^(\d)\1{10}$/.test(digits)) return false;
-
-    const calcDigit = (slice, factor) => {
-      const sum = slice.split("").reduce((acc, d, i) => acc + Number(d) * (factor - i), 0);
-      const remainder = (sum * 10) % 11;
-      return remainder === 10 || remainder === 11 ? 0 : remainder;
-    };
-
-    const d1 = calcDigit(digits.slice(0, 9), 10);
-    if (d1 !== Number(digits[9])) return false;
-    const d2 = calcDigit(digits.slice(0, 10), 11);
-    return d2 === Number(digits[10]);
-  };
-
-  const formatCPF = (value) => {
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 11) {
-      return numbers
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-    }
-    return value;
-  };
-
-  const handleCPFChange = (value) => {
-    const formatted = formatCPF(value);
-    handleChange("cpf", formatted);
   };
 
   const adicionarPagamento = () => {
@@ -203,14 +229,8 @@ export default function PericiaModal({
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.nome.trim()) {
-      newErrors.nome = "Nome é obrigatório";
-    }
-
-    if (!formData.cpf.trim()) {
-      newErrors.cpf = "CPF é obrigatório";
-    } else if (!isValidCPF(formData.cpf)) {
-      newErrors.cpf = "CPF inválido. Verifique os dígitos e tente novamente.";
+    if (!formData.client_id) {
+      newErrors.client_id = "Selecione um cliente";
     }
 
     if (
@@ -245,6 +265,14 @@ export default function PericiaModal({
 
     const dataToSave = { ...formData };
 
+    if (dataToSave.client_id) {
+      const clienteLog = clientes.find(c => c.value === dataToSave.client_id);
+      if (clienteLog?.raw) {
+        dataToSave.nome = clienteLog.raw.full_name;
+        dataToSave.cpf = clienteLog.raw.cpf_cnpj;
+      }
+    }
+
     if (formData.status !== "Documentos Pendentes") {
       dataToSave.documentos_pendentes = "";
     }
@@ -275,32 +303,65 @@ export default function PericiaModal({
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome Completo *</Label>
-                <Input
-                  id="nome"
-                  value={formData.nome}
-                  onChange={(e) => handleChange("nome", e.target.value)}
-                  placeholder="Nome do cliente"
-                  className={errors.nome ? "border-red-500" : ""}
-                />
-                {errors.nome && (
-                  <p className="text-sm text-red-500">{errors.nome}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cpf">CPF *</Label>
-                <Input
-                  id="cpf"
-                  value={formData.cpf}
-                  onChange={(e) => handleCPFChange(e.target.value)}
-                  placeholder="000.000.000-00"
-                  maxLength={14}
-                  className={errors.cpf ? "border-red-500" : ""}
-                />
-                {errors.cpf && (
-                  <p className="text-sm text-red-500">{errors.cpf}</p>
+              <div className="space-y-2 flex flex-col justify-end">
+                <Label htmlFor="cliente">Cliente Vinculado *</Label>
+                <Popover open={openClientCombo} onOpenChange={setOpenClientCombo}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openClientCombo}
+                      className={cn(
+                        "w-full justify-between",
+                        errors.client_id && "border-red-500",
+                        !formData.client_id && "text-muted-foreground"
+                      )}
+                    >
+                      {formData.client_id
+                        ? clientes.find((c) => c.value === formData.client_id)?.label
+                        : isLoadingClients
+                        ? "Carregando clientes..."
+                        : "Selecione o Cliente..."}
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command shouldFilter={false}>
+                      <CommandInput 
+                        placeholder="Pesquisar cliente por nome ou CPF..." 
+                        value={searchTerm}
+                        onValueChange={setSearchTerm}
+                      />
+                      <CommandList>
+                        <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                        <CommandGroup>
+                          {clientes.map((cliente) => (
+                            <CommandItem
+                              key={cliente.value}
+                              value={cliente.label}
+                              onSelect={() => {
+                                handleChange("client_id", cliente.value);
+                                setOpenClientCombo(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.client_id === cliente.value
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {cliente.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {errors.client_id && (
+                  <p className="text-sm text-red-500 text-left mt-1">{errors.client_id}</p>
                 )}
               </div>
 

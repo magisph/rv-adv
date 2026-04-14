@@ -15,7 +15,7 @@ export const periciaService = {
 
     const { data, error } = await supabase
       .from('pericias')
-      .select('*')
+      .select('*, clients(id, full_name, cpf_cnpj)')
       .order(orderBy, { ascending });
 
     if (error) throw error;
@@ -29,7 +29,7 @@ export const periciaService = {
   async getById(id: string): Promise<Pericia | null> {
     const { data, error } = await supabase
       .from('pericias')
-      .select('*')
+      .select('*, clients(id, full_name, cpf_cnpj)')
       .eq('id', id)
       .single();
 
