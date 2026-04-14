@@ -21,7 +21,6 @@ import {
   ChevronRight,
   CheckSquare,
   Stethoscope,
-  UserPlus,
   CalendarDays,
   BellRing,
   BookOpen,
@@ -234,7 +233,6 @@ export default function Layout({ children, currentPageName }) {
                   <div className="ml-4 space-y-1">
                     {[
                       { name: "Painel", icon: LayoutDashboard, path: "/pericias/painel", key: "pericias-painel" },
-                      { name: "Cadastro", icon: UserPlus, path: "/pericias/cadastro", key: "pericias-cadastro" },
                       { name: "Calendário", icon: CalendarDays, path: "/pericias/calendario", key: "pericias-calendario" },
                       { name: "Alertas", icon: BellRing, path: "/pericias/alertas", key: "pericias-alertas" },
                     ].map((item) => {
