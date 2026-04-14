@@ -147,12 +147,22 @@ serve(async (req: Request) => {
     const { event_type, payload } = body;
 
     // 6. Processamento do Evento
+
+    // Health-check / teste de conectividade do TI
+    if (event_type === "test_event") {
+      console.log(`[Webhook TI] test_event recebido — Health Check OK`);
+      return new Response(
+        JSON.stringify({ success: true, message: "Webhook ativo e autenticado com sucesso" }),
+        { status: 200, headers: securityHeaders }
+      );
+    }
+
     if (event_type !== "publications.created") {
-      console.log(`[Webhook TI] Evento ignorado: ${event_type}`);
-      return new Response(JSON.stringify({ message: "Evento ignorado" }), {
-        status: 200,
-        headers: securityHeaders,
-      });
+      console.log(`[Webhook TI] Evento não suportado ignorado: '${event_type}'`);
+      return new Response(
+        JSON.stringify({ message: "Evento ignorado", event_type }),
+        { status: 200, headers: securityHeaders }
+      );
     }
 
     console.log(`[Webhook TI] Payload recebido: ${Deno.inspect(payload)}`);
