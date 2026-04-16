@@ -1,31 +1,37 @@
 {
-    "version": "1.0",
-    "project": "Proj_RV_Adv",
-    "workspace": "C:/Users/Junior do Titico/Desktop/PROJETOS/Proj_RV_Adv",
-    "agents": {
-        "enabled": true,
-        "directory": ".antigravity/agents",
-        "default": "aiox-master"
-    },
-    "rules": {
-        "enabled": true,
-        "file": ".antigravity/rules.md"
-    },
-    "skills": {
-        "enabled": true,
-        "directory": ".antigravity/skills",
-        "customPaths": [".antigravity/skills", "skills"]
-    },
-    "features": {
-        "storyDrivenDevelopment": true,
-        "agentActivation": true,
-        "workflowAutomation": true
-    },
-    "paths": {
-        "stories": "docs/stories",
-        "prd": "docs/prd",
-        "architecture": "docs/architecture",
-        "tasks": ".aiox-core/tasks",
-        "workflows": ".aiox-core/workflows"
-    }
+  "version": "1.0",
+  "project": "Proj_RV_Adv",
+  "workspace": "C:/Users/Junior do Titico/Desktop/PROJETOS/Proj_RV_Adv",
+  "agents": {
+    "enabled": true,
+    "directory": ".antigravity/agents",
+    "default": "aiox-master"
+  },
+  "rules": {
+    "enabled": true,
+    "directory": ".antigravity/.agents/rules",
+    "customPaths": [".antigravity/.agents/rules", ".agent/rules"]
+  },
+  "skills": {
+    "enabled": true,
+    "directory": [".antigravity/.agents/skills"],
+    "customPaths": [".antigravity/.agents/skills", ".agent/skills"]
+  },
+  "workflows": {
+    "enabled": true,
+    "directory": ".antigravity/.agents/workflows",
+    "customPaths": [".antigravity/.agents/workflows", ".agent/workflows"]
+  },
+  "features": {
+    "storyDrivenDevelopment": true,
+    "agentActivation": true,
+    "workflowAutomation": true
+  },
+  "paths": {
+    "stories": "docs/stories",
+    "prd": "docs/prd",
+    "architecture": "docs/architecture",
+    "tasks": ".aiox-core/tasks",
+    "workflows": ".antigravity/.agents/workflows"
+  }
 }
