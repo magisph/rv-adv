@@ -1,28 +1,32 @@
 ---
 name: frontend-agent
-description: Frontend specialist for React, Next.js, TypeScript with FSD-lite architecture, shadcn/ui, and design system alignment
+description: Frontend specialist for React 18 SPA (Vite), shadcn/ui, Tailwind CSS 3, TanStack Query v5, React Router DOM v6, Framer Motion, React Hook Form + Zod. DOES NOT use Next.js, DOES NOT have SSR
 ---
 
 # Frontend Agent - UI/UX Specialist
 
 ## When to use
-- Building user interfaces and components
-- Client-side logic and state management
-- Styling and responsive design
-- Form validation and user interactions
-- Integrating with backend APIs
+- Build or modify React components
+- Implement new pages and routes
+- Create forms with validation
+- Integrate with Supabase via TanStack Query
+- Implement animations (Kanban, transitions)
+- Generate PDFs (jsPDF) or ZIPs (jszip)
 
 ## When NOT to use
-- Backend API implementation -> use Backend Agent
-- Native mobile development -> use Mobile Agent
+- Implementation of Edge Functions → use backend-agent
+- Portal scraping → use scraper-agent
+- SQL migrations → use supabase-agent
 
 ## Core Rules
 
-1. **Component Reuse**: Use `shadcn/ui` components first. Extend via `cva` variants or composition. Avoid custom CSS.
-2. **Design Fidelity**: Code must map 1:1 to Design Tokens. Resolve discrepancies before implementation.
-3. **Rendering Strategy**: Default to Server Components for performance. Use Client Components only for interactivity and API integration.
-4. **Accessibility**: Semantic HTML, ARIA labels, keyboard navigation, and screen reader compatibility are mandatory.
-5. **Tool First**: Check for existing solutions and tools before coding.
+1. **NEVER use Next.js patterns** (App Router, Server Components, generateMetadata). This is a SPA with Vite. All pages are Client Components.
+2. **Reuse**: Check src/components/ui/ before creating components. Shadcn components are READ-ONLY — create wrappers.
+3. **Imports**: Only absolute values ​​via `@/`. `../../` is prohibited.
+4. **Types**: `import type` is mandatory for interfaces.
+5. **Forms**: React Hook Form + Zod. Null safety: empty strings → null.
+6. **Kanban Animations**: `mode="popLayout"` + `layoutId` from Framer Motion.
+7. **PDF/ZIP**: jsPDF for PDFs. jszip with sequential (not parallel) `for...of`
 
 ## 1. Tooling & Performance
 
@@ -59,14 +63,17 @@ src/features/[feature]/
 
 | Category | Library |
 |----------|---------|
-| Date | `luxon` |
-| Styling | `TailwindCSS v4` + `shadcn/ui` |
-| Hooks | `ahooks` (Pre-made hooks preferred) |
-| Utils | `es-toolkit` (First choice) |
-| State (URL) | `jotai-location` |
-| State (Server) | `TanStack Query` |
-| State (Client) | `Jotai` (Minimize use) |
-| Forms | `@tanstack/react-form` + `zod` |
+| UI Framework | React 18 + Vite 6 |
+| Styling | Tailwind CSS 3 + shadcn/ui (new-york) |
+| Server State | TanStack Query v5 |
+| Routes | React Router DOM v6 |
+| Forms | React Hook Form + Zod |
+| Animations | Framer Motion |
+| Charts | Recharts |
+| Icons | Lucide React |
+| PDF | jsPDF |
+| ZIP | jszip (sequential) |
+| Dates | date-fns |
 
 ## 4. Standards
 
