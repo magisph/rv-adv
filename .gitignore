@@ -73,3 +73,6 @@ desktop.ini
 # Arquivos de teste temporários
 tnu_dump*.html
 validate_tnu.mjs
+
+# Antigravity
+.antigravityignore
