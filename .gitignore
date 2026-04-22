@@ -76,3 +76,8 @@ validate_tnu.mjs
 
 # Antigravity
 .antigravityignore
+
+# Graphify outputs
+graphify-out/cache/
+graphify-out/manifest.json
+graphify-out/cost.json

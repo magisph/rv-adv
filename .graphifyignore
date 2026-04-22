@@ -1,0 +1,38 @@
+# .graphifyignore
+# Created for RV-Adv project
+
+# Dependências e builds
+node_modules/
+dist/
+build/
+.vercel/
+.netlify/
+
+# Arquivos gerados automaticamente
+*.generated.ts
+*.generated.js
+*.min.js
+*.min.css
+
+# Documentação irrelevante para análise
+docs/translations/
+*.md
+
+# Arquivos de configuração de ambiente
+.env
+.env.local
+.env.production
+
+# Pasta do próprio Graphify (evitar loop)
+graphify-out/
+
+# IDEs e configurações pessoais
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Backups e arquivos temporários
+*.backup
+*.tmp
+*.log
