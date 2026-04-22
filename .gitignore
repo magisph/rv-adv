@@ -67,15 +67,9 @@ task_plan_task2.md
 task_plan_task3.md
 auditoria_execucao_rvadv.md
 
+# Arquivos de sistema do Windows
+desktop.ini
+
 # Arquivos de teste temporários
 tnu_dump*.html
 validate_tnu.mjs
-
-# Skill Seekers
-skill_seekers_scripts
-cache
-.skill-seekers
-
-# Open Code
-.opencode-router
-.opencode
