@@ -37,7 +37,7 @@ export default function Dashboard() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      const novaPericia = await periciaService.create(data);
+      const novaPericia = await periciaService.createPericia(data);
       // BUG #1 fix: log failure must not mask the successful pericia creation
       try {
         await activityLogService.create({

@@ -46,8 +46,8 @@ export default function PericiaModal({
   pericia,
   isLoading,
 }) {
-  const [formData, setFormData] = useState({
-    client_id: "",
+  const estadoInicial = {
+    client_id: null,
     senha_inss: "",
     esfera: "Administrativa",
     status: "Benefício Ativo",
@@ -61,7 +61,9 @@ export default function PericiaModal({
     alerta_dcb_exibido: false,
     alertas_pericia_exibidos: [],
     pagamentos: [],
-  });
+  };
+
+  const [formData, setFormData] = useState(estadoInicial);
 
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -128,7 +130,7 @@ export default function PericiaModal({
   useEffect(() => {
     if (pericia) {
       setFormData({
-        client_id: pericia.client_id || "",
+        client_id: pericia.client_id || null,
         senha_inss: pericia.senha_inss || "",
         esfera: pericia.esfera || "Administrativa",
         status: pericia.status || "Benefício Ativo",
@@ -144,22 +146,7 @@ export default function PericiaModal({
         pagamentos: pericia.pagamentos || [],
       });
     } else {
-      setFormData({
-        client_id: "",
-        senha_inss: "",
-        esfera: "Administrativa",
-        status: "Benefício Ativo",
-        documentos_pendentes: "",
-        dib: "",
-        dcb: "",
-        data_pericia: "",
-        horario_pericia: "",
-        local_pericia: "",
-        observacoes: "",
-        alerta_dcb_exibido: false,
-        alertas_pericia_exibidos: [],
-        pagamentos: [],
-      });
+      setFormData(estadoInicial);
     }
     setErrors({});
     setShowPagamentos(false);
@@ -256,6 +243,15 @@ export default function PericiaModal({
     return Object.keys(newErrors).length === 0;
   };
 
+  /**
+   * Converte strings vazias em null para campos que exigem tipos estritos
+   * no PostgREST (uuid, date). Evita HTTP 400 Bad Request.
+   */
+  const sanitizeParaEnvio = (payload) =>
+    Object.fromEntries(
+      Object.entries(payload).map(([k, v]) => [k, v === '' ? null : v]),
+    );
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -265,25 +261,27 @@ export default function PericiaModal({
 
     const dataToSave = { ...formData };
 
+    // Enriquece com nome/CPF denormalizados para legibilidade
     if (dataToSave.client_id) {
-      const clienteLog = clientes.find(c => c.value === dataToSave.client_id);
+      const clienteLog = clientes.find((c) => c.value === dataToSave.client_id);
       if (clienteLog?.raw) {
         dataToSave.nome = clienteLog.raw.full_name;
         dataToSave.cpf = clienteLog.raw.cpf_cnpj;
       }
     }
 
-    if (formData.status !== "Documentos Pendentes") {
-      dataToSave.documentos_pendentes = "";
+    // Limpa campos condicionais que não se aplicam ao status atual
+    if (formData.status !== 'Documentos Pendentes') {
+      dataToSave.documentos_pendentes = null;
+    }
+    if (formData.status !== 'Perícia Agendada') {
+      dataToSave.data_pericia = null;
+      dataToSave.horario_pericia = null;
+      dataToSave.local_pericia = null;
     }
 
-    if (formData.status !== "Perícia Agendada") {
-      dataToSave.data_pericia = "";
-      dataToSave.horario_pericia = "";
-      dataToSave.local_pericia = "";
-    }
-
-    onSave(dataToSave);
+    // Sanitização final: strings vazias → null (tipo-seguro para PostgREST)
+    onSave(sanitizeParaEnvio(dataToSave));
   };
 
   return (
