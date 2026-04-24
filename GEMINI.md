@@ -1,7 +1,7 @@
 # GEMINI.md — RV-Adv
 
 ## Projeto
-Plataforma LegalTech SaaS para escritório de advocacia brasileiro (Previdenciário, Cível, Trabalhista). Produção: https://rafaelavasconcelos.adv.br/
+Plataforma LegalTech SaaS para escritório de advocacia brasileiro (Previdenciário e Cível). Produção: https://rafaelavasconcelos.adv.br/
 
 ## Stack
 - **Frontend:** React 18 + Vite 6 + Tailwind CSS 3.4 + shadcn/ui
