@@ -39,6 +39,7 @@ import NotificationPanel from "@/components/notifications/NotificationPanel";
 import NotificationMonitor from "@/components/notifications/NotificationMonitor";
 import InstallButton from "@/components/pwa/InstallButton";
 import IOSInstallPrompt from "@/components/pwa/IOSInstallPrompt";
+import { useNotificationsSync } from "@/hooks/useNotificationsSync";
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -334,8 +335,10 @@ export default function Layout({ children, currentPageName }) {
           />
         )}
 
-        {/* Notification Monitor */}
+        {/* Monitor de Notificações Agendadas (prazos, agendamentos) */}
         <NotificationMonitor user={user} />
+        {/* Hook Realtime: sincroniza o sino via WebSocket sem polling */}
+        <NotificationsRealtimeSync user={user} />
 
         {/* PWA Install Button */}
         <InstallButton />
@@ -377,16 +380,18 @@ export default function Layout({ children, currentPageName }) {
 function NotificationBell({ user }) {
   const [showPanel, setShowPanel] = useState(false);
 
+  // O sino lê do cache invalidado pelo useNotificationsSync (Realtime)
+  // Sem polling (refetchInterval removido) — zero acúmulo de WebSockets
   const { data: notifications = [] } = useQuery({
-    queryKey: ["notifications-header", user?.id],
+    queryKey: ["notifications", user?.id],
     queryFn: () =>
       notificationService.filter({
         user_id: user?.id,
         is_read: false,
       }),
     enabled: !!user?.id,
-    refetchInterval: 10000,
     refetchOnWindowFocus: false,
+    staleTime: 30 * 1000, // 30s — Realtime mantém o cache fresco
   });
 
   const unreadCount = notifications.length;
@@ -429,4 +434,15 @@ function NotificationBell({ user }) {
       )}
     </>
   );
+}
+
+/**
+ * NotificationsRealtimeSync
+ * Componente invisível que ativa o hook useNotificationsSync.
+ * Separado do NotificationBell para que o canal WS seja gerenciado
+ * no nível do Layout (não abre/fecha com o painel).
+ */
+function NotificationsRealtimeSync({ user }) {
+  useNotificationsSync(user);
+  return null;
 }

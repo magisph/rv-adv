@@ -186,7 +186,6 @@ export default function TaskForm({ task, onSave, onCancel, isSaving }) {
       payload.attachments = uploadedUrls;
       onSave(payload);
     } catch (err) {
-      console.error("Erro no processamento da tarefa:", err);
       toast.error("Falha ao processar anexos. Tente novamente.");
     } finally {
       setIsUploading(false);

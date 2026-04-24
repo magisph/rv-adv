@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { notificationService } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -79,12 +79,12 @@ export default function NotificationPanel({ user, onClose }) {
     queryFn: () =>
       notificationService.filter({ user_id: user.id }),
     enabled: !!user?.id,
-    refetchInterval: 10000, // Atualiza a cada 10 segundos
+    staleTime: 30 * 1000, // Realtime mantém o cache fresco
   });
 
   const markAsReadMutation = useMutation({
     mutationFn: (id) => notificationService.update(id, { is_read: true }),
-    onSuccess: () => queryClient.invalidateQueries(["notifications"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] }),
   });
 
   const markAllAsReadMutation = useMutation({
@@ -96,12 +96,12 @@ export default function NotificationPanel({ user, onClose }) {
         ),
       );
     },
-    onSuccess: () => queryClient.invalidateQueries(["notifications"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => notificationService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(["notifications"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] }),
   });
 
   const clearReadMutation = useMutation({
@@ -111,7 +111,7 @@ export default function NotificationPanel({ user, onClose }) {
         read.map((n) => notificationService.delete(n.id)),
       );
     },
-    onSuccess: () => queryClient.invalidateQueries(["notifications"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] }),
   });
 
   const handleNotificationClick = (notification) => {
