@@ -497,8 +497,9 @@ function DocumentTypeCard({
       setUploadFields({});
       onRefresh();
     },
-    onError: () => {
-      toast.error("Erro ao enviar documento");
+    onError: (error) => {
+      const mensagem = error?.message || "Erro ao enviar documento. Tente novamente.";
+      toast.error(mensagem);
     },
   });
 

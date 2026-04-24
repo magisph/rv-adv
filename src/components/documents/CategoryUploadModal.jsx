@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { documentService } from "@/services";
 import { aiService } from "@/services/aiService";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -172,11 +173,8 @@ export default function CategoryUploadModal({
             });
             ocrContent = ocrResponse.extracted_text;
             ocrProcessed = true;
-          } catch (error) {
-            console.log(
-              "OCR processing failed, continuing without OCR:",
-              error,
-            );
+          } catch {
+            // OCR falhou — continua o upload sem extração de texto
           }
         }
 
@@ -205,7 +203,8 @@ export default function CategoryUploadModal({
         setUploadStatus((prev) => ({ ...prev, [fileData.id]: "success" }));
         successCount++;
       } catch (error) {
-        console.error("Erro no upload:", error);
+        const mensagem = error?.message || "Erro ao enviar arquivo. Tente novamente.";
+        toast.error(`Falha no envio de "${fileData.name}": ${mensagem}`);
         setUploadStatus((prev) => ({ ...prev, [fileData.id]: "error" }));
       }
     }
