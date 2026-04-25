@@ -249,6 +249,54 @@ export async function djenBuscaPublica({
 }
 
 // ============================================================================
+// enrichBulk(numerosCNJ)
+//
+// Consulta uma lista de processos em lote via Edge Function 'datajud-bulk-proxy'.
+// A Edge Function valida o JWT e repassa para o local-scraper (Hetzner),
+// que executa as queries DSL em paralelo sem risco de Geo-Block.
+//
+// @param {string[]} numerosCNJ - Array de números CNJ (formatados ou 20 dígitos)
+// @returns {Promise<BulkResponse>} - Resultado agregado com encontrados, erros e métricas
+// ============================================================================
+export async function enrichBulk(numerosCNJ) {
+  if (!Array.isArray(numerosCNJ) || numerosCNJ.length === 0) {
+    throw new Error("enrichBulk: informe pelo menos 1 número de processo.");
+  }
+  if (numerosCNJ.length > 50) {
+    throw new Error("enrichBulk: máximo de 50 processos por lote.");
+  }
+
+  // Formata números para o padrão CNJ com máscara antes de enviar
+  // (a Edge Function aceita formato formatado)
+  const processosFormatados = numerosCNJ.map((n) => {
+    try {
+      return formatarNumeroCNJ(n);
+    } catch {
+      return n; // Envia como está — a Edge Function fará a validação final
+    }
+  });
+
+  const { data, error } = await supabase.functions.invoke("datajud-bulk-proxy", {
+    body: { processos: processosFormatados },
+    headers: {
+      "x-region": "sa-east-1", // Garante execução em São Paulo (IP brasileiro)
+    },
+  });
+
+  if (error) {
+    throw new Error(`DataJud Bulk Edge Function erro: ${error.message}`);
+  }
+
+  if (!data?.success) {
+    throw new Error(
+      `DataJud Bulk erro: ${data?.error || "Resposta inesperada da Edge Function"}`
+    );
+  }
+
+  return data.data;
+}
+
+// ============================================================================
 // Exportação unificada (named export pattern do projeto)
 // ============================================================================
 export const cnjService = {
@@ -257,4 +305,6 @@ export const cnjService = {
   sanitizarNumeroOab,
   datajudBuscaNumero,
   djenBuscaPublica,
+  enrichBulk,
 };
+

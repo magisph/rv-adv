@@ -6,6 +6,7 @@ import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import { iniciarExtracaoPje } from './crawlers/pje-crawler.js';
 import { iniciarScrapingTNU } from './crawlers/tnu-crawler.js';
+import { consultarBulk } from './src/services/datajud.js';
 
 // ─── Config ────────────────────────────────────────────────────────
 const envPath = path.resolve(import.meta.dirname, '../.env');
@@ -181,7 +182,7 @@ app.post('/advogado/processos', async (req: Request, res: Response) => {
   }
 });
 
-// ─── Proxy CNJ: DataJud ─────────────────────────────────────────────
+// ─── Proxy CNJ: DataJud (consulta individual legada) ────────────────────────
 app.post('/api/cnj/datajud', async (req: Request, res: Response) => {
   try {
     const { sigla, numeroFormatado } = req.body;
@@ -210,6 +211,48 @@ app.post('/api/cnj/datajud', async (req: Request, res: Response) => {
     res.status(upstream.status).json(data);
   } catch (err: any) {
     console.error('[/api/cnj/datajud] Erro:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Proxy CNJ: DataJud BULK — Alta Performance ──────────────────────────────
+// POST /api/datajud/bulk
+// Protegido por x-service-key (apenas Edge Function datajud-bulk-proxy chama isto)
+// Executa consultas DSL em paralelo com concorrência controlada.
+// ─────────────────────────────────────────────────────────────────────────────
+const SCRAPER_SERVICE_KEY = process.env.SCRAPER_SERVICE_KEY || '';
+
+app.post('/api/datajud/bulk', async (req: Request, res: Response) => {
+  try {
+    // ── 1. Autenticação interna por Service Key ───────────────────────────────
+    const serviceKey = req.headers['x-service-key'];
+    if (!SCRAPER_SERVICE_KEY || serviceKey !== SCRAPER_SERVICE_KEY) {
+      res.status(401).json({ error: 'Não autorizado. x-service-key inválida.' });
+      return;
+    }
+
+    // ── 2. Validação básica do payload ────────────────────────────────────────
+    const { processos } = req.body;
+    if (!Array.isArray(processos) || processos.length === 0) {
+      res.status(400).json({ error: 'Campo "processos" deve ser um array não vazio.' });
+      return;
+    }
+    if (processos.length > 50) {
+      res.status(400).json({ error: 'Máximo de 50 processos por lote.' });
+      return;
+    }
+
+    // ── 3. Executa o motor bulk (concorrência controlada + retry) ─────────────
+    console.log(`[DataJud Bulk] Iniciando consulta de ${processos.length} processo(s)...`);
+    const resultado = await consultarBulk(processos, DATAJUD_API_KEY);
+    console.log(
+      `[DataJud Bulk] ✅ Concluído: ${resultado.encontrados}/${resultado.total} encontrados ` +
+      `em ${resultado.duracao_ms}ms. Erros: ${resultado.erros.length}`
+    );
+
+    res.json(resultado);
+  } catch (err: any) {
+    console.error('[/api/datajud/bulk] Erro:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -429,14 +472,15 @@ app.post('/api/jurisprudencia/scrape-tnu', async (req: Request, res: Response) =
 // ─── Ignição ────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀 Scraper Server rodando em http://localhost:${PORT}`);
-  console.log(`   ├─ Healthcheck:     GET  /status`);
-  console.log(`   ├─ Config MNI:      POST /configurar/mni`);
-  console.log(`   ├─ Config OTP:      POST /configurar/mni/otp`);
-  console.log(`   ├─ Extração:        POST /advogado/processos`);
-  console.log(`   ├─ Proxy DataJud:   POST /api/cnj/datajud`);
-  console.log(`   ├─ Proxy DJEN:      GET  /api/cnj/djen`);
-  console.log(`   ├─ Vigia DJEN:      ⏱️  a cada ${VIGIA_INTERVAL_MS / 60000} min (insert direto no Supabase)`);
-  console.log(`   └─ Scraping TNU:    POST /api/jurisprudencia/scrape-tnu\n`);
+  console.log(`   ├─ Healthcheck:      GET  /status`);
+  console.log(`   ├─ Config MNI:       POST /configurar/mni`);
+  console.log(`   ├─ Config OTP:       POST /configurar/mni/otp`);
+  console.log(`   ├─ Extração:         POST /advogado/processos`);
+  console.log(`   ├─ Proxy DataJud:    POST /api/cnj/datajud`);
+  console.log(`   ├─ 🚀 Bulk DataJud:  POST /api/datajud/bulk  [Alta Performance]`);
+  console.log(`   ├─ Proxy DJEN:       GET  /api/cnj/djen`);
+  console.log(`   ├─ Vigia DJEN:       ⏱️  a cada ${VIGIA_INTERVAL_MS / 60000} min (insert direto no Supabase)`);
+  console.log(`   └─ Scraping TNU:     POST /api/jurisprudencia/scrape-tnu\n`);
 
   // Executa imediatamente na ignição + agenda repetição
   vigiarDJEN();
