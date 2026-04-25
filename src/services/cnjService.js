@@ -1,6 +1,6 @@
 // ============================================================================
 // cnjService.js — Motor de Buscas do Governo (DataJud + DJEN)
-// DataJud: Consulta via Edge Function global (datajud-bypass) no Supabase.
+// DataJud: Consulta via Edge Function global (datajud-bulk-proxy) no Supabase.
 // DJEN:    Consulta via Edge Function global (djen-bypass) no Supabase.
 // ── Migração DJEN concluída em 2026-03-21 — Mixed Content/Geo-Block fix ──
 // ── Sanitização OAB (padStart 7) adicionada em 2026-03-31 — PJe fix ──────
@@ -67,8 +67,8 @@ export function formatarNumeroCNJ(numeroCNJ) {
 
 // ============================================================================
 // datajudBuscaNumero(numero)
-//
-// Invoca a Edge Function 'datajud-bypass' no Supabase (global, sem CORS).
+// 
+// Invoca a Edge Function 'datajud-bulk-proxy' no Supabase (global, sem CORS).
 // Retorna: { classeProcessual, assuntos, movimentos, orgaoJulgador, _raw }
 // ============================================================================
 export async function datajudBuscaNumero(numero) {
@@ -77,55 +77,64 @@ export async function datajudBuscaNumero(numero) {
 
   // Força execução em sa-east-1 (São Paulo) — o DataJud/CNJ pode aplicar
   // restrições geográficas similares ao DJEN. Garante IP brasileiro.
-  const { data, error } = await supabase.functions.invoke('datajud-bypass', {
-    body: { sigla, numeroFormatado },
+  const { data, error } = await supabase.functions.invoke('datajud-bulk-proxy', {
+    body: { processos: [numeroFormatado] },
     headers: {
       'x-region': 'sa-east-1',  // Força execução em São Paulo (IP brasileiro)
     },
   });
 
   if (error) {
-    throw new Error(`DataJud Edge Function erro (${sigla}): ${error.message}`);
+    throw new Error(`DataJud Bulk Edge Function erro (${sigla}): ${error.message}`);
   }
 
   if (!data?.success) {
     throw new Error(
-      `DataJud erro (${sigla}): ${data?.error || 'Resposta inesperada da Edge Function'}`
+      `DataJud Bulk erro (${sigla}): ${data?.error || 'Resposta inesperada da Edge Function'}`
     );
   }
 
-  const json = data.data;
+  const bulkResult = data.data;
 
-  const hits = json?.hits?.hits ?? [];
-  if (hits.length === 0) {
+  // Assume bulkResult has resultados array
+  const resultadoItem = bulkResult.resultados?.[0];
+
+  // If there is an error specific to this item, throw
+  if (resultadoItem?.erro) {
+    throw new Error(`DataJud erro (${sigla}): ${resultadoItem.erro}`);
+  }
+
+  if (resultadoItem?.encontrado) {
     return {
-      encontrado: false,
-      numero: numeroFormatado,
-      tribunal: sigla,
-      classeProcessual: null,
-      assuntos: [],
-      movimentos: [],
-      orgaoJulgador: null,
-      _raw: json,
+      encontrado: true,
+      numero: resultadoItem.numero ?? numeroFormatado,
+      tribunal: resultadoItem.tribunal ?? sigla,
+      classeProcessual: resultadoItem.classeProcessual ?? null,
+      assuntos: resultadoItem.assuntos ?? [],
+      movimentos: resultadoItem.movimentos ?? [],
+      orgaoJulgador: resultadoItem.orgaoJulgador ?? null,
+      dataAjuizamento: resultadoItem.dataAjuizamento ?? null,
+      grau: resultadoItem.grau ?? null,
+      nivelSigilo: resultadoItem.nivelSigilo ?? null,
+      formato: resultadoItem.formato ?? null,
+      _raw: bulkResult,
     };
   }
 
-  // Usa o primeiro hit (mais relevante)
-  const source = hits[0]._source;
-
+  // Not found
   return {
-    encontrado: true,
-    numero: source.numeroProcesso ?? numeroFormatado,
+    encontrado: false,
+    numero: numeroFormatado,
     tribunal: sigla,
-    classeProcessual: source.classe ?? source.classeProcessual ?? null,
-    assuntos: source.assuntos ?? [],
-    movimentos: source.movimentos ?? [],
-    orgaoJulgador: source.orgaoJulgador ?? null,
-    dataAjuizamento: source.dataAjuizamento ?? null,
-    grau: source.grau ?? null,
-    nivelSigilo: source.nivelSigilo ?? null,
-    formato: source.formato ?? null,
-    _raw: source,
+    classeProcessual: null,
+    assuntos: [],
+    movimentos: [],
+    orgaoJulgador: null,
+    dataAjuizamento: null,
+    grau: null,
+    nivelSigilo: null,
+    formato: null,
+    _raw: bulkResult,
   };
 }
 
