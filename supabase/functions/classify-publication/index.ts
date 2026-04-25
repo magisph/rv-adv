@@ -32,6 +32,7 @@ interface ClassificacaoIA {
   grau_confianca: "ALTA" | "MÉDIA" | "BAIXA";
   eh_fatal: boolean;
   justificativa: string;
+  dias_prazo_identificado?: number | null; // Dias do prazo extraídos pela IA (opcional)
 }
 
 interface GroundTruthResult {
@@ -43,11 +44,21 @@ interface GroundTruthResult {
   similarity: number;
 }
 
+interface ResultadoPrazo {
+  due_date: string;           // "YYYY-MM-DD"
+  d1_prazo: string;           // Início da contagem
+  total_dias_corridos: number;
+  feriados_pulados: string[];
+  recesso_aplicado: boolean;
+  pascoa_do_ano: string;
+}
+
 const FALLBACK_CLASSIFICACAO: ClassificacaoIA = {
   score_urgencia: "MÉDIO",
   grau_confianca: "BAIXA",
   eh_fatal: false,
   justificativa: "Falha na classificação IA — revisão humana obrigatória",
+  dias_prazo_identificado: null,
 };
 
 // ============================================================================
@@ -99,6 +110,7 @@ Analise a intimação e as regras de referência para determinar:
 1. score_urgencia: ALTO, MÉDIO ou BAIXO
 2. grau_confianca: ALTA (similaridade >70%, texto claro), MÉDIA (40-70%), BAIXA (<40% ou ambíguo)
 3. eh_fatal: true se o prazo é peremptório (perda do direito se descumprido)
+4. dias_prazo_identificado: número inteiro de dias do prazo mencionado (ex: 15 para "prazo de 15 dias"). null se nenhum prazo for identificado explicitamente.
 
 Responda EXCLUSIVAMENTE em JSON válido, sem markdown.`;
 
@@ -113,7 +125,8 @@ Retorne JSON:
   "score_urgencia": "ALTO" | "MÉDIO" | "BAIXO",
   "grau_confianca": "ALTA" | "MÉDIA" | "BAIXA",
   "eh_fatal": true | false,
-  "justificativa": "Explicação (máx 200 chars)"
+  "justificativa": "Explicação (máx 200 chars)",
+  "dias_prazo_identificado": <número inteiro ou null>
 }`;
 
     const resp = await fetch(`${supabaseUrl}/functions/v1/ai-proxy`, {
@@ -139,6 +152,7 @@ Retorne JSON:
             grau_confianca: { type: "string", enum: ["ALTA", "MÉDIA", "BAIXA"] },
             eh_fatal: { type: "boolean" },
             justificativa: { type: "string" },
+            dias_prazo_identificado: { type: ["integer", "null"] },
           },
           required: ["score_urgencia", "grau_confianca", "eh_fatal"],
         },
@@ -159,7 +173,13 @@ Retorne JSON:
       ["ALTA", "MÉDIA", "BAIXA"].includes(resultado.grau_confianca) &&
       typeof resultado.eh_fatal === "boolean"
     ) {
-      return resultado as ClassificacaoIA;
+      // Normaliza dias_prazo: aceita inteiros positivos, descarta outros valores
+      const diasBrutos = resultado.dias_prazo_identificado;
+      const diasNorm =
+        Number.isInteger(diasBrutos) && diasBrutos > 0 && diasBrutos <= 1095
+          ? diasBrutos
+          : null;
+      return { ...resultado, dias_prazo_identificado: diasNorm } as ClassificacaoIA;
     }
 
     console.warn("[classify-pub] LLM response fora do schema:", resultado);
@@ -168,6 +188,88 @@ Retorne JSON:
     console.error("[classify-pub] LLM classification failed:", err);
     return FALLBACK_CLASSIFICACAO;
   }
+}
+
+// ============================================================================
+// Cálculo da Due Date via calculadora-prazos (chamada interna server-side)
+// ============================================================================
+/**
+ * Chama a Edge Function calculadora-prazos para obter a data de vencimento exata.
+ * Usa a service_role key para chamada interna autenticada.
+ * Retorna null em caso de falha (não bloqueia o fluxo principal).
+ */
+async function calcularDueDateViaService(
+  supabaseUrl: string,
+  serviceKey: string,
+  dataPublicacao: string,
+  diasPrazo: number
+): Promise<ResultadoPrazo | null> {
+  try {
+    console.log(`[classify-pub] Calculando prazo: publicacao=${dataPublicacao} dias=${diasPrazo}`);
+    const resp = await fetch(`${supabaseUrl}/functions/v1/calculadora-prazos`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
+        "apikey": serviceKey,
+      },
+      body: JSON.stringify({
+        data_publicacao: dataPublicacao,
+        dias_prazo: diasPrazo,
+        dias_uteis: true, // CPC/2015 art. 219 — padrão dias úteis
+      }),
+    });
+
+    if (!resp.ok) {
+      const errBody = await resp.text().catch(() => "<sem corpo>");
+      console.error(`[classify-pub] calculadora-prazos retornou ${resp.status}: ${errBody}`);
+      return null;
+    }
+
+    const data = await resp.json() as ResultadoPrazo;
+
+    if (!data?.due_date || !/^\d{4}-\d{2}-\d{2}$/.test(data.due_date)) {
+      console.error("[classify-pub] Resposta inválida da calculadora-prazos:", data);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error("[classify-pub] Erro ao chamar calculadora-prazos:", err);
+    return null;
+  }
+}
+
+/**
+ * Extrai o número de dias de um prazo via regex no teor da intimação.
+ * Complementa a extração feita pela IA — usado como fallback ou validação cruzada.
+ *
+ * Padrões reconhecidos (exemplos):
+ *   "prazo de 15 (quinze) dias"
+ *   "no prazo de 15 dias"
+ *   "responder em 30 dias"
+ *   "15 dias úteis"
+ */
+export function extrairDiasPrazoDoTeor(teor: string): number | null {
+  if (!teor) return null;
+
+  // Regex: captura dígitos após "prazo de" ou antes de " dias"
+  const padroes = [
+    /prazo\s+de\s+(\d{1,3})\s+(?:\([^)]+\)\s+)?dias?/i,
+    /no\s+prazo\s+de\s+(\d{1,3})\s+dias?/i,
+    /(?:responder|manifestar|se\s+pronunciar).*?(\d{1,3})\s+dias?/i,
+    /(\d{1,3})\s+dias?\s+(?:úteis?|para)/i,
+  ];
+
+  for (const regex of padroes) {
+    const match = teor.match(regex);
+    if (match?.[1]) {
+      const dias = parseInt(match[1], 10);
+      if (dias > 0 && dias <= 365) return dias;
+    }
+  }
+
+  return null;
 }
 
 // ============================================================================
@@ -287,13 +389,60 @@ serve(async (req: Request) => {
     // ── 6. Classificação LLM: Groq Llama 3.1 8B ──
     console.log("[classify-pub] Classificando via LLM...");
     const classificacao = await classificarViaLLM(supabaseUrl, serviceKey, teorPuro, regrasTop3);
-    console.log(`[classify-pub] Resultado: urgencia=${classificacao.score_urgencia} confiança=${classificacao.grau_confianca} fatal=${classificacao.eh_fatal}`);
+    console.log(`[classify-pub] Resultado: urgencia=${classificacao.score_urgencia} confiança=${classificacao.grau_confianca} fatal=${classificacao.eh_fatal} dias=${classificacao.dias_prazo_identificado ?? "não identificado"}`);
 
     // Regra de negócio HITL: baixa/média confiança → revisão humana obrigatória
     const revisaoHumanaPendente = classificacao.grau_confianca !== "ALTA";
 
-    // ── 7. UPDATE nas tabelas com métricas IA ──
-    await atualizarComClassificacao(supabase, move, classificacao, revisaoHumanaPendente);
+    // ── 6.5. Cálculo matemático da due_date via calculadora-prazos ───────────
+    // Estratégia de extração de dias_prazo:
+    //   1. Prioridade: dias informados pela IA (mais contextual)
+    //   2. Fallback: extração via regex no teor puro
+    // Ambos são validados (range 1-365) antes do uso.
+    let resultadoPrazo: ResultadoPrazo | null = null;
+
+    const diasPrazoIA = classificacao.dias_prazo_identificado ?? null;
+    const diasPrazoRegex = extrairDiasPrazoDoTeor(teorPuro);
+    const diasPrazoFinal = diasPrazoIA ?? diasPrazoRegex;
+
+    if (diasPrazoFinal && diasPrazoFinal > 0) {
+      // Extrai a data de publicação da movimentação (move.created_at ou hoje)
+      // Usa a data do dia atual como fallback seguro (UTC-3 Brasília)
+      const { data: moveComData } = await supabase
+        .from("process_moves")
+        .select("created_at")
+        .eq("id", move.id)
+        .single()
+        .catch(() => ({ data: null }));
+
+      const dataPublicacaoISO = moveComData?.created_at ?? new Date().toISOString();
+      // Converte ISO para YYYY-MM-DD no fuso de Brasília (UTC-3)
+      const brasiliaOffset = -3 * 60 * 60 * 1000;
+      const dataPublicacaoBrasilia = new Date(new Date(dataPublicacaoISO).getTime() + brasiliaOffset);
+      const dataPublicacaoStr = dataPublicacaoBrasilia.toISOString().substring(0, 10);
+
+      resultadoPrazo = await calcularDueDateViaService(
+        supabaseUrl,
+        serviceKey,
+        dataPublicacaoStr,
+        diasPrazoFinal
+      );
+
+      if (resultadoPrazo) {
+        console.log(
+          `[classify-pub] 📅 Due date calculada: ${resultadoPrazo.due_date} ` +
+          `(D1: ${resultadoPrazo.d1_prazo}, recesso: ${resultadoPrazo.recesso_aplicado}, ` +
+          `fonte: ${diasPrazoIA ? "IA" : "regex"})`
+        );
+      } else {
+        console.warn("[classify-pub] Falha no cálculo de prazo — due_date não será definida automaticamente");
+      }
+    } else {
+      console.log("[classify-pub] Dias de prazo não identificados — due_date requer revisão humana");
+    }
+
+    // ── 7. UPDATE nas tabelas com métricas IA + due_date ──
+    await atualizarComClassificacao(supabase, move, classificacao, revisaoHumanaPendente, resultadoPrazo);
 
     // ── 8. Fila: processing → done ──
     await supabase
@@ -311,7 +460,15 @@ serve(async (req: Request) => {
           grau_confianca: classificacao.grau_confianca,
           eh_fatal: classificacao.eh_fatal,
           revisao_humana_pendente: revisaoHumanaPendente,
+          dias_prazo_identificado: classificacao.dias_prazo_identificado ?? null,
         },
+        prazo: resultadoPrazo
+          ? {
+              due_date: resultadoPrazo.due_date,
+              d1_prazo: resultadoPrazo.d1_prazo,
+              recesso_aplicado: resultadoPrazo.recesso_aplicado,
+            }
+          : null,
       }),
       { status: 200, headers }
     );
@@ -339,19 +496,20 @@ serve(async (req: Request) => {
 });
 
 // ============================================================================
-// Utilitário: atualiza process_moves e deadlines com métricas IA
+// Utilitário: atualiza process_moves e deadlines com métricas IA + due_date
 // ============================================================================
 async function atualizarComClassificacao(
   supabase: ReturnType<typeof createClient>,
   move: { id: string; process_id: string },
   classificacao: ClassificacaoIA,
-  revisaoHumanaPendente: boolean
+  revisaoHumanaPendente: boolean,
+  resultadoPrazo: ResultadoPrazo | null = null
 ): Promise<void> {
   const prioridade =
     classificacao.score_urgencia === "ALTO" ? "urgente" :
     classificacao.score_urgencia === "MÉDIO" ? "alta" : "media";
 
-  // Atualiza a movimentação (log da classificação)
+  // Atualiza a movimentação (log da classificação + data de publicação)
   const { error: moveUpdateError } = await supabase
     .from("process_moves")
     .update({
@@ -363,22 +521,37 @@ async function atualizarComClassificacao(
     console.warn("[classify-pub] Erro ao atualizar process_moves:", moveUpdateError);
   }
 
-  // Atualiza o prazo mais recente do processo com as métricas IA
+  // Monta o payload de atualização do deadline
+  const deadlinePayload: Record<string, unknown> = {
+    prioridade,
+    eh_fatal: classificacao.eh_fatal,
+    score_urgencia: classificacao.score_urgencia,
+    grau_confianca: classificacao.grau_confianca,
+    revisao_humana_pendente: revisaoHumanaPendente,
+    ia_classificacao_at: new Date().toISOString(),
+    ia_modelo_usado: "groq-llama-3.1-8b-rag-v2",
+  };
+
+  // Inclui due_date e metadados do prazo SE a calculadora retornou resultado válido
+  if (resultadoPrazo?.due_date) {
+    deadlinePayload["due_date"] = resultadoPrazo.due_date;
+    deadlinePayload["prazo_d1"] = resultadoPrazo.d1_prazo;
+    deadlinePayload["prazo_recesso_aplicado"] = resultadoPrazo.recesso_aplicado;
+    // Não inclui a lista completa de feriados_pulados para não sobrecarregar o banco
+    // O total de dias corridos serve como auditoria
+    deadlinePayload["prazo_total_dias_corridos"] = resultadoPrazo.total_dias_corridos;
+  }
+
+  // Atualiza o prazo mais recente do processo com as métricas IA + due_date calculada
   const { error: deadlineError } = await supabase
     .from("deadlines")
-    .update({
-      prioridade,
-      eh_fatal: classificacao.eh_fatal,
-      score_urgencia: classificacao.score_urgencia,
-      grau_confianca: classificacao.grau_confianca,
-      revisao_humana_pendente: revisaoHumanaPendente,
-      ia_classificacao_at: new Date().toISOString(),
-      ia_modelo_usado: "groq-llama-3.1-8b-rag-v2",
-    })
-    .eq("processo_id", move.process_id)
+    .update(deadlinePayload)
+    .eq("process_id", move.process_id)   // Coluna real: process_id (não processo_id)
     .eq("ia_modelo_usado", "aguardando-classify-publication"); // Apenas prazos deste fluxo
 
   if (deadlineError) {
     console.error("[classify-pub] Erro ao atualizar deadline:", deadlineError);
+  } else if (resultadoPrazo?.due_date) {
+    console.log(`[classify-pub] 🎯 Kanban atualizado: processo=${move.process_id} due_date=${resultadoPrazo.due_date}`);
   }
 }

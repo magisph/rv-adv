@@ -13,7 +13,11 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "security": "vitest run tests/security",
-    "security:audit": "npm audit --audit-level=high"
+    "security:audit": "npm audit --audit-level=high",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:prazos": "vitest run tests/calculadora_prazos.test.ts",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@clack/prompts": "^1.1.0",
