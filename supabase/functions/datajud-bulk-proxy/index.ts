@@ -17,29 +17,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { z } from "npm:zod@3.24.2";
 import { authenticateRequest } from "../_shared/auth.ts";
-
-// ─── CORS ────────────────────────────────────────────────────────────────────
-
-const ALLOWED_ORIGINS = [
-  "https://rafaelavasconcelos.adv.br",
-  "https://www.rafaelavasconcelos.adv.br",
-  "http://localhost:5173",
-  "http://localhost:3000",
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get("origin") ?? "";
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin)
-    ? origin
-    : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Vary": "Origin",
-  };
-}
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 // ─── Schema Zod de Validação (espelha datajudBulkSchema no frontend) ─────────
 
@@ -57,7 +35,7 @@ const datajudBulkSchema = z.object({
 // ─── Handler Principal ────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
-  const corsHeaders = getCorsHeaders(req);
+  const corsHeaders = getCorsHeaders(req.headers.get("origin"));
 
   // Preflight CORS
   if (req.method === "OPTIONS") {
