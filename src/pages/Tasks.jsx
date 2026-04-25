@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
@@ -39,6 +38,7 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import TaskForm from "@/components/tasks/TaskForm";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/lib/AuthContext";
+import { PainelHITL } from "@/components/deadlines/PainelHITL";
 
 // Constants
 
@@ -285,7 +285,7 @@ export default function Tasks() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const queryClient = useQueryClient();
-  const userRole = user?.role?.toLowerCase() || "";
+  const userRole = user?.role?.toLowerCase() || user?.app_metadata?.role?.toLowerCase() || "";
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks"],
@@ -434,6 +434,9 @@ export default function Tasks() {
           </Button>
         </div>
       </div>
+
+      {/* 🔴 Painel HITL — aparece apenas quando há prazos aguardando revisão */}
+      <PainelHITL userRole={userRole} />
 
       {/* Kanban Board */}
       <div className="w-full flex-1 overflow-x-auto pb-4 custom-scrollbar">

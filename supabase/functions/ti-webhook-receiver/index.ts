@@ -2,65 +2,29 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { enforceRateLimit, getRateLimitHeaders } from "../_shared/rate-limit.ts";
+import { processarTeorIntimacao } from "../_shared/textProcessing.ts";
 
 // ============================================================================
-// Autenticação Multi-Modal para Webhooks do TI (Tramitação Inteligente)
+// ti-webhook-receiver — Fast-lane receptor de intimações DJEN (Advisian v2)
 //
-// O TI (Faraday v1.x) envia requisições sem JWT e sem HMAC. Suportamos:
-//   1. HMAC-SHA256 via X-Webhook-Signature (preferencial, mais seguro)
-//   2. Bearer token via Authorization header
-//   3. Token via query param ?token=... (configurado na URL do webhook no TI)
+// Arquitetura de desacoplamento assíncrono:
+//   ANTES: Recepção → Embedding → RAG → LLM → INSERT → 200 OK  (~15s)
+//   AGORA: Recepção → SHA-256 → INSERT → 200 OK                 (<800ms)
+//                                    ↓ (trigger pg_net)
+//                           classify-publication (background)
 //
-// verify_jwt=false é obrigatório nesta função (deploy via MCP/CLI).
+// verify_jwt=false obrigatório (TI não envia JWT Supabase).
 // ============================================================================
 
-/**
- * Normaliza o número do processo removendo qualquer caracter não numérico.
- */
 function normalize(num: string): string {
   return num.replace(/\D/g, "");
 }
 
-/**
- * Extrai o número do processo de múltiplas fontes possíveis no payload.
- * Suporta campos diretos e aninhados, com ou sem máscara.
- */
-function extractProcessNumber(payload: Record<string, unknown>): string | null {
-  const fieldMappings = [
-    "numero_processo",
-    "process_number",
-    "numeroProcesso",
-    "processNumber",
-    "publication.numero_processo",
-    "publication.process_number",
-    "publications.0.numero_processo",
-    "publications.0.process_number",
-    "data.numero_processo",
-    "data.process_number",
-  ];
-
-  for (const field of fieldMappings) {
-    const value = getNestedValue(payload, field);
-    if (value && typeof value === "string" && value.trim().length > 0) {
-      console.log(`[Webhook TI] Campo '${field}' encontrado: ${value}`);
-      return value.trim();
-    }
-  }
-
-  console.log(`[Webhook TI] Nenhum campo de número de processo encontrado.`);
-  return null;
-}
-
-/**
- * Obtém valor de objeto aninhado via caminho com notação de ponto.
- */
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   const parts = path.split(".");
   let current: unknown = obj;
-
   for (const part of parts) {
-    if (current === null || current === undefined) return null;
-    if (typeof current !== "object") return null;
+    if (current === null || current === undefined || typeof current !== "object") return null;
     if (Array.isArray(current)) {
       const index = parseInt(part, 10);
       if (isNaN(index) || index < 0 || index >= current.length) return null;
@@ -69,254 +33,120 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
       current = (current as Record<string, unknown>)[part];
     }
   }
-
   return current;
 }
 
-/**
- * Compara duas strings de forma timing-safe para evitar timing attacks.
- */
+function extractProcessNumber(payload: Record<string, unknown>): string | null {
+  const fields = [
+    "numero_processo", "process_number", "numeroProcesso", "processNumber",
+    "publication.numero_processo", "publication.process_number",
+    "publications.0.numero_processo", "publications.0.process_number",
+    "data.numero_processo", "data.process_number",
+  ];
+  for (const field of fields) {
+    const value = getNestedValue(payload, field);
+    if (value && typeof value === "string" && value.trim().length > 0) return value.trim();
+  }
+  return null;
+}
+
 function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    // Percorre igualmente para não vazar timing info sobre o comprimento
-    let diff = 0;
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
-    }
-    return false;
-  }
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
+  const maxLen = Math.max(a.length, b.length);
+  let diff = a.length !== b.length ? 1 : 0;
+  for (let i = 0; i < maxLen; i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
   return diff === 0;
 }
 
-/**
- * Verifica o hash HMAC-SHA256 de forma timing-safe via Web Crypto API.
- */
-async function verifyHMAC(
-  payload: string,
-  secret: string,
-  hexSignature: string
-): Promise<boolean> {
+async function verifyHMAC(payload: string, secret: string, hexSig: string): Promise<boolean> {
   try {
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(secret);
-    const key = await crypto.subtle.importKey(
-      "raw",
-      keyData,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["verify"]
-    );
-
-    const sigBytes = new Uint8Array(
-      hexSignature.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
-    );
-
-    return crypto.subtle.verify("HMAC", key, sigBytes, encoder.encode(payload));
-  } catch {
-    return false;
-  }
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+    const sigBytes = new Uint8Array(hexSig.match(/.{1,2}/g)?.map((b) => parseInt(b, 16)) || []);
+    return crypto.subtle.verify("HMAC", key, sigBytes, enc.encode(payload));
+  } catch { return false; }
 }
 
-/**
- * Autentica a requisição do TI usando múltiplas estratégias.
- *
- * Fluxo:
- *   1. HMAC-SHA256 via X-Webhook-Signature (mais seguro)
- *   2. Bearer token via Authorization header
- *   3. Token via query param ?token=...
- *
- * Retorna true se autenticado, false caso contrário.
- */
-async function authenticateWebhook(
-  req: Request,
-  rawBody: string,
-  secret: string
-): Promise<{ ok: boolean; method: string }> {
-  if (!secret) {
-    console.error("[Webhook TI] FATAL: TI_WEBHOOK_SECRET não configurado!");
-    return { ok: false, method: "no-secret" };
+async function authenticate(req: Request, rawBody: string, secret: string): Promise<{ ok: boolean; method: string }> {
+  if (!secret) return { ok: false, method: "no-secret" };
+
+  const sig = req.headers.get("X-Webhook-Signature");
+  if (sig?.startsWith("sha256=")) {
+    const valid = await verifyHMAC(rawBody, secret, sig.replace("sha256=", ""));
+    return { ok: valid, method: valid ? "hmac-sha256" : "hmac-sha256-invalid" };
   }
 
-  // --- Estratégia 1: HMAC-SHA256 ---
-  const signatureHeader = req.headers.get("X-Webhook-Signature");
-  if (signatureHeader?.startsWith("sha256=")) {
-    const hexSig = signatureHeader.replace("sha256=", "");
-    const valid = await verifyHMAC(rawBody, secret, hexSig);
-    if (valid) {
-      return { ok: true, method: "hmac-sha256" };
-    }
-    console.warn("[Webhook TI] X-Webhook-Signature presente mas inválida.");
-    return { ok: false, method: "hmac-sha256-invalid" };
-  }
+  const bearer = req.headers.get("Authorization")?.replace("Bearer ", "").trim();
+  if (bearer) return { ok: timingSafeEqual(bearer, secret), method: "bearer-token" };
 
-  // --- Estratégia 2: Bearer token ---
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.replace("Bearer ", "").trim();
-    if (timingSafeEqual(token, secret)) {
-      return { ok: true, method: "bearer-token" };
-    }
-    console.warn("[Webhook TI] Authorization Bearer presente mas inválido.");
-    return { ok: false, method: "bearer-invalid" };
-  }
+  const qtoken = new URL(req.url).searchParams.get("token");
+  if (qtoken) return { ok: timingSafeEqual(qtoken, secret), method: "query-token" };
 
-  // --- Estratégia 3: Query param ?token=... ---
-  const url = new URL(req.url);
-  const queryToken = url.searchParams.get("token");
-  if (queryToken) {
-    if (timingSafeEqual(queryToken, secret)) {
-      return { ok: true, method: "query-token" };
-    }
-    console.warn("[Webhook TI] Query param ?token presente mas inválido.");
-    return { ok: false, method: "query-token-invalid" };
-  }
-
-  console.warn(
-    "[Webhook TI] Nenhum mecanismo de autenticação detectado na requisição."
-  );
   return { ok: false, method: "no-auth-header" };
 }
 
+// ============================================================================
+// Handler Principal — Fast-lane (<800ms)
+// ============================================================================
 serve(async (req: Request) => {
+  const t0 = Date.now();
   const origin = req.headers.get("origin");
-  const stdRateLimitHeaders = getRateLimitHeaders(req, 30);
+  const headers = { ...getCorsHeaders(origin), ...getRateLimitHeaders(req, 30), "Content-Type": "application/json" };
 
-  const securityHeaders = {
-    ...getCorsHeaders(origin),
-    ...stdRateLimitHeaders,
-    "Content-Type": "application/json",
-  };
+  const rateLimited = enforceRateLimit(req, origin, 30);
+  if (rateLimited) return rateLimited;
 
-  // 1. Rate Limiter (Max 30 req/min — webhooks podem chegar em rajadas)
-  const rateLimitResponse = enforceRateLimit(req, origin, 30);
-  if (rateLimitResponse) return rateLimitResponse;
-
-  // 2. Verificação de Método
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Método não permitido" }), {
-      status: 405,
-      headers: securityHeaders,
-    });
+    return new Response(JSON.stringify({ error: "Método não permitido" }), { status: 405, headers });
   }
 
-  // 3. Idempotency Key (log apenas)
-  const idempotencyKey = req.headers.get("X-Idempotency-Key");
-  if (idempotencyKey) {
-    console.log(`[Webhook TI] Idempotency-Key: ${idempotencyKey}`);
-  }
-
-  // 4. Leitura do Raw Body (ANTES de qualquer parse)
   const rawBody = await req.text();
-
-  // 5. Autenticação Multi-Modal
   const secret = Deno.env.get("TI_WEBHOOK_SECRET") || "";
-  const auth = await authenticateWebhook(req, rawBody, secret);
+  const auth = await authenticate(req, rawBody, secret);
 
   if (!auth.ok) {
-    console.error(
-      `[Webhook TI] Autenticação falhou. Método tentado: ${auth.method}`
-    );
-    console.error(
-      `[Webhook TI] Headers recebidos: ${JSON.stringify([...req.headers.entries()])}`
-    );
-    return new Response(
-      JSON.stringify({
-        error: "Unauthorized",
-        hint:
-          "Configure a URL do webhook no TI com ?token=<TI_WEBHOOK_SECRET>",
-      }),
-      { status: 401, headers: securityHeaders }
-    );
+    console.error(`[Webhook TI] Autenticação falhou: ${auth.method}`);
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
   }
 
-  console.log(`[Webhook TI] Autenticado via: ${auth.method}`);
-
   try {
-    const body = JSON.parse(rawBody);
-    const { event_type, payload } = body;
+    const { event_type, payload } = JSON.parse(rawBody);
 
-    // 6. Health check / teste de conectividade
     if (event_type === "test_event") {
-      console.log(`[Webhook TI] test_event — Health Check OK`);
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Webhook ativo e autenticado",
-          auth_method: auth.method,
-        }),
-        { status: 200, headers: securityHeaders }
-      );
+      return new Response(JSON.stringify({ success: true, message: "Webhook ativo", auth_method: auth.method }), { status: 200, headers });
     }
 
-    // 7. Eventos não processados
     if (event_type !== "publications.created") {
-      console.log(`[Webhook TI] Evento ignorado: '${event_type}'`);
-      return new Response(
-        JSON.stringify({ message: "Evento ignorado", event_type }),
-        { status: 200, headers: securityHeaders }
-      );
+      return new Response(JSON.stringify({ message: "Evento ignorado", event_type }), { status: 200, headers });
     }
 
-    console.log(`[Webhook TI] Processando publications.created...`);
-
-    // 8. Guard Clauses — Validação defensiva do payload
     if (!payload || typeof payload !== "object") {
-      console.error(`[Webhook TI] Guard: payload inválido.`);
-      return new Response(JSON.stringify({ error: "Payload inválido" }), {
-        status: 400,
-        headers: securityHeaders,
-      });
+      return new Response(JSON.stringify({ error: "Payload inválido" }), { status: 400, headers });
     }
 
-    const publications = (payload as Record<string, unknown>).publications;
-    if (Array.isArray(publications) && publications.length === 0) {
-      return new Response(
-        JSON.stringify({ message: "Nenhuma publicação para processar" }),
-        { status: 200, headers: securityHeaders }
-      );
-    }
-
-    if (publications === null || publications === undefined) {
-      return new Response(
-        JSON.stringify({ message: "Publicações não disponíveis" }),
-        { status: 200, headers: securityHeaders }
-      );
-    }
-
-    // 9. Extração de campos
     const typedPayload = payload as Record<string, unknown>;
-    const processNumber = extractProcessNumber(typedPayload);
-    const content = typedPayload.conteudo || typedPayload.content;
-    const date =
-      typedPayload.data_disponibilizacao ||
-      typedPayload.date ||
-      new Date().toISOString().split("T")[0];
+    const publications = typedPayload.publications;
 
+    if (!publications || (Array.isArray(publications) && publications.length === 0)) {
+      return new Response(JSON.stringify({ message: "Sem publicações" }), { status: 200, headers });
+    }
+
+    const processNumber = extractProcessNumber(typedPayload);
     if (!processNumber) {
-      console.error(
-        `[Webhook TI] Número do processo ausente. Campos: ${Object.keys(typedPayload).join(", ")}`
-      );
       return new Response(
-        JSON.stringify({
-          error: "Número do processo ausente",
-          received_fields: Object.keys(typedPayload),
-        }),
-        { status: 400, headers: securityHeaders }
+        JSON.stringify({ error: "Número do processo ausente", received_fields: Object.keys(typedPayload) }),
+        { status: 400, headers }
       );
     }
 
+    const content = (typedPayload.conteudo || typedPayload.content || "") as string;
+    const date = (typedPayload.data_disponibilizacao || typedPayload.date || new Date().toISOString().split("T")[0]) as string;
     const normalizedNum = normalize(processNumber);
 
-    // 10. Supabase — Service Role (bypassa RLS)
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 11. Casamento pelo número normalizado
+    // Casamento pelo número normalizado
     const { data: processes, error: searchError } = await supabase
       .from("processes")
       .select("id, process_number")
@@ -325,44 +155,84 @@ serve(async (req: Request) => {
 
     if (searchError) throw searchError;
 
-    const matchedProcess = processes?.[0];
-
-    if (!matchedProcess) {
-      console.log(
-        `[Webhook TI] Processo não encontrado: ${processNumber}`
-      );
-      return new Response(
-        JSON.stringify({ message: "Processo não encontrado" }),
-        { status: 200, headers: securityHeaders }
-      );
+    const matched = processes?.[0];
+    if (!matched) {
+      return new Response(JSON.stringify({ message: "Processo não encontrado" }), { status: 200, headers });
     }
 
-    // 12. Inserção da movimentação
-    const { error: insertError } = await supabase.from("process_moves").insert({
-      process_id: matchedProcess.id,
-      process_number: matchedProcess.process_number,
-      date: date,
-      description:
-        content || "Nova intimação recebida via Tramitação Inteligente.",
-      move_type: "intimacao",
-      source: "sistema",
+    // =========================================================================
+    // FAST-LANE: Barreira SHA-256 de Deduplicação Canônica
+    // Extrai teor puro + gera hash — sem LLM, sem embedding, sem RAG.
+    // =========================================================================
+    const { teorPuro, hash: teor_sha256 } = await processarTeorIntimacao(content);
+    console.log(`[Webhook TI] Teor: ${teorPuro.length}c | Hash: ${teor_sha256?.substring(0, 16) ?? "null"}...`);
+
+    // Verificação de duplicata ANTES do INSERT (fail-fast)
+    if (teor_sha256) {
+      const { data: existing } = await supabase
+        .from("process_moves")
+        .select("id")
+        .eq("teor_sha256", teor_sha256)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        console.log(`[Webhook TI] ⚡ DUPLICATA (${Date.now() - t0}ms) hash=${teor_sha256.substring(0, 16)}`);
+        return new Response(JSON.stringify({ success: true, duplicata: true }), { status: 200, headers });
+      }
+    }
+
+    // INSERT atômico — trigger pg_net dispara classify-publication em background
+    const { data: insertedMove, error: insertError } = await supabase
+      .from("process_moves")
+      .insert({
+        process_id: matched.id,
+        process_number: matched.process_number,
+        date,
+        description: content || "Intimação recebida via Tramitação Inteligente.",
+        move_type: "intimacao",
+        source: "sistema",
+        teor_sha256: teor_sha256 ?? null,
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      // 23505 = unique_violation (race condition entre webhooks simultâneos)
+      if (insertError.code === "23505") {
+        console.log(`[Webhook TI] ⚡ DUPLICATA via UNIQUE constraint (${Date.now() - t0}ms)`);
+        return new Response(JSON.stringify({ success: true, duplicata: true }), { status: 200, headers });
+      }
+      throw insertError;
+    }
+
+    // Prazo inicial conservador — métricas IA preenchidas pelo classify-publication
+    const dueDate = new Date(date);
+    dueDate.setDate(dueDate.getDate() + 15);
+
+    await supabase.from("deadlines").insert({
+      processo_id: matched.id,
+      titulo: `Intimação - ${processNumber}`,
+      descricao: content ? content.substring(0, 500) : "Intimação via Tramitação Inteligente",
+      due_date: dueDate.toISOString(),
+      status: "pendente",
+      prioridade: "alta",
+      revisao_humana_pendente: true, // HITL ativo até o worker classificar
+      ia_modelo_usado: "aguardando-classify-publication",
+    }).then(({ error }) => {
+      if (error) console.error("[Webhook TI] Erro ao criar prazo:", error);
     });
 
-    if (insertError) throw insertError;
+    const elapsed = Date.now() - t0;
+    console.log(`[Webhook TI] ✅ Fast-lane ${elapsed}ms | Move: ${insertedMove?.id} | classify-publication ativado`);
 
-    console.log(
-      `[Webhook TI] Sucesso: intimação registrada para ${processNumber}`
+    return new Response(
+      JSON.stringify({ success: true, process_move_id: insertedMove?.id, elapsed_ms: elapsed }),
+      { status: 200, headers }
     );
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: securityHeaders,
-    });
   } catch (error) {
     console.error("[Webhook TI] Erro interno:", error);
-    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
-      status: 500,
-      headers: securityHeaders,
-    });
+    return new Response(JSON.stringify({ error: "Erro interno do servidor" }), { status: 500, headers });
   }
 });

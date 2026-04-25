@@ -4,7 +4,8 @@ export { authService } from "./authService";
 // Client Service especializado com validação Zod
 export { clientService } from "./clientService";
 export const processService = new BaseService("processes");
-export const deadlineService = new BaseService("deadlines");
+// DeadlineService especializado com fluxo HITL e Motor Híbrido IA
+export { deadlineService } from "./deadlineService";
 export const taskService = new BaseService("tasks");
 export const financialService = new BaseService("financials");
 export const documentService = new BaseService("documents");

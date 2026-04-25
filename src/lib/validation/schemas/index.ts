@@ -272,7 +272,20 @@ export const DEADLINE_STATUS = {
 } as const;
 
 /**
+ * Valores permitidos para score de urgência (Motor Híbrido IA)
+ */
+export const SCORE_URGENCIA_VALUES = ["ALTO", "MÉDIO", "BAIXO"] as const;
+export type ScoreUrgencia = typeof SCORE_URGENCIA_VALUES[number];
+
+/**
+ * Valores permitidos para grau de confiança (Motor Híbrido IA)
+ */
+export const GRAU_CONFIANCA_VALUES = ["ALTA", "MÉDIA", "BAIXA"] as const;
+export type GrauConfianca = typeof GRAU_CONFIANCA_VALUES[number];
+
+/**
  * Schema para criação de prazo
+ * Inclui campos do Motor Híbrido de Classificação IA + Fluxo HITL
  */
 export const deadlineCreateSchema = z.object({
   processo_id: z.string().uuid("ID de processo inválido").optional(),
@@ -287,13 +300,37 @@ export const deadlineCreateSchema = z.object({
     DEADLINE_STATUS.CANCELADO,
   ]).default(DEADLINE_STATUS.PENDENTE),
   prioridade: z.enum(["baixa", "media", "alta", "urgente"]).default("media"),
+
+  // ─── Campos do Motor Híbrido de Classificação IA ─────────────────────────
+  /** Pontuação de urgência calculada pelo LLM com contexto RAG */
+  score_urgencia: z.enum(SCORE_URGENCIA_VALUES).optional(),
+  /** Grau de confiança da classificação IA — controla fluxo HITL */
+  grau_confianca: z.enum(GRAU_CONFIANCA_VALUES).optional(),
+  /** Quando true, prazo aguarda revisão humana obrigatória (HITL) */
+  revisao_humana_pendente: z.boolean().default(false),
+  /** Indica se o prazo é peremptório (perda do direito se descumprido) */
+  eh_fatal: z.boolean().default(false),
+  /** Timestamp de quando a IA classificou este prazo */
+  ia_classificacao_at: z.string().datetime().optional(),
+  /** Identificador do modelo IA utilizado na classificação */
+  ia_modelo_usado: z.string().max(100).optional(),
 });
 
 /**
  * Schema para atualização de prazo
+ * Inclui validação para ação de aprovação HITL (aprovar_classificacao)
  */
 export const deadlineUpdateSchema = deadlineCreateSchema.partial().extend({
   id: z.string().uuid("ID inválido"),
+});
+
+/**
+ * Schema para aprovação manual HITL
+ * Usado pela ação approveDeadline no deadlineService
+ */
+export const deadlineApproveSchema = z.object({
+  id: z.string().uuid("ID de prazo inválido"),
+  revisao_humana_pendente: z.literal(false),
 });
 
 // ============================================
@@ -385,6 +422,7 @@ export type ProcessResponse = z.infer<typeof processResponseSchema>;
 
 export type DeadlineCreate = z.infer<typeof deadlineCreateSchema>;
 export type DeadlineUpdate = z.infer<typeof deadlineUpdateSchema>;
+export type DeadlineApprove = z.infer<typeof deadlineApproveSchema>;
 
 export type TaskCreate = z.infer<typeof taskCreateSchema>;
 export type TaskUpdate = z.infer<typeof taskUpdateSchema>;
