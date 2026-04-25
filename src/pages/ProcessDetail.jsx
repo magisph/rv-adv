@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { processService, processMoveService, documentService, deadlineService, notificationService } from "@/services";
 import { aiService } from "@/services/aiService";
+import { cnjService } from "@/services/cnjService";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -99,87 +100,95 @@ export default function ProcessDetail() {
 
   const syncDatajud = async () => {
     setIsSyncing(true);
-    const createdMoveIds = []; // Rastreio para rollback manual
+    let novasMovimentacoesCount = 0;
 
     try {
-      // Simulate DataJud API call
-      const response = await aiService.invokeLLM({
-        prompt: `Simule a resposta de uma API de consulta processual (DataJud) para o processo número ${process.process_number}.
-        Gere 3 movimentações processuais recentes com datas dos últimos 30 dias.
-        Cada movimentação deve ter: data, descrição detalhada, e tipo (escolha entre: despacho, sentenca, decisao, peticao, intimacao, citacao, audiencia, outros).
-        As movimentações devem ser realistas para um processo judicial brasileiro.`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            movimentacoes: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  data: {
-                    type: "string",
-                    description: "Data no formato YYYY-MM-DD",
-                  },
-                  descricao: { type: "string" },
-                  tipo: { type: "string" },
-                },
-              },
-            },
-          },
-        },
-      });
+      // 1. Busca real no DataJud via Edge Function
+      const datajudResponse = await cnjService.datajudBuscaNumero(process.process_number);
 
-      // Insert the simulated moves — rastreia IDs para rollback
-      for (const mov of response.movimentacoes) {
-        const created = await processMoveService.create({
-          process_id: processId,
-          process_number: process.process_number,
-          date: mov.data,
-          description: mov.descricao,
-          move_type: mov.tipo,
-          source: "datajud",
-        });
-        if (created?.id) createdMoveIds.push(created.id);
+      if (!datajudResponse.encontrado) {
+        toast.warning("Processo não encontrado no DataJud.");
+        return;
       }
 
-      // Create notification for each move
+      const movimentacoesDatajud = datajudResponse.movimentos || [];
+      if (movimentacoesDatajud.length === 0) {
+        toast.info("Nenhuma movimentação encontrada no DataJud.");
+        return;
+      }
+
+      // 2. Recuperar movimentações existentes para evitar duplicidade
+      const movesExistentes = moves.filter((m) => m.source === "datajud");
       const user = await authService.getCurrentUser();
-      if (!user) return;
-      for (const mov of response.movimentacoes) {
-        const priority =
-          mov.tipo === "sentenca"
-            ? "urgente"
-            : mov.tipo === "intimacao"
-              ? "importante"
-              : "informativa";
 
-        await notificationService.create({
-          title: `Nova Movimentação: ${mov.tipo}`,
-          message: `${mov.descricao.substring(0, 100)}...`,
-          type: "movimentacao",
-          priority: priority,
-          user_id: user?.id,
-          link: `/process-detail?id=${processId}`,
-          related_id: processId,
-        });
-      }
+      // 3. Processar movimentações
+      for (const mov of movimentacoesDatajud) {
+        if (!mov) continue; // Evita nulos/indefinidos
+        
+        // O CNJ retorna dataHora, usar com fallback para a data atual
+        const dataOriginal = mov.dataHora || mov.data || new Date().toISOString();
+        const dataFormatada = dataOriginal.split("T")[0]; // YYYY-MM-DD
+        const descricao = mov.nome || mov.descricao || mov.tipo || "Movimentação DataJud";
+        
+        // Verifica duplicidade pela data e descrição
+        const isDuplicated = movesExistentes.some(
+          (m) => m.date.startsWith(dataFormatada) && m.description === descricao
+        );
 
-      queryClient.invalidateQueries({ queryKey: ["process-moves", processId] });
-    } catch (error) {
-      console.error("[syncDatajud] Erro na sincronização:", error);
+        if (!isDuplicated) {
+          // Inferir tipo de movimentação
+          let moveType = "outros";
+          const descLower = descricao.toLowerCase();
+          if (descLower.includes("sentença") || descLower.includes("sentenca")) moveType = "sentenca";
+          else if (descLower.includes("decisão") || descLower.includes("decisao")) moveType = "decisao";
+          else if (descLower.includes("despacho")) moveType = "despacho";
+          else if (descLower.includes("audiência") || descLower.includes("audiencia")) moveType = "audiencia";
+          else if (descLower.includes("citação") || descLower.includes("citacao")) moveType = "citacao";
+          else if (descLower.includes("intimação") || descLower.includes("intimacao")) moveType = "intimacao";
+          else if (descLower.includes("petição") || descLower.includes("peticao")) moveType = "peticao";
 
-      // Rollback manual: remove movimentações parcialmente criadas
-      if (createdMoveIds.length > 0) {
-        for (const moveId of createdMoveIds) {
-          try {
-            await processMoveService.delete(moveId);
-          } catch (rollbackErr) {
-            console.error("[syncDatajud] Falha no rollback da movimentação:", moveId, rollbackErr);
+          await processMoveService.create({
+            process_id: processId,
+            process_number: process.process_number,
+            date: dataFormatada,
+            description: descricao,
+            move_type: moveType,
+            source: "datajud",
+          });
+          
+          novasMovimentacoesCount++;
+
+          if (user) {
+            const priority =
+              moveType === "sentenca"
+                ? "urgente"
+                : moveType === "intimacao"
+                  ? "importante"
+                  : "informativa";
+
+            await notificationService.create({
+              title: `Nova Movimentação (DataJud)`,
+              message: `${descricao.substring(0, 100)}...`,
+              type: "movimentacao",
+              priority: priority,
+              user_id: user?.id,
+              link: `/process-detail?id=${processId}`,
+              related_id: processId,
+            });
           }
         }
       }
 
-      alert("Erro ao sincronizar com DataJud. Nenhuma movimentação foi salva. Tente novamente.");
+      if (novasMovimentacoesCount > 0) {
+        queryClient.invalidateQueries({ queryKey: ["process-moves", processId] });
+        toast.success(`Sincronização com DataJud concluída! ${novasMovimentacoesCount} nova(s) movimentação(ões).`);
+      } else {
+        toast.info("Sincronização com DataJud concluída! Nenhuma nova movimentação.");
+      }
+
+    } catch (error) {
+      console.error("[syncDatajud] Erro na sincronização:", error);
+      toast.error("Erro ao sincronizar com DataJud. Tente novamente.");
     } finally {
       setIsSyncing(false);
     }
