@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 import { processService } from "@/services";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
@@ -50,7 +50,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import PjeConfigModal from "@/components/scraper/PjeConfigModal";
 import { sincronizarProcessos } from "@/services/scraperService";
 import { format } from "date-fns";
-import ProcessForm from "@/components/processes/ProcessForm";
+import ProcessFormDialog from "@/components/processes/ProcessFormDialog";
 import ProcessesChart from "@/components/dashboard/ProcessesChart";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 
@@ -102,38 +102,11 @@ export default function Processes() {
     placeholderData: keepPreviousData,
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data) => processService.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["processes"] });
-      setShowForm(false);
-    },
-    onError: (error) => toast.error(error.message || "Erro ao criar processo"),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => processService.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["processes"] });
-      setShowForm(false);
-      setEditingProcess(null);
-    },
-    onError: (error) => toast.error(error.message || "Erro ao atualizar processo"),
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (id) => processService.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["processes"] }),
     onError: (error) => toast.error(error.message || "Erro ao excluir processo"),
   });
-
-  const handleSave = (data) => {
-    if (editingProcess) {
-      updateMutation.mutate({ id: editingProcess.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
-  };
 
   const handleEdit = (process) => {
     setEditingProcess(process);
@@ -380,26 +353,16 @@ export default function Processes() {
       {/* Widget de Processos por Área */}
       <ProcessesChart processes={processes} isLoading={isLoading} />
 
-      {/* Form Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingProcess ? "Editar Processo" : "Novo Processo"}
-            </DialogTitle>
-          </DialogHeader>
-          <ProcessForm
-            process={editingProcess}
-            preselectedClientId={preselectedClientId}
-            onSave={handleSave}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingProcess(null);
-            }}
-            isSaving={createMutation.isPending || updateMutation.isPending}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Process Form Dialog */}
+      <ProcessFormDialog
+        open={showForm}
+        onOpenChange={(open) => {
+          setShowForm(open);
+          if (!open) setEditingProcess(null);
+        }}
+        process={editingProcess}
+        preselectedClientId={preselectedClientId}
+      />
 
       <ConfirmDialog
         open={!!deleteConfirm}

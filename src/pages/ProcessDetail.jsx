@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { processService, processMoveService, documentService, deadlineService, notificationService } from "@/services";
@@ -32,7 +32,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
-import ProcessForm from "@/components/processes/ProcessForm";
+import ProcessFormDialog from "@/components/processes/ProcessFormDialog";
 import ProcessMoveForm from "@/components/processes/ProcessMoveForm";
 import DocumentUpload from "@/components/documents/DocumentUpload";
 
@@ -95,14 +95,7 @@ export default function ProcessDetail() {
     enabled: !!processId,
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (data) => processService.update(processId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["process", processId] });
-      setShowEditForm(false);
-    },
-    onError: (error) => toast.error(error.message || "Erro ao atualizar processo"),
-  });
+
 
   const syncDatajud = async () => {
     setIsSyncing(true);
@@ -485,19 +478,12 @@ export default function ProcessDetail() {
       </Tabs>
 
       {/* Dialogs */}
-      <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Editar Processo</DialogTitle>
-          </DialogHeader>
-          <ProcessForm
-            process={process}
-            onSave={(data) => updateMutation.mutate(data)}
-            onCancel={() => setShowEditForm(false)}
-            isSaving={updateMutation.isPending}
-          />
-        </DialogContent>
-      </Dialog>
+      <ProcessFormDialog
+        open={showEditForm}
+        onOpenChange={setShowEditForm}
+        process={process}
+        preselectedClientId={process?.client_id}
+      />
 
       <Dialog open={showMoveForm} onOpenChange={setShowMoveForm}>
         <DialogContent>

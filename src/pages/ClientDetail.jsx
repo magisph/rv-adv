@@ -37,6 +37,7 @@ import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import ClientForm from "@/components/clients/ClientForm";
 import AppointmentForm from "@/components/appointments/AppointmentForm";
+import ProcessFormDialog from "@/components/processes/ProcessFormDialog";
 import ClientDocumentsSection from "@/components/documents/ClientDocumentsSection";
 import BeneficioModal from "@/components/beneficios/BeneficioModal";
 import BeneficioEditModal from "@/components/beneficios/BeneficioEditModal";
@@ -92,6 +93,7 @@ export default function ClientDetail() {
 
   const [showEditForm, setShowEditForm] = useState(false);
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
+  const [showProcessForm, setShowProcessForm] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState(null);
   const [showBeneficioModal, setShowBeneficioModal] = useState(false);
   const [showBeneficioEditModal, setShowBeneficioEditModal] = useState(false);
@@ -1025,12 +1027,10 @@ export default function ClientDetail() {
                   <FolderOpen className="w-5 h-5 text-legal-blue" />
                   Processos ({processes.length})
                 </CardTitle>
-                <Link to={createPageUrl(`Processes?client_id=${clientId}`)}>
-                  <Button size="sm" className="bg-legal-blue hover:bg-legal-blue-light">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Novo Processo
-                  </Button>
-                </Link>
+                <Button size="sm" className="bg-legal-blue hover:bg-legal-blue-light" onClick={() => setShowProcessForm(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Processo
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -1210,6 +1210,14 @@ export default function ClientDetail() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Process Form Dialog */}
+      <ProcessFormDialog
+        open={showProcessForm}
+        onOpenChange={setShowProcessForm}
+        preselectedClientId={clientId}
+        preselectedClientName={client?.full_name}
+      />
 
       {/* Beneficio Modal */}
       <BeneficioModal
