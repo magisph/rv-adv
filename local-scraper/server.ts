@@ -6,7 +6,7 @@ import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import { iniciarExtracaoPje } from './crawlers/pje-crawler.js';
 import { iniciarScrapingTNU } from './crawlers/tnu-crawler.js';
-import { consultarBulk } from './src/services/datajud.js';
+import { datajudRouter } from './src/routes/datajud.js';
 
 // ─── Config ────────────────────────────────────────────────────────
 const envPath = path.resolve(import.meta.dirname, '../.env');
@@ -217,45 +217,10 @@ app.post('/api/cnj/datajud', async (req: Request, res: Response) => {
 
 // ─── Proxy CNJ: DataJud BULK — Alta Performance ──────────────────────────────
 // POST /api/datajud/bulk
-// Protegido por x-service-key (apenas Edge Function datajud-bulk-proxy chama isto)
-// Executa consultas DSL em paralelo com concorrência controlada.
+// Delegado ao controlador isolado src/routes/datajud.ts
+// (autenticação por x-service-key, validação de payload e motor bulk internos)
 // ─────────────────────────────────────────────────────────────────────────────
-const SCRAPER_SERVICE_KEY = process.env.SCRAPER_SERVICE_KEY || '';
-
-app.post('/api/datajud/bulk', async (req: Request, res: Response) => {
-  try {
-    // ── 1. Autenticação interna por Service Key ───────────────────────────────
-    const serviceKey = req.headers['x-service-key'];
-    if (!SCRAPER_SERVICE_KEY || serviceKey !== SCRAPER_SERVICE_KEY) {
-      res.status(401).json({ error: 'Não autorizado. x-service-key inválida.' });
-      return;
-    }
-
-    // ── 2. Validação básica do payload ────────────────────────────────────────
-    const { processos } = req.body;
-    if (!Array.isArray(processos) || processos.length === 0) {
-      res.status(400).json({ error: 'Campo "processos" deve ser um array não vazio.' });
-      return;
-    }
-    if (processos.length > 50) {
-      res.status(400).json({ error: 'Máximo de 50 processos por lote.' });
-      return;
-    }
-
-    // ── 3. Executa o motor bulk (concorrência controlada + retry) ─────────────
-    console.log(`[DataJud Bulk] Iniciando consulta de ${processos.length} processo(s)...`);
-    const resultado = await consultarBulk(processos, DATAJUD_API_KEY);
-    console.log(
-      `[DataJud Bulk] ✅ Concluído: ${resultado.encontrados}/${resultado.total} encontrados ` +
-      `em ${resultado.duracao_ms}ms. Erros: ${resultado.erros.length}`
-    );
-
-    res.json(resultado);
-  } catch (err: any) {
-    console.error('[/api/datajud/bulk] Erro:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
+app.use('/api/datajud', datajudRouter);
 
 // ─── Proxy CNJ: DJEN ────────────────────────────────────────────────
 app.get('/api/cnj/djen', async (req: Request, res: Response) => {
