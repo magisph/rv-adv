@@ -83,10 +83,10 @@ serve(async (req: Request) => {
     const { processos } = parse.data;
 
     // ── 3. Config do scraper (Hetzner) ────────────────────────────────────
-    const scraperUrl = Deno.env.get("SCRAPER_URL");
+    const scraperUrlRaw = Deno.env.get("SCRAPER_URL");
     const scraperKey = Deno.env.get("SCRAPER_SERVICE_KEY");
 
-    if (!scraperUrl || !scraperKey) {
+    if (!scraperUrlRaw || !scraperKey) {
       console.error("[datajud-bulk-proxy] SCRAPER_URL ou SCRAPER_SERVICE_KEY não configurados.");
       return new Response(
         JSON.stringify({ success: false, error: "Configuração de servidor ausente." }),
@@ -94,8 +94,12 @@ serve(async (req: Request) => {
       );
     }
 
+    // Normaliza a URL base removendo trailing slash para evitar double-slash
+    const scraperUrl = scraperUrlRaw.replace(/\/+$/, "");
+
     // ── 4. Repassa para o local-scraper (Hetzner) via POST seguro ────────
     const scraperEndpoint = `${scraperUrl}/api/datajud/bulk`;
+    console.info(`[datajud-bulk-proxy] Enviando ${processos.length} processo(s) para: ${scraperEndpoint}`);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60s para lotes grandes
 
@@ -118,16 +122,25 @@ serve(async (req: Request) => {
     }
 
     if (!scraperResponse.ok) {
-      const errorText = await scraperResponse
+      const errorBody = await scraperResponse
         .text()
         .catch(() => scraperResponse.statusText);
       console.error(
-        `[datajud-bulk-proxy] Scraper retornou ${scraperResponse.status}: ${errorText}`
+        `[datajud-bulk-proxy] Scraper retornou HTTP ${scraperResponse.status} para endpoint '${scraperEndpoint}'.`
       );
+      console.error(`[datajud-bulk-proxy] Corpo do erro do scraper: ${errorBody}`);
+      // 404 específico indica rota inexistente no local-scraper — auxilia diagnóstico
+      if (scraperResponse.status === 404) {
+        console.error(
+          `[datajud-bulk-proxy] 404 indica que a rota '${scraperEndpoint}' não existe no scraper. ` +
+          `Verifique: (1) SCRAPER_URL sem trailing slash, (2) rota /api/datajud/bulk registrada no local-scraper.`
+        );
+      }
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Erro no servidor de scraping (${scraperResponse.status})`,
+          error: `Erro no servidor de scraping (HTTP ${scraperResponse.status})`,
+          detalhe: errorBody.slice(0, 500), // Limita a 500 chars para não vazar dados sensíveis
         }),
         {
           status: scraperResponse.status >= 500 ? 502 : scraperResponse.status,
