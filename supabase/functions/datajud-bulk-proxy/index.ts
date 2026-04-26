@@ -99,6 +99,13 @@ serve(async (req: Request) => {
 
     // ── 4. Repassa para o local-scraper (Hetzner) via POST seguro ────────
     const scraperEndpoint = `${scraperUrl}/api/datajud/bulk`;
+
+    // ── DIAGNÓSTICO: loga valores brutos e construídos ────────────────────
+    // Permite identificar se SCRAPER_URL tem path incorreto (ex: inclui /api/datajud)
+    // o que causaria URL duplicada: .../api/datajud/api/datajud/bulk → 404
+    console.info(`[datajud-bulk-proxy][DIAG] SCRAPER_URL raw    = "${scraperUrlRaw}"`);
+    console.info(`[datajud-bulk-proxy][DIAG] SCRAPER_URL normalizado = "${scraperUrl}"`);
+    console.info(`[datajud-bulk-proxy][DIAG] Endpoint final     = "${scraperEndpoint}"`);
     console.info(`[datajud-bulk-proxy] Enviando ${processos.length} processo(s) para: ${scraperEndpoint}`);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60s para lotes grandes
