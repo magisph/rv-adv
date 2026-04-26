@@ -17,7 +17,13 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { z } from "npm:zod@3.24.2";
 import { authenticateRequest } from "../_shared/auth.ts";
-import { getCorsHeaders } from "../_shared/cors.ts";
+// ─── CORS ────────────────────────────────────────────────────────────────────
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 // ─── Schema Zod de Validação (espelha datajudBulkSchema no frontend) ─────────
 
@@ -35,11 +41,10 @@ const datajudBulkSchema = z.object({
 // ─── Handler Principal ────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
-  const corsHeaders = getCorsHeaders(req.headers.get("origin"));
 
   // Preflight CORS
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
 
   // ── 1. Verificação JWT ────────────────────────────────────────────────────
