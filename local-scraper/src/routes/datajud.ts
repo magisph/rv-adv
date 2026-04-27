@@ -48,7 +48,20 @@ function autenticarServiceKey(req: Request, res: Response, next: NextFunction): 
   next();
 }
 
-// ─── POST /api/datajud/bulk ──────────────────────────────────────────────────
+// ─── GET /health (Diagnóstico de Rota) ───────────────────────────────────────
+// Endpoint público (sem service-key) para testar se o Nginx está repassando
+// corretamente o tráfego para este roteador no Express.
+
+datajudRouter.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'datajud-bulk',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// ─── POST /api/cnj/datajud-bulk/bulk ──────────────────────────────────────────
 // Recebe lista de processos CNJ da Edge Function datajud-bulk-proxy, executa
 // consultas em paralelo no Elasticsearch do DataJud e retorna os dados
 // enriquecidos (classe, assunto, juízo, movimentos, etc.).

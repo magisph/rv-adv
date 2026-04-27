@@ -216,11 +216,11 @@ app.post('/api/cnj/datajud', async (req: Request, res: Response) => {
 });
 
 // ─── Proxy CNJ: DataJud BULK — Alta Performance ──────────────────────────────
-// POST /api/datajud/bulk
+// POST /api/cnj/datajud-bulk/bulk
 // Delegado ao controlador isolado src/routes/datajud.ts
 // (autenticação por x-service-key, validação de payload e motor bulk internos)
 // ─────────────────────────────────────────────────────────────────────────────
-app.use('/api/datajud', datajudRouter);
+app.use('/api/cnj/datajud-bulk', datajudRouter);
 
 // ─── Proxy CNJ: DJEN ────────────────────────────────────────────────
 app.get('/api/cnj/djen', async (req: Request, res: Response) => {
