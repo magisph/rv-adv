@@ -161,6 +161,18 @@ serve(async (req: Request) => {
       .replace(/\/api\/cnj\/datajud-bulk(\/.*)?$/, "")
       .replace(/\/api$/, "");
 
+    // ─── [TESTE DE CONECTIVIDADE] ───────────────────────────────────────────
+    // Tenta acessar o health check no IP direto e no domínio para diagnosticar 404
+    try {
+      const healthUrl = `${scraperUrl}/api/cnj/datajud-bulk/health`;
+      console.info(`[DIAG] Testando conectividade com: ${healthUrl}`);
+      const healthRes = await fetch(healthUrl).catch(e => ({ ok: false, statusText: e.message }));
+      console.info(`[DIAG] Resposta Health: status=${healthRes.status || 'ERROR'} | ok=${healthRes.ok}`);
+    } catch (e) {
+      console.warn(`[DIAG] Erro ao testar health: ${e.message}`);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const scraperEndpoint = `${scraperUrl}/api/cnj/datajud-bulk/bulk`;
 
     console.info(`[DIAG] raw="${scraperUrlRaw}" | normalizado="${scraperUrl}" | endpoint="${scraperEndpoint}"`);
