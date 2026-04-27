@@ -153,14 +153,15 @@ serve(async (req: Request) => {
 
     // Normaliza SCRAPER_URL — 3 camadas defensivas:
     //   1. Remove trailing slashes: "http://x:3001/"   → "http://x:3001"
-    //   2. Remove path /api/datajud* embutido no secret → evita URL duplicada → 404
-    //   3. Remove path /api solto
+    //   2. Remove caminhos residuais de versões anteriores para evitar URL duplicada
+    //   3. Garante que o endpoint use o prefixo /api/cnj/ validado no Nginx
     const scraperUrl = scraperUrlRaw
       .replace(/\/+$/, "")
       .replace(/\/api\/datajud(\/.*)?$/, "")
+      .replace(/\/api\/cnj\/datajud-bulk(\/.*)?$/, "")
       .replace(/\/api$/, "");
 
-    const scraperEndpoint = `${scraperUrl}/api/datajud/bulk`;
+    const scraperEndpoint = `${scraperUrl}/api/cnj/datajud-bulk/bulk`;
 
     console.info(`[DIAG] raw="${scraperUrlRaw}" | normalizado="${scraperUrl}" | endpoint="${scraperEndpoint}"`);
     console.info(`[datajud-bulk-proxy] Enviando ${processos.length} processo(s)`);
