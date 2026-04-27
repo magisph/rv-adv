@@ -220,7 +220,7 @@ app.post('/api/cnj/datajud', async (req: Request, res: Response) => {
 // Delegado ao controlador isolado src/routes/datajud.ts
 // (autenticação por x-service-key, validação de payload e motor bulk internos)
 // ─────────────────────────────────────────────────────────────────────────────
-app.use('/api/cnj/datajud-bulk', datajudRouter);
+app.use('/api/datajud', datajudRouter);
 
 // ─── Proxy CNJ: DJEN ────────────────────────────────────────────────
 app.get('/api/cnj/djen', async (req: Request, res: Response) => {
@@ -442,7 +442,7 @@ app.listen(PORT, () => {
   console.log(`   ├─ Config OTP:       POST /configurar/mni/otp`);
   console.log(`   ├─ Extração:         POST /advogado/processos`);
   console.log(`   ├─ Proxy DataJud:    POST /api/cnj/datajud`);
-  console.log(`   ├─ 🚀 Bulk DataJud:  POST /api/datajud/bulk  [Alta Performance]`);
+  console.log(`   ├─ 🚀 Bulk DataJud:  POST /api/datajud  [Alta Performance]`);
   console.log(`   ├─ Proxy DJEN:       GET  /api/cnj/djen`);
   console.log(`   ├─ Vigia DJEN:       ⏱️  a cada ${VIGIA_INTERVAL_MS / 60000} min (insert direto no Supabase)`);
   console.log(`   └─ Scraping TNU:     POST /api/jurisprudencia/scrape-tnu\n`);

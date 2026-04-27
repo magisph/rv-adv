@@ -164,7 +164,7 @@ serve(async (req: Request) => {
     // ─── [TESTE DE CONECTIVIDADE] ───────────────────────────────────────────
     // Tenta acessar o health check no IP direto e no domínio para diagnosticar 404
     try {
-      const healthUrl = `${scraperUrl}/api/cnj/datajud-bulk/health`;
+      const healthUrl = `${scraperUrl}/api/datajud/health`;
       console.info(`[DIAG] Testando conectividade com: ${healthUrl}`);
       const healthRes = await fetch(healthUrl).catch(e => ({ ok: false, statusText: e.message }));
       console.info(`[DIAG] Resposta Health: status=${healthRes.status || 'ERROR'} | ok=${healthRes.ok}`);
@@ -173,7 +173,7 @@ serve(async (req: Request) => {
     }
     // ─────────────────────────────────────────────────────────────────────────
 
-    const scraperEndpoint = `${scraperUrl}/api/cnj/datajud-bulk/bulk`;
+    const scraperEndpoint = `${scraperUrl}/api/datajud`;
 
     console.info(`[DIAG] raw="${scraperUrlRaw}" | normalizado="${scraperUrl}" | endpoint="${scraperEndpoint}"`);
     console.info(`[datajud-bulk-proxy] Enviando ${processos.length} processo(s)`);
