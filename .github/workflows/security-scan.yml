@@ -11,15 +11,20 @@ on:
 jobs:
   security-audit:
     runs-on: ubuntu-latest
+    
+    # 1. Adicionada a variável para forçar o Node 24 e remover o aviso
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4 # Verifique se já existe v5 disponível no repositório oficial
 
     - name: Setup Node
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        # 2. Atualizado de '20' para '22' (LTS atual) ou '24' para maior compatibilidade futura
+        node-version: '22' 
         cache: 'npm'
 
     - name: Install dependencies
