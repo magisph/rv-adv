@@ -34,7 +34,7 @@ jobs:
         run: |
           # Funções que NUNCA devem ter verify_jwt=true
           # (usam _shared/auth.ts com verificação ES256 via JWKS internamente)
-          NO_VERIFY_FUNCTIONS="djen-bypass datajud-bypass ai-proxy generate-embedding chat-jurisprudencia ocr-classify-document scrape-tnu sync-google-calendar delete-google-calendar"
+          NO_VERIFY_FUNCTIONS="djen-bypass datajud-bypass datajud-bulk-proxy ai-proxy generate-embedding chat-jurisprudencia ocr-classify-document scrape-tnu sync-google-calendar delete-google-calendar"
 
           deploy_function() {
             local func="$1"

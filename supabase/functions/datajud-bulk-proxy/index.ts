@@ -22,9 +22,10 @@ import * as jose from "jsr:@panva/jose@6";
 // ─── CORS ────────────────────────────────────────────────────────────────────
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-region",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 // ─── Auth inline (ES256 + HS256) ─────────────────────────────────────────────
@@ -52,7 +53,7 @@ function decodeUnsafe<T>(part: string): T | null {
 }
 
 async function authenticateRequest(
-  req: Request
+  req: Request,
 ): Promise<{ sub: string; role: string; exp: number } | null> {
   const auth = req.headers.get("authorization");
   if (!auth?.startsWith("Bearer ")) return null;
@@ -64,7 +65,9 @@ async function authenticateRequest(
 
   if (alg === "ES256") {
     try {
-      const { payload } = await jose.jwtVerify(token, getJWKS(), { issuer: JWT_ISSUER });
+      const { payload } = await jose.jwtVerify(token, getJWKS(), {
+        issuer: JWT_ISSUER,
+      });
       const p = payload as { sub: string; role: string; exp: number };
       if (p.role === "authenticated" && p.sub) return p;
       console.warn(`[auth] ES256 role inesperado: ${p.role}`);
@@ -76,11 +79,17 @@ async function authenticateRequest(
   }
 
   if (alg === "HS256") {
-    const p = decodeUnsafe<{ sub: string; role: string; exp: number }>(parts[1]);
+    const p = decodeUnsafe<{ sub: string; role: string; exp: number }>(
+      parts[1],
+    );
     if (!p) return null;
     const now = Math.floor(Date.now() / 1000);
-    if (p.exp && p.exp < now) { console.warn("[auth] HS256 expirado"); return null; }
-    if (p.role === "service_role" || (p.role === "authenticated" && p.sub)) return p;
+    if (p.exp && p.exp < now) {
+      console.warn("[auth] HS256 expirado");
+      return null;
+    }
+    if (p.role === "service_role" || (p.role === "authenticated" && p.sub))
+      return p;
     console.warn(`[auth] HS256 role rejeitado: ${p.role}`);
     return null;
   }
@@ -95,7 +104,14 @@ const REGEX_CNJ = /^\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}$/;
 
 const datajudBulkSchema = z.object({
   processos: z
-    .array(z.string().regex(REGEX_CNJ, "Formato CNJ inválido (esperado: NNNNNNN-DD.AAAA.J.TT.OOOO)"))
+    .array(
+      z
+        .string()
+        .regex(
+          REGEX_CNJ,
+          "Formato CNJ inválido (esperado: NNNNNNN-DD.AAAA.J.TT.OOOO)",
+        ),
+    )
     .min(1, "Pelo menos 1 processo é obrigatório")
     .max(50, "Máximo de 50 processos por lote"),
 });
@@ -104,8 +120,8 @@ const datajudBulkSchema = z.object({
 
 serve(async (req: Request) => {
   // Preflight CORS
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   // ── 1. Verificação JWT ──────────────────────────────────────────────────────
@@ -113,7 +129,10 @@ serve(async (req: Request) => {
   if (!auth) {
     return new Response(
       JSON.stringify({ success: false, error: "Não autorizado" }),
-      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 
@@ -125,15 +144,25 @@ serve(async (req: Request) => {
     } catch {
       return new Response(
         JSON.stringify({ success: false, error: "Body JSON inválido" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
     const parse = datajudBulkSchema.safeParse(body);
     if (!parse.success) {
       return new Response(
-        JSON.stringify({ success: false, error: "Payload inválido", detalhes: parse.error.flatten().fieldErrors }),
-        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: false,
+          error: "Payload inválido",
+          detalhes: parse.error.flatten().fieldErrors,
+        }),
+        {
+          status: 422,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -144,10 +173,18 @@ serve(async (req: Request) => {
     const scraperKey = Deno.env.get("SCRAPER_SERVICE_KEY");
 
     if (!scraperUrlRaw || !scraperKey) {
-      console.error("[datajud-bulk-proxy] SCRAPER_URL ou SCRAPER_SERVICE_KEY não configurados.");
+      console.error(
+        "[datajud-bulk-proxy] SCRAPER_URL ou SCRAPER_SERVICE_KEY não configurados.",
+      );
       return new Response(
-        JSON.stringify({ success: false, error: "Configuração de servidor ausente." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: false,
+          error: "Configuração de servidor ausente.",
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -166,8 +203,13 @@ serve(async (req: Request) => {
     try {
       const healthUrl = `${scraperUrl}/api/datajud/health`;
       console.info(`[DIAG] Testando conectividade com: ${healthUrl}`);
-      const healthRes = await fetch(healthUrl).catch(e => ({ ok: false, statusText: e.message }));
-      console.info(`[DIAG] Resposta Health: status=${healthRes.status || 'ERROR'} | ok=${healthRes.ok}`);
+      const healthRes = await fetch(healthUrl).catch((e) => ({
+        ok: false,
+        statusText: e.message,
+      }));
+      console.info(
+        `[DIAG] Resposta Health: status=${healthRes.status || "ERROR"} | ok=${healthRes.ok}`,
+      );
     } catch (e) {
       console.warn(`[DIAG] Erro ao testar health: ${e.message}`);
     }
@@ -175,8 +217,12 @@ serve(async (req: Request) => {
 
     const scraperEndpoint = `${scraperUrl}/api/datajud`;
 
-    console.info(`[DIAG] raw="${scraperUrlRaw}" | normalizado="${scraperUrl}" | endpoint="${scraperEndpoint}"`);
-    console.info(`[datajud-bulk-proxy] Enviando ${processos.length} processo(s)`);
+    console.info(
+      `[DIAG] raw="${scraperUrlRaw}" | normalizado="${scraperUrl}" | endpoint="${scraperEndpoint}"`,
+    );
+    console.info(
+      `[datajud-bulk-proxy] Enviando ${processos.length} processo(s)`,
+    );
 
     // ── 4. Fetch para o local-scraper (Hetzner) ─────────────────────────────
     const controller = new AbortController();
@@ -188,8 +234,8 @@ serve(async (req: Request) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-service-key": scraperKey,       // Chave interna Deno → Hetzner
-          "x-user-id": auth.sub ?? "",        // Auditoria
+          "x-service-key": scraperKey, // Chave interna Deno → Hetzner
+          "x-user-id": auth.sub ?? "", // Auditoria
         },
         body: JSON.stringify({
           processos: processos.map((numeroCNJ) => ({ numeroCNJ })),
@@ -201,8 +247,12 @@ serve(async (req: Request) => {
     }
 
     if (!scraperResponse.ok) {
-      const errorBody = await scraperResponse.text().catch(() => scraperResponse.statusText);
-      console.error(`[datajud-bulk-proxy] HTTP ${scraperResponse.status} de '${scraperEndpoint}': ${errorBody.slice(0, 300)}`);
+      const errorBody = await scraperResponse
+        .text()
+        .catch(() => scraperResponse.statusText);
+      console.error(
+        `[datajud-bulk-proxy] HTTP ${scraperResponse.status} de '${scraperEndpoint}': ${errorBody.slice(0, 300)}`,
+      );
       return new Response(
         JSON.stringify({
           success: false,
@@ -212,17 +262,19 @@ serve(async (req: Request) => {
         {
           status: scraperResponse.status >= 500 ? 502 : scraperResponse.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
-    const resultado = await scraperResponse.json();
+    const scraperData = await scraperResponse.json();
+    // O scraper já retorna { success: true, data: BulkResponse }.
+    // Desempacota para evitar double-wrapping que quebrava resultados no frontend.
+    const bulkData = (scraperData as { data?: unknown }).data ?? scraperData;
 
-    return new Response(
-      JSON.stringify({ success: true, data: resultado }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
+    return new Response(JSON.stringify({ success: true, data: bulkData }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     const error = err as Error;
     const isTimeout = error.name === "AbortError";
@@ -232,12 +284,12 @@ serve(async (req: Request) => {
         success: false,
         error: isTimeout
           ? "Timeout: scraper não respondeu em 60s"
-          : (error.message || "Erro interno do servidor"),
+          : error.message || "Erro interno do servidor",
       }),
       {
         status: isTimeout ? 504 : 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      },
     );
   }
 });
