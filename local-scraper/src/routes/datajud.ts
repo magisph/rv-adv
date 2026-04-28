@@ -118,11 +118,9 @@ datajudRouter.post(
       console.error(
         "[datajud/bulk] DATAJUD_API_KEY não configurada. Abortando consulta.",
       );
-      res
-        .status(500)
-        .json({
-          error: "Chave de API do DataJud não configurada no servidor.",
-        });
+      res.status(500).json({
+        error: "Chave de API do DataJud não configurada no servidor.",
+      });
       return;
     }
 
@@ -134,7 +132,7 @@ datajudRouter.post(
       );
 
       // CHAMA A FUNÇÃO DE SCRAPING
-      const resultados = await consultarBulk(processosValidados);
+      const resultados = await consultarBulk(processosValidados, datajudApiKey);
 
       // DEVOLVE OS DADOS PARA A INTERFACE
       res.status(200).json({
