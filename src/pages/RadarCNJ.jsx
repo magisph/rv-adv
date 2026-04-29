@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import RadarDataJud from "@/components/processes/RadarDataJud";
 import RadarBulkDataJud from "@/components/processes/RadarBulkDataJud";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
