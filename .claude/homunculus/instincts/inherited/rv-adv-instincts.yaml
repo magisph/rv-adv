@@ -1,0 +1,337 @@
+# Instincts generated from https://github.com/magisph/rv-adv
+# Generated: 2026-04-29T16:12:22.964Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: rv-adv-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/magisph/rv-adv
+---
+
+# Rv Adv Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: fix
+
+## Evidence
+
+- 1 commits analyzed
+- Detected conventional commit pattern
+- Examples: fix(ci): corrige Bugs #1–#6 no workflow Coleta TNU e security-scan
+
+---
+id: rv-adv-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/magisph/rv-adv
+---
+
+# Rv Adv Commit Length
+
+## Action
+
+Write moderate-length commit messages (~66 characters)
+
+## Evidence
+
+- Average commit message length: 66 chars
+- Based on 1 commits
+
+---
+id: rv-adv-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/magisph/rv-adv
+---
+
+# Rv Adv Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: rv-adv-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/magisph/rv-adv
+---
+
+# Rv Adv Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: rv-adv-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/magisph/rv-adv
+---
+
+# Rv Adv Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: rv-adv-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/magisph/rv-adv
+---
+
+# Rv Adv Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: rv-adv-instinct-camelcase-files
+trigger: "When creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Camelcase Files
+
+## Action
+
+Name the file using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.files: camelCase
+
+---
+id: rv-adv-instinct-camelcase-functions
+trigger: "When defining a function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Camelcase Functions
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: rv-adv-instinct-pascalcase-classes
+trigger: "When declaring a class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Pascalcase Classes
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: rv-adv-instinct-screaming-constants
+trigger: "When declaring a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Screaming Constants
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: rv-adv-instinct-relative-imports
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Relative Imports
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in importStyle: relative
+
+---
+id: rv-adv-instinct-named-exports
+trigger: "When exporting from a module"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Named Exports
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle: named
+
+---
+id: rv-adv-instinct-try-catch-errors
+trigger: "When handling errors in code"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Try Catch Errors
+
+## Action
+
+Use try-catch blocks for error handling
+
+## Evidence
+
+- Pattern in errorHandling.style: try-catch
+
+---
+id: rv-adv-instinct-separate-tests
+trigger: "When adding tests"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Separate Tests
+
+## Action
+
+Place test files in a separate directory from source code
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation: separate
+
+---
+id: rv-adv-instinct-conventional-commits-fix
+trigger: "When writing a commit for a bug fix"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Conventional Commits Fix
+
+## Action
+
+Use the conventional commit format with 'fix' prefix (e.g., fix(scope): message)
+
+## Evidence
+
+- Pattern in commits.prefixes: fix
+- Seen in commit: fix(ci): corrige Bugs #1–#6 no workflow Coleta TNU e security-scan
+
+---
+id: rv-adv-instinct-conventional-commits-length
+trigger: "When writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Conventional Commits Length
+
+## Action
+
+Keep the commit message concise, around 66 characters on average
+
+## Evidence
+
+- Pattern in commits.averageLength: 66
+
+---
+id: rv-adv-instinct-workflow-location
+trigger: "When creating or modifying CI/CD workflows"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: magisph/rv-adv
+---
+
+# Rv Adv Instinct Workflow Location
+
+## Action
+
+Place workflow YAML files in the .github/workflows directory
+
+## Evidence
+
+- Pattern in architecture.configFiles: .github/workflows/security-scan.yml, .github/workflows/tnu-scraper.yml
+
