@@ -2,39 +2,42 @@ name: Security Scan
 
 on:
   push:
-    branches: [ "master" ]  # fix(Bug #4): era "main"/"dev" — repositório usa master
+    branches: ["master"] # fix(Bug #4): era "main"/"dev" — repositório usa master
   pull_request:
-    branches: [ "master" ]  # fix(Bug #4): era "main"/"dev" — repositório usa master
+    branches: ["master"] # fix(Bug #4): era "main"/"dev" — repositório usa master
   schedule:
-    - cron: '0 2 * * *' # Daily at 2 AM
+    - cron: "0 2 * * *" # Daily at 2 AM
 
 jobs:
   security-audit:
     runs-on: ubuntu-latest
-    
+
     # 1. Adicionada a variável para forçar o Node 24 e remover o aviso
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        # 2. Atualizado de '20' para '22' (LTS atual) ou '24' para maior compatibilidade futura
-        node-version: '22' 
-        cache: 'npm'
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # 2. Atualizado de '20' para '22' (LTS atual) ou '24' para maior compatibilidade futura
+          node-version: "22"
+          cache: "npm"
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: NPM Security Audit
-      run: npm audit --audit-level=high
+      - name: NPM Security Audit
+        run: npm audit --audit-level=high
 
-    - name: ESLint Security Scan
-      run: npx eslint . --ext .ts,.js,.jsx,.tsx --quiet
-      
-    - name: Vitest Security Tests
-      run: npm run test -- security
+      - name: ESLint Security Scan
+        # Escopo alinhado ao eslint.config.js: src/components, src/pages e src/Layout.jsx
+        # Arquivos de tooling (.agent/, .aiox-core/), lib, ui components e TS ficam fora
+        # do escopo de lint (sem parser TS configurado e componentes UI são auto-gerados)
+        run: npx eslint src/components src/pages src/Layout.jsx --ext .js,.jsx --quiet
+
+      - name: Vitest Security Tests
+        run: npm run test -- security

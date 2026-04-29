@@ -5,13 +5,42 @@ import pluginReactHooks from "eslint-plugin-react-hooks";
 import pluginUnusedImports from "eslint-plugin-unused-imports";
 
 export default [
+  // ── Diretórios que NÃO são código-fonte do projeto ────────────────────────────
+  // Templates de agentes, tooling interno e artefatos de build não devem ser
+  // lintados: o parser padrão (espree) não entende TypeScript nem JSX standalone.
+  {
+    ignores: [
+      "node_modules/**",
+      "dist/**",
+      ".agent/**",
+      ".aiox-core/**",
+      ".serena/**",
+      ".vscode/**",
+      ".playwright-mcp/**",
+      "supabase/**",
+      "local-scraper/**",
+      "scripts/**",
+      "tests/**",
+      "graphify-out/**",
+      "entities/**",
+      "public/**",
+      "**/*.config.js",
+      "**/*.config.ts",
+      // TypeScript: sem parser TS configurado — o projeto usa JSX (não TSX) para componentes
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.d.ts",
+      // Componentes UI auto-gerados (shadcn/ui) e módulos internos — fora do escopo de lint
+      "src/components/ui/**",
+      "src/lib/**",
+    ],
+  },
   {
     files: [
       "src/components/**/*.{js,mjs,cjs,jsx}",
       "src/pages/**/*.{js,mjs,cjs,jsx}",
       "src/Layout.jsx",
     ],
-    ignores: ["src/lib/**/*", "src/components/ui/**/*"],
     ...pluginJs.configs.recommended,
     ...pluginReact.configs.flat.recommended,
     languageOptions: {
