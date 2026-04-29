@@ -1,0 +1,110 @@
+name: Hotfix — Deploy Local Scraper (Hetzner SSH)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Pull latest & Restart via SSH
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: SSH into Hetzner e atualizar scraper
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 46.224.176.59
+          username: root
+          password: ${{ secrets.SSH_SERVER_KEY }}
+          command_timeout: 5m
+          script: |
+            set -e
+            echo "========================================"
+            echo " [1/5] Descobrindo diretório do scraper"
+            echo "========================================"
+
+            SCRAPER_DIR=""
+
+            # Tenta via PM2
+            if command -v pm2 &>/dev/null; then
+              echo "PM2 encontrado. Status atual:"
+              pm2 list 2>/dev/null || true
+              PM2_CWD=$(pm2 jlist 2>/dev/null \
+                | python3 -c "import sys,json; d=json.load(sys.stdin); [print(p.get('pm2_env',{}).get('pm_cwd','')) for p in d]" 2>/dev/null \
+                | grep -v '^$' | head -1 || true)
+              [ -n "$PM2_CWD" ] && SCRAPER_DIR="$PM2_CWD" && echo "Encontrado via PM2: $SCRAPER_DIR"
+            fi
+
+            # Fallback: busca pelo server.ts
+            if [ -z "$SCRAPER_DIR" ]; then
+              FOUND=$(find /root /home /opt -name "server.ts" -maxdepth 7 2>/dev/null \
+                | grep -iE "local.scraper|rv.adv|scraper" | head -1 || true)
+              [ -n "$FOUND" ] && SCRAPER_DIR=$(dirname "$FOUND") && echo "Encontrado via find: $SCRAPER_DIR"
+            fi
+
+            if [ -z "$SCRAPER_DIR" ]; then
+              echo "ERRO CRÍTICO: diretório do scraper não encontrado!"
+              exit 1
+            fi
+
+            echo "========================================"
+            echo " [2/5] Identificando git root"
+            echo "========================================"
+            cd "$SCRAPER_DIR"
+            GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+            if [ -z "$GIT_ROOT" ]; then
+              cd ..
+              GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+            fi
+            [ -z "$GIT_ROOT" ] && { echo "ERRO: nenhum repositório git encontrado"; exit 1; }
+            echo "Git root: $GIT_ROOT"
+            cd "$GIT_ROOT"
+
+            echo "========================================"
+            echo " [3/5] Git pull origin master"
+            echo "========================================"
+            echo "Commits ANTES do pull:"
+            git log --oneline -5
+            git pull origin master
+            echo "Commits APÓS o pull:"
+            git log --oneline -5
+
+            echo "========================================"
+            echo " [4/5] Verificando dependências"
+            echo "========================================"
+            SCRAPER_PKG_DIR="$GIT_ROOT/local-scraper"
+            if [ -f "$SCRAPER_PKG_DIR/package.json" ]; then
+              echo "package.json encontrado. Executando npm ci..."
+              cd "$SCRAPER_PKG_DIR"
+              npm ci --omit=dev 2>/dev/null || npm install --omit=dev
+            else
+              echo "Sem package.json em local-scraper/ (pode estar em nível superior)"
+              [ -f "$GIT_ROOT/package.json" ] && cd "$GIT_ROOT" && npm ci --omit=dev 2>/dev/null || true
+            fi
+
+            echo "========================================"
+            echo " [5/5] Reiniciando scraper"
+            echo "========================================"
+            if command -v pm2 &>/dev/null; then
+              pm2 restart all --update-env
+              sleep 3
+              echo "Status PM2 pós-restart:"
+              pm2 status
+            elif systemctl is-active --quiet scraper 2>/dev/null; then
+              systemctl restart scraper
+              systemctl status scraper --no-pager
+            else
+              echo "AVISO: gerenciador de processos não identificado."
+              echo "Processos node em execução:"
+              ps aux | grep -E "node|ts-node|tsx" | grep -v grep || true
+              exit 1
+            fi
+
+            echo "========================================"
+            echo " Deploy concluído! Verificando rota..."
+            echo "========================================"
+            sleep 2
+            curl -s -o /dev/null -w "GET /status: HTTP %{http_code}\n" http://localhost:3001/status || true
+            curl -s -o /dev/null -w "GET /api/datajud/health: HTTP %{http_code}\n" http://localhost:3001/api/datajud/health || true
