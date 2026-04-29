@@ -1,0 +1,81 @@
+name: Hotfix — PM2 Delete + Start (reload .env)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  restart:
+    name: PM2 delete + fresh start com SCRAPER_SERVICE_KEY
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: SSH — Inspecionar, deletar pm2 e reiniciar com .env correto
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 46.224.176.59
+          username: root
+          password: ${{ secrets.SSH_SERVER_KEY }}
+          command_timeout: 5m
+          script: |
+            set -e
+
+            echo "=== [1/5] Estado atual do PM2 ==="
+            pm2 jlist 2>/dev/null || true
+
+            echo "=== [2/5] Localizar server.ts e .env ==="
+            SERVER_TS=$(find /root /opt /home -name "server.ts" -maxdepth 8 2>/dev/null \
+              | grep -iE "local.scraper|rv.adv|scraper" | head -1)
+            echo "server.ts: $SERVER_TS"
+            SCRAPER_DIR=$(dirname "$SERVER_TS")
+            GIT_ROOT=$(cd "$SCRAPER_DIR" && git rev-parse --show-toplevel 2>/dev/null || dirname "$SCRAPER_DIR")
+            ENV_FILE="$GIT_ROOT/.env"
+            echo "GIT_ROOT: $GIT_ROOT"
+            echo ".env: $ENV_FILE"
+
+            echo "=== [3/5] Verificar .env e garantir SCRAPER_SERVICE_KEY ==="
+            if grep -q "^SCRAPER_SERVICE_KEY=" "$ENV_FILE" 2>/dev/null; then
+              STORED=$(grep "^SCRAPER_SERVICE_KEY=" "$ENV_FILE" | cut -d= -f2)
+              echo "SCRAPER_SERVICE_KEY no .env: ${STORED:0:4}****${STORED: -4} (${#STORED} chars)"
+            else
+              echo "AVISO: SCRAPER_SERVICE_KEY ausente no .env. Adicionando..."
+              printf '\nSCRAPER_SERVICE_KEY=${{ secrets.SCRAPER_ENV_KEY }}\n' >> "$ENV_FILE"
+            fi
+
+            echo "=== [4/5] PM2 delete all + fresh start ==="
+            # Salvar nome do processo antes de deletar
+            APP_NAME=$(pm2 jlist 2>/dev/null | python3 -c \
+              "import sys,json; d=json.load(sys.stdin); print(d[0]['name'] if d else 'scraper')" \
+              2>/dev/null || echo "scraper")
+            echo "App name: $APP_NAME"
+
+            # Exportar o env var no shell para que pm2 o herde
+            export SCRAPER_SERVICE_KEY='${{ secrets.SCRAPER_ENV_KEY }}'
+            echo "SCRAPER_SERVICE_KEY exportada no shell (${#SCRAPER_SERVICE_KEY} chars)"
+
+            # Delete e re-start fresh
+            pm2 delete all 2>/dev/null || true
+            sleep 1
+
+            cd "$SCRAPER_DIR"
+            pm2 start server.ts --name "$APP_NAME" --interpreter tsx 2>/dev/null || \
+            pm2 start server.ts --name "$APP_NAME" --interpreter ts-node 2>/dev/null || \
+            pm2 start server.ts --name "$APP_NAME" 2>/dev/null || \
+            pm2 start "$SERVER_TS" --name "$APP_NAME"
+
+            pm2 save
+            sleep 5
+
+            echo "=== [5/5] Verificação ==="
+            pm2 status
+            curl -s http://localhost:3001/api/datajud/health
+            echo ""
+            echo "Teste com service-key:"
+            curl -s -X POST \
+              -H 'Content-Type: application/json' \
+              -H 'x-service-key: ${{ secrets.SCRAPER_ENV_KEY }}' \
+              -d '{"processos":[{"numeroCNJ":"0014708-18.2026.4.05.8100"}]}' \
+              http://localhost:3001/api/datajud | head -c 300
+            echo ""
