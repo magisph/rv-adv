@@ -12,12 +12,16 @@
 //           NUNCA exposta ao browser ou ao Supabase frontend.
 // ============================================================================
 
-import { TRIBUNAL_MAP, resolverTribunal, formatarNumeroCNJ } from './tribunalUtils.js';
+import {
+  TRIBUNAL_MAP,
+  resolverTribunal,
+  formatarNumeroCNJ,
+} from "./tribunalUtils.js";
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
 export interface ProcessoBulkInput {
-  numeroCNJ: string;   // Formato raw ou formatado (20 dígitos ou com máscara)
+  numeroCNJ: string; // Formato raw ou formatado (20 dígitos ou com máscara)
 }
 
 export interface ResultadoBulk {
@@ -46,19 +50,19 @@ export interface BulkResponse {
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 
-const DATAJUD_BASE = 'https://api-publica.datajud.cnj.jus.br';
-const CONCURRENCY_LIMIT = 5;      // Máximo de tribunais consultados em paralelo
-const MAX_POR_QUERY = 50;         // Máximo de processos por query DSL (limite DataJud)
-const TIMEOUT_MS = 30_000;        // 30s de timeout por chamada externa
+const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br";
+const CONCURRENCY_LIMIT = 5; // Máximo de tribunais consultados em paralelo
+const MAX_POR_QUERY = 50; // Máximo de processos por query DSL (limite DataJud)
+const TIMEOUT_MS = 30_000; // 30s de timeout por chamada externa
 const MAX_RETRIES = 3;
-const RETRY_BASE_MS = 1_000;      // Backoff base: 1s, 2s, 4s
+const RETRY_BASE_MS = 1_000; // Backoff base: 1s, 2s, 4s
 
 // ─── Retry com backoff exponencial + jitter ──────────────────────────────────
 
 async function withRetry<T>(
   fn: () => Promise<T>,
   retries = MAX_RETRIES,
-  baseMs = RETRY_BASE_MS
+  baseMs = RETRY_BASE_MS,
 ): Promise<T> {
   let lastError: Error | null = null;
 
@@ -79,21 +83,21 @@ async function withRetry<T>(
         const delay = Math.pow(2, attempt) * baseMs * jitter;
         console.warn(
           `[DataJud Bulk] Tentativa ${attempt + 1}/${retries + 1} falhou. ` +
-          `Retry em ${Math.round(delay)}ms. Erro: ${err.message}`
+            `Retry em ${Math.round(delay)}ms. Erro: ${err.message}`,
         );
         await new Promise((r) => setTimeout(r, delay));
       }
     }
   }
 
-  throw lastError ?? new Error('Todas as tentativas falharam');
+  throw lastError ?? new Error("Todas as tentativas falharam");
 }
 
 // ─── Limiter de concorrência (pool simples) ──────────────────────────────────
 
 async function runWithConcurrencyLimit<T>(
   tasks: (() => Promise<T>)[],
-  limit: number
+  limit: number,
 ): Promise<T[]> {
   const results: T[] = new Array(tasks.length);
   let index = 0;
@@ -106,7 +110,9 @@ async function runWithConcurrencyLimit<T>(
   }
 
   // Dispara `limit` workers em paralelo
-  const workers = Array.from({ length: Math.min(limit, tasks.length) }, () => worker());
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, () =>
+    worker(),
+  );
   await Promise.all(workers);
 
   return results;
@@ -142,7 +148,7 @@ function buildBulkQuery(numerosFormatados: string[]): object {
 async function consultarLoteTribunal(
   tribunal: string,
   numerosFormatados: string[],
-  apiKey: string
+  apiKey: string,
 ): Promise<{ tribunal: string; hits: any[] }> {
   const endpoint = `${DATAJUD_BASE}/api_publica_${tribunal.toLowerCase()}/_search`;
   const query = buildBulkQuery(numerosFormatados);
@@ -154,9 +160,9 @@ async function consultarLoteTribunal(
     let response: Response;
     try {
       response = await fetch(endpoint, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `APIKey ${apiKey}`,
         },
         body: JSON.stringify(query),
@@ -169,7 +175,7 @@ async function consultarLoteTribunal(
     if (!response.ok) {
       const body = await response.text().catch(() => response.statusText);
       const err: any = new Error(
-        `DataJud ${response.status} para ${tribunal}: ${body}`
+        `DataJud ${response.status} para ${tribunal}: ${body}`,
       );
       err.status = response.status;
       throw err;
@@ -183,7 +189,10 @@ async function consultarLoteTribunal(
 
 // ─── Normaliza um hit do Elasticsearch para ResultadoBulk ───────────────────
 
-function normalizarHit(source: any, tribunal: string): Omit<ResultadoBulk, 'numero'> {
+function normalizarHit(
+  source: any,
+  tribunal: string,
+): Omit<ResultadoBulk, "numero"> {
   return {
     tribunal,
     encontrado: true,
@@ -213,28 +222,43 @@ function normalizarHit(source: any, tribunal: string): Omit<ResultadoBulk, 'nume
  */
 export async function consultarBulk(
   processos: ProcessoBulkInput[],
-  apiKey: string
+  apiKey: string,
 ): Promise<BulkResponse> {
   const inicio = Date.now();
   const resultadosMap = new Map<string, ResultadoBulk>();
   const erros: { numero: string; erro: string }[] = [];
 
   if (!apiKey) {
-    throw new Error('DATAJUD_API_KEY não configurada no servidor Hetzner.');
+    throw new Error("DATAJUD_API_KEY não configurada no servidor Hetzner.");
   }
 
   // ── 1. Normaliza e valida todos os números CNJ ───────────────────────────
-  const processosParsed: { original: string; formatado: string; tribunal: string }[] = [];
+  // IMPORTANTE: O DataJud armazena numeroProcesso como dígitos puros sem máscara
+  // (ex: "30043467920258060112"), portanto a query e a chave do mapa usam dígitos puros.
+  // O campo `numero` no resultado final usa o formato com máscara para exibição.
+  const processosParsed: {
+    original: string;
+    formatado: string;
+    digitos: string;
+    tribunal: string;
+  }[] = [];
 
   for (const { numeroCNJ } of processos) {
     try {
-      const formatado = formatarNumeroCNJ(numeroCNJ);
+      const digitos = numeroCNJ.replace(/\D/g, ""); // "30043467920258060112" — chave da query
+      const formatado = formatarNumeroCNJ(numeroCNJ); // "3004346-79.2025.8.06.0112" — exibição
       const tribunal = resolverTribunal(numeroCNJ);
-      processosParsed.push({ original: numeroCNJ, formatado, tribunal });
+      processosParsed.push({
+        original: numeroCNJ,
+        formatado,
+        digitos,
+        tribunal,
+      });
 
-      // Inicializa resultado como "não encontrado" (será sobrescrito se achado)
-      resultadosMap.set(formatado, {
-        numero: formatado,
+      // Inicializa resultado como "não encontrado" (será sobrescrito se achado).
+      // Chave = dígitos puros, pois é o que o DataJud retorna em _source.numeroProcesso.
+      resultadosMap.set(digitos, {
+        numero: formatado, // exibe com máscara ao cliente
         tribunal,
         encontrado: false,
         classeProcessual: null,
@@ -252,38 +276,48 @@ export async function consultarBulk(
   }
 
   // ── 2. Agrupa por tribunal ────────────────────────────────────────────────
+  // Usa dígitos puros como valor da lista — são os que a query DSL deve enviar.
   const porTribunal = new Map<string, string[]>();
-  for (const { formatado, tribunal } of processosParsed) {
+  for (const { digitos, tribunal } of processosParsed) {
     if (!porTribunal.has(tribunal)) porTribunal.set(tribunal, []);
-    porTribunal.get(tribunal)!.push(formatado);
+    porTribunal.get(tribunal)!.push(digitos);
   }
 
   // ── 3. Executa consultas em paralelo com limite de concorrência ──────────
   const tasks = Array.from(porTribunal.entries()).map(
-    ([tribunal, numeros]) => async () => {
-      try {
-        const { hits } = await consultarLoteTribunal(tribunal, numeros, apiKey);
+    ([tribunal, numeros]) =>
+      async () => {
+        try {
+          const { hits } = await consultarLoteTribunal(
+            tribunal,
+            numeros,
+            apiKey,
+          );
 
-        // Mapeia hits de volta para os números solicitados
-        for (const hit of hits) {
-          const src = hit._source;
-          const numeroRetornado: string = src.numeroProcesso;
+          // Mapeia hits de volta para os números solicitados.
+          // DataJud retorna numeroProcesso como dígitos puros — igual à chave do mapa.
+          for (const hit of hits) {
+            const src = hit._source;
+            const numeroRetornado: string = src.numeroProcesso; // dígitos puros
 
-          if (resultadosMap.has(numeroRetornado)) {
-            resultadosMap.set(numeroRetornado, {
-              numero: numeroRetornado,
-              ...normalizarHit(src, tribunal),
+            if (resultadosMap.has(numeroRetornado)) {
+              resultadosMap.set(numeroRetornado, {
+                numero: formatarNumeroCNJ(numeroRetornado), // converte para máscara na resposta
+                ...normalizarHit(src, tribunal),
+              });
+            }
+          }
+        } catch (err: any) {
+          // Marca todos os processos deste tribunal como erro (numeros = dígitos puros)
+          for (const n of numeros) {
+            erros.push({
+              numero: n,
+              erro: `Falha no tribunal ${tribunal}: ${err.message}`,
             });
+            resultadosMap.delete(n);
           }
         }
-      } catch (err: any) {
-        // Marca todos os processos deste tribunal como erro
-        for (const n of numeros) {
-          erros.push({ numero: n, erro: `Falha no tribunal ${tribunal}: ${err.message}` });
-          resultadosMap.delete(n);
-        }
-      }
-    }
+      },
   );
 
   await runWithConcurrencyLimit(tasks, CONCURRENCY_LIMIT);
