@@ -46,9 +46,43 @@ jobs:
           import urllib.request, json, os, time, sys
           from datetime import datetime
 
-          SUPABASE_URL = os.environ["SUPABASE_URL"]
-          SERVICE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          # ── [fix] Validação de secrets — fail-fast com mensagem clara (Bug #1 e #3) ──
+          SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
+          SERVICE_KEY  = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+
+          if not SUPABASE_URL.startswith("https://"):
+              print(f"❌ FATAL: SUPABASE_URL inválida ou não configurada: '{SUPABASE_URL}'")
+              print("   Configure o secret SUPABASE_URL em: github.com/magisph/rv-adv/settings/secrets/actions")
+              sys.exit(1)
+          if not SERVICE_KEY:
+              print("❌ FATAL: SUPABASE_SERVICE_ROLE_KEY não configurada")
+              print("   Configure o secret em: github.com/magisph/rv-adv/settings/secrets/actions")
+              sys.exit(1)
+
           FUNCTION_URL = f"{SUPABASE_URL}/functions/v1/scrape-tnu"
+
+          # ── [fix] Retry com backoff exponencial para falhas transitórias (Bug #5) ────
+          def http_call(url, method="GET", data=None, headers=None, timeout=30, max_retries=3):
+              """Realiza chamada HTTP com retry exponencial para falhas transitórias de rede.
+              Erros HTTP definitivos (4xx/5xx) são retornados imediatamente sem retry."""
+              if headers is None:
+                  headers = {}
+              last_err = None
+              for attempt in range(max_retries):
+                  try:
+                      req = urllib.request.Request(url, data=data, headers=headers, method=method)
+                      with urllib.request.urlopen(req, timeout=timeout) as r:
+                          return r.read(), None
+                  except urllib.error.HTTPError as e:
+                      body = e.read().decode()
+                      return None, f"HTTP {e.code}: {body[:200]}"  # Erro definitivo — sem retry
+                  except Exception as e:
+                      last_err = e
+                      if attempt < max_retries - 1:
+                          wait = 2 ** attempt
+                          print(f"    ⚠️ Tentativa {attempt+1}/{max_retries}: {e}. Retry em {wait}s...")
+                          time.sleep(wait)
+              return None, f"Todas as {max_retries} tentativas falharam: {last_err}"
 
           # Lista de 30 termos de busca cobrindo diferentes áreas do direito previdenciário
           # Cada dia da semana usa um subconjunto diferente para maximizar a diversidade
@@ -127,28 +161,23 @@ jobs:
                       "offset": offset
                   }).encode()
 
-                  req = urllib.request.Request(
+                  raw, err = http_call(
                       FUNCTION_URL,
+                      method="POST",
                       data=payload,
                       headers={
                           "Authorization": f"Bearer {SERVICE_KEY}",
                           "Content-Type": "application/json",
                           "x-region": "sa-east-1",
                       },
-                      method="POST"
+                      timeout=30
                   )
 
-                  try:
-                      with urllib.request.urlopen(req, timeout=30) as r:
-                          result = json.loads(r.read())
-                  except urllib.error.HTTPError as e:
-                      body = e.read().decode()
-                      print(f"  ❌ Erro HTTP {e.code} (offset={offset}): {body[:200]}")
-                      break
-                  except Exception as e:
-                      print(f"  ❌ Erro (offset={offset}): {e}")
+                  if err:
+                      print(f"  ❌ Erro (offset={offset}): {err}")
                       break
 
+                  result = json.loads(raw)
                   coletados = result.get("coletados", 0)
                   salvos = result.get("salvos", 0)
                   proximo_disponivel = result.get("proximo_disponivel", False)
@@ -181,11 +210,45 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           python3 << 'PYEOF'
-          import urllib.request, json, os, time
+          import urllib.request, json, os, time, sys
 
-          SUPABASE_URL = os.environ["SUPABASE_URL"]
-          SERVICE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          # ── [fix] Validação de secrets — fail-fast com mensagem clara (Bug #1 e #3) ──
+          SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
+          SERVICE_KEY  = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+
+          if not SUPABASE_URL.startswith("https://"):
+              print(f"❌ FATAL: SUPABASE_URL inválida ou não configurada: '{SUPABASE_URL}'")
+              print("   Configure o secret SUPABASE_URL em: github.com/magisph/rv-adv/settings/secrets/actions")
+              sys.exit(1)
+          if not SERVICE_KEY:
+              print("❌ FATAL: SUPABASE_SERVICE_ROLE_KEY não configurada")
+              print("   Configure o secret em: github.com/magisph/rv-adv/settings/secrets/actions")
+              sys.exit(1)
+
           EMBED_URL = f"{SUPABASE_URL}/functions/v1/generate-embedding"
+
+          # ── [fix] Retry com backoff exponencial para falhas transitórias (Bug #5) ────
+          def http_call(url, method="GET", data=None, headers=None, timeout=30, max_retries=3):
+              """Realiza chamada HTTP com retry exponencial para falhas transitórias de rede.
+              Erros HTTP definitivos (4xx/5xx) são retornados imediatamente sem retry."""
+              if headers is None:
+                  headers = {}
+              last_err = None
+              for attempt in range(max_retries):
+                  try:
+                      req = urllib.request.Request(url, data=data, headers=headers, method=method)
+                      with urllib.request.urlopen(req, timeout=timeout) as r:
+                          return r.read(), None
+                  except urllib.error.HTTPError as e:
+                      body = e.read().decode()
+                      return None, f"HTTP {e.code}: {body[:200]}"  # Erro definitivo — sem retry
+                  except Exception as e:
+                      last_err = e
+                      if attempt < max_retries - 1:
+                          wait = 2 ** attempt
+                          print(f"    ⚠️ Tentativa {attempt+1}/{max_retries}: {e}. Retry em {wait}s...")
+                          time.sleep(wait)
+              return None, f"Todas as {max_retries} tentativas falharam: {last_err}"
 
           HEADERS_SB = {
               "Authorization": f"Bearer {SERVICE_KEY}",
@@ -196,15 +259,18 @@ jobs:
           print("🔢 Gerando embeddings para acórdãos pendentes...")
 
           # Busca registros com embedding_status = 'pending'
-          req = urllib.request.Request(
+          raw, err = http_call(
               f"{SUPABASE_URL}/rest/v1/jurisprudences?embedding_status=eq.pending&select=id,process_number,excerpt&limit=100",
+              method="GET",
               headers=HEADERS_SB,
-              method="GET"
+              timeout=15
           )
 
-          with urllib.request.urlopen(req, timeout=15) as r:
-              pendentes = json.loads(r.read())
+          if err:
+              print(f"❌ Erro ao buscar acórdãos pendentes: {err}")
+              sys.exit(1)
 
+          pendentes = json.loads(raw)
           total = len(pendentes)
           print(f"   {total} acórdãos pendentes de embedding")
 
@@ -223,27 +289,29 @@ jobs:
                   "taskType": "RETRIEVAL_DOCUMENT"
               }).encode()
 
-              embed_req = urllib.request.Request(
+              raw_embed, err_embed = http_call(
                   EMBED_URL,
+                  method="POST",
                   data=payload,
                   headers={
                       "Authorization": f"Bearer {SERVICE_KEY}",
                       "Content-Type": "application/json",
                       "x-region": "sa-east-1",
                   },
-                  method="POST"
+                  timeout=25
               )
 
-              try:
-                  with urllib.request.urlopen(embed_req, timeout=25) as r:
-                      result = json.loads(r.read())
-                  embedding = result.get("embedding", [])
-                  if not embedding:
-                      raise ValueError(f"Embedding vazio: {result}")
-              except Exception as e:
-                  print(f"  [{i+1:03d}/{total}] ❌ {row['process_number'][:35]} — Gemini: {e}")
+              if err_embed:
+                  print(f"  [{i+1:03d}/{total}] ❌ {row['process_number'][:35]} — Gemini: {err_embed}")
                   errs += 1
                   time.sleep(2)
+                  continue
+
+              result = json.loads(raw_embed)
+              embedding = result.get("embedding", [])
+              if not embedding:
+                  print(f"  [{i+1:03d}/{total}] ❌ {row['process_number'][:35]} — Embedding vazio: {result}")
+                  errs += 1
                   continue
 
               # Salvar embedding no banco
@@ -252,21 +320,20 @@ jobs:
                   "embedding_status": "completed"
               }).encode()
 
-              update_req = urllib.request.Request(
+              raw_up, err_up = http_call(
                   f"{SUPABASE_URL}/rest/v1/jurisprudences?id=eq.{row['id']}",
+                  method="PATCH",
                   data=update_payload,
                   headers={**HEADERS_SB, "Prefer": "return=minimal"},
-                  method="PATCH"
+                  timeout=10
               )
 
-              try:
-                  with urllib.request.urlopen(update_req, timeout=10) as r:
-                      r.read()
+              if err_up:
+                  print(f"  [{i+1:03d}/{total}] ❌ {row['process_number'][:35]} — Supabase: {err_up}")
+                  errs += 1
+              else:
                   ok += 1
                   print(f"  [{i+1:03d}/{total}] ✅ {row['process_number'][:35]} — {len(embedding)} dims")
-              except Exception as e:
-                  print(f"  [{i+1:03d}/{total}] ❌ {row['process_number'][:35]} — Supabase: {e}")
-                  errs += 1
 
               time.sleep(0.6)  # ~1.5 req/s para respeitar rate limit
 

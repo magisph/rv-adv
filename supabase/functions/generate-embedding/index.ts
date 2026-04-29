@@ -4,8 +4,8 @@
 // Skill: backend-security-coder (JWT auth, input validation, error sanitization)
 // Skill: api-security-best-practices (CORS restrito, rate limiting, timeout)
 // Deploy: npx supabase functions deploy generate-embedding
+// fix(Bug #6): migrado de serve() std@0.177.0 (deprecated) para Deno.serve() nativo
 // ============================================================================
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { authenticateRequest } from "../_shared/auth.ts";
 
 // ─── Configuração ─────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ function errorResponse(
 
 // ─── Handler principal ────────────────────────────────────────────────────────
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
 
   // Preflight CORS

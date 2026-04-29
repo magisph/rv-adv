@@ -2,9 +2,9 @@ name: Security Scan
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "master" ]  # fix(Bug #4): era "main"/"dev" — repositório usa master
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "master" ]  # fix(Bug #4): era "main"/"dev" — repositório usa master
   schedule:
     - cron: '0 2 * * *' # Daily at 2 AM
 
@@ -18,7 +18,7 @@ jobs:
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4 # Verifique se já existe v5 disponível no repositório oficial
+      uses: actions/checkout@v4
 
     - name: Setup Node
       uses: actions/setup-node@v4
