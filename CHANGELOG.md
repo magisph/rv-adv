@@ -48,8 +48,55 @@ Supabase logs: POST|404 → POST|401 (sem mais erros de rota) ✅
 - `local-scraper/src/routes/datajud.ts` — Roteador DataJud
 - `.github/workflows/deploy-local-scraper.yml` — Pipeline de deploy unificado
 
-### Itens de Follow-up
+### Itens de Follow-up (concluídos em 2026-04-29)
 
-- [ ] Confirmar `DATAJUD_API_KEY` no `.env` do servidor (teste retornou 200 sem erros, API provavelmente ativa)
-- [ ] Considerar geo-restriction do DataJud (servidor em DE, API restrita ao BR) — monitorar resultados em produção
+- [x] `DATAJUD_API_KEY` confirmada e ativa — servidor usa chave pública CNJ correta
+- [x] Geo-restriction investigada: DataJud é acessível do servidor DE via HTTPS (sem bloqueio por IP)
 - [ ] Adicionar alertas de saúde do scraper ao Supabase Dashboard
+
+---
+
+## [Fix] 2026-04-29 — Correção do Radar CNJ: processos não encontrados no DataJud
+
+### Problema
+A busca bulk de processos retornava `"encontrado": false` para **todos os processos reais**,
+mesmo com a cadeia Edge Function → scraper funcionando corretamente.
+
+### Causa Raiz
+**Bug duplo em `local-scraper/src/services/datajud.ts`:**
+
+| # | Componente | Problema |
+|---|-----------|----------|
+| 1 | Query Elasticsearch | Código enviava `match { numeroProcesso: "3004346-79.2025.8.06.0112" }` (com máscara) |
+| 2 | `resultadosMap` | Chave do mapa usava número com máscara, mas DataJud retorna dígitos puros |
+| **Root cause** | DataJud armazena `numeroProcesso` como dígitos puros sem máscara (`30043467920258060112`) |
+
+**Diagnóstico confirmado por:**
+- Teste direto via `curl` com dígitos puros → `total: 1, encontrado` ✅
+- Teste com máscara → `total: 0` ❌
+- Documentação: [DataJud Wiki — Acesso](https://datajud-wiki.cnj.jus.br/api-publica/acesso)
+- Chave pública atual CNJ: `cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==`
+
+### Correção Aplicada
+
+```
+fixup em local-scraper/src/services/datajud.ts — commit 1be9dc9
+```
+
+1. `processosParsed` agora inclui campo `digitos` (dígitos puros)
+2. `resultadosMap` usa `digitos` como chave (não mais o número com máscara)
+3. `porTribunal` passa `digitos` para a query Elasticsearch
+4. Hit matching: `resultadosMap.has(numeroRetornado)` agora funciona pois ambos são dígitos puros
+5. Campo `numero` na resposta converte de volta para máscara via `formatarNumeroCNJ()` (UX)
+
+### Verificação
+
+```
+TJCE 3004346-79.2025.8.06.0112  → encontrado: true ✅ | Usuca pião Extraordinária
+TJCE 3000077-45.2025.8.06.0096  → encontrado: true ✅ | JEC Indenização
+TRF5 0000197-03.2026.4.05.8104  → encontrado: true ✅ | JEF Auxílio Incapacidade
+TRF5 0007509-64.2025.4.05.8104  → encontrado: true ✅ | Procedimento Comum Cível
+```
+
+### Componentes Afetados
+- `local-scraper/src/services/datajud.ts` — Motor bulk DataJud
