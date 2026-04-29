@@ -3,9 +3,7 @@ import { notificationService, notificationServiceSupabase } from "@/modules/peri
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
-  Check,
   CheckCheck,
-  Trash2,
   AlertCircle,
   Calendar,
   X,
@@ -18,7 +16,6 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";

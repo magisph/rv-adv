@@ -15,15 +15,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   FileText,
-  Download,
   Trash2,
   Upload,
   Loader2,
   ExternalLink,
   Search,
   File,
-  FileImage,
-  X,
   Image as ImageIcon,
   Filter,
 } from "lucide-react";

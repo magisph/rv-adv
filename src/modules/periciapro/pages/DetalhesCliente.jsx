@@ -4,12 +4,11 @@ import { activityLogService } from "@/modules/periciapro/services/activityLogSer
 import { lembreteService } from "@/modules/periciapro/services/lembreteService";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
-  User,
   FileText,
   History as HistoryIcon,
   Bell,
@@ -20,7 +19,6 @@ import ActivityLogTab from "../components/cliente/ActivityLogTab";
 import DocumentsTab from "../components/cliente/DocumentsTab";
 import RemindersTab from "../components/cliente/RemindersTab";
 import PericiaModal from "../components/dashboard/PericiaModal";
-import GoogleCalendarButton from "../components/calendar/GoogleCalendarButton";
 import GoogleCalendarSync from "../components/calendar/GoogleCalendarSync";
 
 export default function DetalhesCliente() {

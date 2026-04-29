@@ -9,13 +9,8 @@ import {
   Plus,
   Search,
   Filter,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 import PericiaTable from "../components/dashboard/PericiaTable";
 import PericiaModal from "../components/dashboard/PericiaModal";

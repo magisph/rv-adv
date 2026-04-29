@@ -12,7 +12,7 @@ import {
   Clock,
   User,
 } from "lucide-react";
-import { format, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import GoogleCalendarButton from "../components/calendar/GoogleCalendarButton";

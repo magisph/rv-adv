@@ -17,22 +17,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Save,
   X,
-  AlertCircle,
   Eye,
   EyeOff,
   Plus,
   Trash2,
   DollarSign,
-  Calendar as CalendarIcon,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { clientService } from "@/services/clientService";

@@ -14,14 +14,10 @@ import {
   Pencil,
   Trash2,
   FileText,
-  AlertCircle,
   Eye,
   ExternalLink,
 } from "lucide-react";
-import { createPageUrl } from "@/utils";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const statusColors = {

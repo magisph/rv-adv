@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Bell, X, CheckCircle, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Bell, X, CheckCircle } from "lucide-react";
 
 export default function NotificationPermission() {
   const [permission, setPermission] = useState("default");

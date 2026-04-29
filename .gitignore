@@ -4,13 +4,16 @@ node_modules/
 # Build output
 dist/
 dist-ssr/
+build/
 
 # Environment files
 .env
 .env.*
 !.env.example
+.env.local
+.env.*.local
 
-# Logs
+# Logs e Diagnósticos
 logs/
 *.log
 npm-debug.log*
@@ -18,6 +21,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+_diagnose_datajud.yml
+.playwright-mcp/
+
+# Erros de Sistema (CRÍTICO PARA SEU ERRO ATUAL)
+nul
 
 # Editor directories and files
 .vscode/*
@@ -29,55 +37,40 @@ lerna-debug.log*
 *.sln
 *.sw?
 *.local
+*.swp
 
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Environment & Secrets (AIOX)
-.env.local
-.env.*.local
+# Ferramentas de IA (AIOX, Serena, Agent)
+.agent/
+.aiox/
+.aiox-core/
+.serena/
+.claude/settings.local.json
+.aiox/install-log.txt
 *.key
 *.pem
 
-# Dependencies (AIOX)
-node_modules
-
-# Build & Logs (AIOX)
-build/
-
-# IDE & OS (AIOX)
-*.swp
-
-# AIOX Local (AIOX)
-.aiox-core/local/
-.claude/settings.local.json
-.aiox/install-log.txt
-
-# Local Scraper
-local-scraper/.env
-local-scraper/storage/
-local-scraper/djen_seen.json
+# Local Scraper e Graphify
+local-scraper/
+graphify-out/
+.graphifyignore
 
 # Memória da IA
 findings.md
 progress.md
-task_plan.md
-task_plan_task2.md
-task_plan_task3.md
+task_plan*.md
 auditoria_execucao_rvadv.md
 
-# Arquivos de sistema do Windows
-desktop.ini
-
-# Arquivos de teste temporários
+# Arquivos de teste e Dumps temporários
 tnu_dump*.html
 validate_tnu.mjs
+test-webhook.js
+ACTIVATE_CRON.sql
+add_link_column.sql
 
-# Antigravity
+# Configurações de Ferramentas
 .antigravityignore
-
-# Graphify outputs
-graphify-out/cache/
-graphify-out/manifest.json
-graphify-out/cost.json
