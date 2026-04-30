@@ -250,7 +250,7 @@ export default function ProcessDetail() {
               <div>
                 <p className="text-xs text-slate-600">Cliente</p>
                 <Link
-                  to={createPageUrl(`ClientDetail?id=${process.client_id}`)}
+                  to={createPageUrl(`client-detail?id=${process.client_id}`)}
                   className="font-medium text-slate-800 hover:text-blue-600"
                 >
                   {process.client_name}

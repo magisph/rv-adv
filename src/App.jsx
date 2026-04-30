@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import AuthPage from "./pages/AuthPage";
 import React, { Suspense } from "react";
+import { toKebabCase } from "@/lib/utils/stringUtils";
 
 // PericiaPro module pages — carregadas sob demanda (code splitting)
 // Reduz o bundle inicial excluindo o módulo PericiaPro até a primeira navegação
@@ -47,6 +48,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const AuthenticatedApp = () => {
+  const location = useLocation();
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } =
     useAuth();
 
@@ -85,19 +87,29 @@ const AuthenticatedApp = () => {
           </ProtectedRoute>
         }
       />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
-            <ProtectedRoute>
-              <LayoutWrapper currentPageName={path}>
-                <Page />
-              </LayoutWrapper>
-            </ProtectedRoute>
-          }
-        />
-      ))}
+      {Object.entries(Pages).map(([path, Page]) => {
+        const kebabPath = toKebabCase(path);
+        return (
+          <React.Fragment key={path}>
+            <Route
+              path={`/${kebabPath}`}
+              element={
+                <ProtectedRoute>
+                  <LayoutWrapper currentPageName={kebabPath}>
+                    <Page />
+                  </LayoutWrapper>
+                </ProtectedRoute>
+              }
+            />
+            {kebabPath !== path && (
+              <Route
+                path={`/${path}`}
+                element={<Navigate to={`/${kebabPath}${location.search}`} replace />}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
 
       {/* PericiaPro Module Routes — cada rota envolve o componente lazy em Suspense */}
       <Route

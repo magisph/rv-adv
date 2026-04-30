@@ -266,7 +266,7 @@ export default function Processes() {
                     >
                       <TableCell>
                         <Link
-                          to={createPageUrl(`ProcessDetail?id=${process.id}`)}
+                          to={createPageUrl(`process-detail?id=${process.id}`)}
                           className="block"
                         >
                           <div>

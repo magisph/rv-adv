@@ -1043,7 +1043,7 @@ export default function ClientDetail() {
                   {processes.map((process) => (
                     <Link
                       key={process.id}
-                      to={createPageUrl(`ProcessDetail?id=${process.id}`)}
+                      to={createPageUrl(`process-detail?id=${process.id}`)}
                       className="block"
                     >
                       <Card className="hover:shadow-md transition-all hover:border-legal-blue-300">

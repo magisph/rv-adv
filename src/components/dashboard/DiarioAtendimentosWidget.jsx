@@ -610,7 +610,7 @@ export default function DiarioAtendimentosWidget() {
                   className="p-3 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:bg-slate-50"
                   onClick={() => {
                     if (atendimento.client_id)
-                      navigate(`/ClientDetail?id=${atendimento.client_id}&tab=atendimentos`);
+                      navigate(`/client-detail?id=${atendimento.client_id}&tab=atendimentos`);
                   }}
                 >
                   <div className="flex justify-between items-start gap-2">

@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import { deadlineService } from "@/services";
@@ -290,7 +290,7 @@ export default function Deadlines() {
                           <div className="flex items-center gap-3 mt-1 text-sm text-slate-600">
                             <Link
                               to={createPageUrl(
-                                `ProcessDetail?id=${deadline.process_id}`,
+                                `process-detail?id=${deadline.process_id}`,
                               )}
                               className="hover:text-blue-600 font-mono"
                             >

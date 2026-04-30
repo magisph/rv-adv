@@ -72,7 +72,7 @@ export default function InssEmailsWidget() {
                         <div
                             key={email.id}
                             className="p-4 bg-white border border-slate-100 rounded-lg shadow-sm cursor-pointer hover:bg-slate-50 border-transparent hover:border-slate-200 transition-colors"
-                            onClick={() => navigate(createPageUrl(`ClientDetail?id=${email.client_id}&tab=emails`))}
+                            onClick={() => navigate(createPageUrl(`client-detail?id=${email.client_id}&tab=emails`))}
                         >
                             <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-2">
                                 <div>
