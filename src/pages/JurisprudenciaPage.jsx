@@ -672,7 +672,7 @@ const ABAS = [
  * Integra busca vetorial, chat RAG e visualização da base de acórdãos.
  */
 export default function JurisprudenciaPage() {
-  const [abaAtiva, setAbaAtiva] = useState('busca');
+  const [abaAtiva, setAbaAtiva] = useState('base');
 
   return (
     <main className="p-6 max-w-5xl mx-auto">
