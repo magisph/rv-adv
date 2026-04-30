@@ -41,7 +41,10 @@ import {
   Plus,
   Trash2,
   History,
+  Scale
 } from 'lucide-react';
+
+import { TRF5SearchPanel } from '@/components/jurisprudencia/TRF5SearchPanel';
 
 // ─── Componente: Card de Acórdão ──────────────────────────────────────────────
 
@@ -662,9 +665,10 @@ function AbaBaseDados() {
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 const ABAS = [
+  { id: 'base', label: 'Base Interna (TNU)', icon: BookOpen },
+  { id: 'trf5', label: 'TRF5 - Ceará', icon: Scale },
   { id: 'busca', label: 'Busca Semântica', icon: Search },
   { id: 'chat', label: 'Chat Jurídico', icon: MessageSquare },
-  { id: 'base', label: 'Base de Dados', icon: BookOpen },
 ];
 
 /**
@@ -728,9 +732,10 @@ export default function JurisprudenciaPage() {
         role="tabpanel"
         aria-labelledby={abaAtiva}
       >
+        {abaAtiva === 'base' && <AbaBaseDados />}
+        {abaAtiva === 'trf5' && <TRF5SearchPanel />}
         {abaAtiva === 'busca' && <AbaBuscaSemantica />}
         {abaAtiva === 'chat' && <AbaChatRAG />}
-        {abaAtiva === 'base' && <AbaBaseDados />}
       </div>
     </main>
   );

@@ -293,3 +293,31 @@ export async function dispararScrapingTNULote(
 
   return { totalColetados, paginas: lotesProcessados };
 }
+
+// ─── Disparar scraping do TRF5 via Edge Function ──────────────────────────────
+/**
+ * Dispara o scraping de acórdãos da Turma Recursal do Ceará (TRF5) via Edge Function.
+ *
+ * @param {object} payload - Objeto de configuração da busca.
+ * @param {string} payload.orgao - Sempre 'TRU'.
+ * @param {string} payload.uf - Sempre 'CE'.
+ * @param {string} payload.texto_livre - Termo de busca (min: 3, max: 100).
+ * @param {string} [payload.data_julgamento_inicio] - Data no formato DD/MM/AAAA.
+ * @param {string} [payload.data_julgamento_fim] - Data no formato DD/MM/AAAA.
+ * @returns {Promise<object>} Dados retornados pela edge function
+ */
+export async function scrapeTRF5(payload) {
+  const { data, error } = await supabase.functions.invoke('scrape-trf5', {
+    body: payload,
+  });
+
+  if (error) {
+    throw new Error(`Erro no scraping TRF5: ${error.message}`);
+  }
+
+  if (!data?.success) {
+    throw new Error(data?.error ?? 'Scraping TRF5 falhou sem mensagem de erro.');
+  }
+
+  return data;
+}
