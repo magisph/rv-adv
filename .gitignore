@@ -50,7 +50,6 @@ desktop.ini
 .aiox-core/
 .serena/
 .claude/settings.local.json
-.aiox/install-log.txt
 *.key
 *.pem
 
@@ -66,6 +65,7 @@ task_plan*.md
 auditoria_execucao_rvadv.md
 
 # Arquivos de teste e Dumps temporários
+tests/
 tnu_dump*.html
 validate_tnu.mjs
 test-webhook.js
