@@ -100,6 +100,11 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {acordao.source && (
+            <Badge variant="outline" className="text-xs uppercase">
+              {acordao.source}{acordao.jurisdicao ? `/${acordao.jurisdicao}` : ''}
+            </Badge>
+          )}
           {showSimilarity && similarityPct && (
             <Badge variant="secondary" className="text-xs">
               {similarityPct} relevância
@@ -665,7 +670,7 @@ function AbaBaseDados() {
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 const ABAS = [
-  { id: 'base', label: 'Base Interna (TNU)', icon: BookOpen },
+  { id: 'base', label: 'Base Interna', icon: BookOpen },
   { id: 'trf5', label: 'TRF5 - Ceará', icon: Scale },
   { id: 'busca', label: 'Busca Semântica', icon: Search },
   { id: 'chat', label: 'Chat Jurídico', icon: MessageSquare },

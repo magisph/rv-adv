@@ -1,0 +1,107 @@
+name: Coleta Automatizada TRF5 CE
+
+on:
+  schedule:
+    # 07:00 UTC = 04:00 BRT
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Modo: daily_sync, initial_import ou manual_range"
+        required: false
+        default: "daily_sync"
+      start_date:
+        description: "Data inicial YYYY-MM-DD. Obrigatoria para manual_range; opcional nos demais modos."
+        required: false
+        default: ""
+      end_date:
+        description: "Data final YYYY-MM-DD. Opcional; daily_sync usa hoje quando vazio."
+        required: false
+        default: ""
+      terms:
+        description: "Termos separados por ponto e virgula. Vazio usa lista previdenciaria padrao."
+        required: false
+        default: ""
+
+jobs:
+  scrape-trf5:
+    name: Coletar julgados TRF5 CE
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Executar coleta TRF5
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INPUT_MODE: ${{ github.event.inputs.mode || 'daily_sync' }}
+          INPUT_START_DATE: ${{ github.event.inputs.start_date || '' }}
+          INPUT_END_DATE: ${{ github.event.inputs.end_date || '' }}
+          INPUT_TERMS: ${{ github.event.inputs.terms || '' }}
+        run: |
+          python3 << 'PYEOF'
+          import json
+          import os
+          import sys
+          import time
+          import urllib.error
+          import urllib.request
+
+          supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+          service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+          if not supabase_url.startswith("https://"):
+              print("FATAL: SUPABASE_URL ausente ou invalida")
+              sys.exit(1)
+          if not service_key:
+              print("FATAL: SUPABASE_SERVICE_ROLE_KEY ausente")
+              sys.exit(1)
+
+          payload = {
+              "mode": os.environ.get("INPUT_MODE") or "daily_sync",
+          }
+          start_date = os.environ.get("INPUT_START_DATE", "").strip()
+          end_date = os.environ.get("INPUT_END_DATE", "").strip()
+          terms = [t.strip() for t in os.environ.get("INPUT_TERMS", "").split(";") if t.strip()]
+          if start_date:
+              payload["startDate"] = start_date
+          if end_date:
+              payload["endDate"] = end_date
+          if terms:
+              payload["terms"] = terms
+          if payload["mode"] == "initial_import":
+              payload.setdefault("startDate", "2026-01-01")
+              payload.setdefault("endDate", "2026-05-04")
+
+          body = json.dumps(payload).encode()
+          url = f"{supabase_url}/functions/v1/scrape-trf5"
+          headers = {
+              "Authorization": f"Bearer {service_key}",
+              "Content-Type": "application/json",
+              "x-region": "sa-east-1",
+          }
+
+          last_error = None
+          for attempt in range(3):
+              try:
+                  req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+                  with urllib.request.urlopen(req, timeout=120) as response:
+                      result = json.loads(response.read())
+                  print(json.dumps(result.get("metrics", result), ensure_ascii=False, indent=2))
+                  if not result.get("success"):
+                      sys.exit(1)
+                  sys.exit(0)
+              except urllib.error.HTTPError as exc:
+                  print(f"HTTP {exc.code}: {exc.read().decode()[:500]}")
+                  sys.exit(1)
+              except Exception as exc:
+                  last_error = exc
+                  wait = 2 ** attempt
+                  print(f"Tentativa {attempt + 1}/3 falhou. Retry em {wait}s.")
+                  time.sleep(wait)
+
+          print(f"FATAL: coleta TRF5 falhou: {last_error}")
+          sys.exit(1)
+          PYEOF

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Loader2, Search, Check, Copy, AlertCircle, FileText } from 'lucide-react';
+import { Loader2, Search, Check, Copy, FileText } from 'lucide-react';
 import { trf5SearchSchema } from '@/lib/validation/schemas/jurisprudenciaSchema';
-import { scrapeTRF5 } from '@/services/jurisprudenciaService';
+import { JURISPRUDENCIA_QUERY_KEYS, scrapeTRF5 } from '@/services/jurisprudenciaService';
 
 import {
   Form,
@@ -84,6 +84,7 @@ function ResultCard({ item }) {
 
 export function TRF5SearchPanel() {
   const [results, setResults] = useState(null);
+  const queryClient = useQueryClient();
 
   const form = useForm({
     resolver: zodResolver(trf5SearchSchema),
@@ -100,9 +101,11 @@ export function TRF5SearchPanel() {
     mutationFn: scrapeTRF5,
     onSuccess: (data) => {
       toast.success('Busca no TRF5 concluída com sucesso!');
+      queryClient.invalidateQueries({ queryKey: JURISPRUDENCIA_QUERY_KEYS.list(0, 20) });
       setResults({
-        total_coletados: data.metrics?.inserted || 0,
-        items: [],
+        metrics: data.metrics ?? {},
+        total_coletados: (data.metrics?.inserted ?? 0) + (data.metrics?.updated ?? 0),
+        items: data.items ?? [],
       });
     },
     onError: (error) => {
@@ -119,15 +122,16 @@ export function TRF5SearchPanel() {
   const onSubmit = (values) => {
     // Mapeamento para o contrato da Edge Function
     const payload = {
-      pesquisa_livre: values.texto_livre,
-      pagina: 1
+      mode: 'manual_range',
+      terms: [values.texto_livre],
+      maxPagesPerTerm: 5,
     };
     
     if (values.data_julgamento_inicio) {
-      payload.data_inicio = formatDateToYMD(values.data_julgamento_inicio);
+      payload.startDate = formatDateToYMD(values.data_julgamento_inicio);
     }
     if (values.data_julgamento_fim) {
-      payload.data_fim = formatDateToYMD(values.data_julgamento_fim);
+      payload.endDate = formatDateToYMD(values.data_julgamento_fim);
     }
 
     setResults(null);
@@ -277,6 +281,15 @@ export function TRF5SearchPanel() {
                 : 'A busca foi concluída, mas nenhum acórdão novo foi coletado (ou todos já existiam na base).'}
             </p>
           </div>
+
+          {results.metrics && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <Badge variant="outline">Encontrados: {results.metrics.found ?? 0}</Badge>
+              <Badge variant="outline">Inseridos: {results.metrics.inserted ?? 0}</Badge>
+              <Badge variant="outline">Atualizados: {results.metrics.updated ?? 0}</Badge>
+              <Badge variant="outline">Ignorados: {results.metrics.ignored ?? 0}</Badge>
+            </div>
+          )}
 
           {results.items && results.items.length > 0 && (
             <div className="space-y-3 mt-4">

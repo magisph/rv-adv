@@ -1,250 +1,438 @@
 // ============================================================================
-// scrape-trf5 — Supabase Edge Function
-// Coleta acórdãos do portal Julia Pesquisa (TRF5 - Turma Recursal Ceará).
-// Integra com ai-proxy para gerar embeddings e deduplica no Supabase.
-// Deploy: supabase functions deploy scrape-trf5 --no-verify-jwt --use-api
+// scrape-trf5 - Supabase Edge Function
+// Coleta julgados TRF5/TRU-CE e persiste no fluxo canonico public.jurisprudences.
 // ============================================================================
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { authenticateRequest } from "../_shared/auth.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { enforceRateLimit, getRateLimitHeaders } from "../_shared/rate-limit.ts";
+import {
+  formatDateToBr,
+  normalizeTrf5Document,
+  type NormalizedJurisprudence,
+  type Trf5RawDocument,
+} from "./normalizer.ts";
+import { DEFAULT_PREVIDENCIARY_TERMS, TRF5_CE_ORGAOS_JULGADORES } from "./terms.ts";
 
-// ─── CORS E CONFIG ───────────────────────────────────────────────────────────
-const ALLOWED_ORIGINS: string[] = Deno.env.get("ALLOWED_ORIGINS")
-  ?.split(",")
-  .map((o) => o.trim())
-  .filter(Boolean) || [
-  "https://rafaelavasconcelos.adv.br",
-  "https://www.rafaelavasconcelos.adv.br",
-  "http://localhost:5173",
-  "http://localhost:3000",
-];
+const TRF5_ENDPOINT =
+  "https://juliapesquisa.trf5.jus.br/julia-pesquisa/api/v1/documento:dt/TRU";
+const SCRAPER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36";
+const PAGE_SIZE = 10;
+const PORTAL_DELAY_MS = 1_000;
+const SIMILARITY_THRESHOLD = 0.85;
+const MAX_TERMS = 20;
+const MAX_PAGES_PER_TERM = 50;
 
-function corsHeaders(origin: string | null): Record<string, string> {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-region, x-service-key",
-  };
+const RequestSchema = z.object({
+  mode: z.enum(["initial_import", "daily_sync", "manual_range"]).default("manual_range"),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  terms: z.array(z.string().trim().min(2).max(120)).max(MAX_TERMS).optional(),
+  maxPagesPerTerm: z.number().int().min(1).max(MAX_PAGES_PER_TERM).optional(),
+  pesquisa_livre: z.string().trim().min(2).max(120).optional(),
+  data_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  data_fim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+type ScrapeRequest = z.infer<typeof RequestSchema>;
+
+interface Trf5Response {
+  recordsTotal?: number;
+  recordsFiltered?: number;
+  data?: Trf5RawDocument[];
+  error?: string | null;
 }
 
-// ─── DELAY E BACKOFF ─────────────────────────────────────────────────────────
-function sleep(ms: number) {
+interface PersistResult {
+  inserted_id: string | null;
+  inserted: boolean;
+  was_duplicate: boolean;
+  similarity_score: number | null;
+  is_unique_teor: boolean;
+  duplicate_reason: string | null;
+}
+
+function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// ─── ZOD SCHEMAS ─────────────────────────────────────────────────────────────
-const RequestSchema = z.object({
-  pesquisa_livre: z.string().optional().default(""),
-  data_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato deve ser YYYY-MM-DD").default("2026-01-01"),
-  data_fim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato deve ser YYYY-MM-DD").default("2026-04-30"),
-  pagina: z.number().min(1).default(1)
-});
+function jsonResponse(
+  body: Record<string, unknown>,
+  status: number,
+  headers: Record<string, string>,
+): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...headers, "Content-Type": "application/json" },
+  });
+}
 
-// A estrutura da resposta da API do TRF5 pode variar, então ajustaremos conforme necessário.
-// Assumindo que a requisição POST para https://juliapesquisa.trf5.jus.br/julia-pesquisa/pesquisa 
-// retorne um JSON paginado com os resultados.
-// Caso seja HTML, seria necessário parsing HTML (tipo cheerio/DOMParser). 
-// Para este SPEC, vamos simular a busca/integração focando na arquitetura.
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
-// ─── INTEGRAÇÃO COM AI-PROXY ─────────────────────────────────────────────────
-async function generateEmbedding(text: string, req: Request): Promise<number[] | null> {
-  const projectUrl = Deno.env.get("SUPABASE_URL");
-  if (!projectUrl) return null;
+function subtractDaysIso(date: string, days: number): string {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() - days);
+  return value.toISOString().slice(0, 10);
+}
 
-  try {
-    const aiProxyUrl = `${projectUrl}/functions/v1/ai-proxy`;
-    const proxyReq = await fetch(aiProxyUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": req.headers.get("authorization") || "",
-        "x-service-key": req.headers.get("x-service-key") || ""
-      },
-      body: JSON.stringify({
-        action: "embedding",
-        text: text,
-      }),
-    });
-
-    if (!proxyReq.ok) {
-      console.error(`Falha no ai-proxy: ${proxyReq.status}`);
-      return null;
-    }
-
-    const proxyData = await proxyReq.json();
-    return proxyData.embedding || proxyData.data || null; // Depende do retorno exato do ai-proxy
-  } catch (error) {
-    console.error("Erro ao gerar embedding:", error);
-    return null;
+function assertDateRange(startDate: string, endDate: string): void {
+  const start = Date.parse(`${startDate}T00:00:00Z`);
+  const end = Date.parse(`${endDate}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
+    throw new Error("Intervalo de datas invalido.");
   }
 }
 
-// ─── HANDLER PRINCIPAL ───────────────────────────────────────────────────────
-serve(async (req: Request) => {
-  const origin = req.headers.get("origin");
-  const headers = corsHeaders(origin);
+function resolveTerms(body: ScrapeRequest): string[] {
+  const rawTerms =
+    body.terms && body.terms.length > 0
+      ? body.terms
+      : body.pesquisa_livre
+        ? [body.pesquisa_livre]
+        : [...DEFAULT_PREVIDENCIARY_TERMS];
 
-  // Preflight
+  return [...new Set(rawTerms.map((term) => term.trim()).filter(Boolean))].slice(0, MAX_TERMS);
+}
+
+async function resolveDateRange(
+  supabase: ReturnType<typeof createClient<any, "public", any>>,
+  body: ScrapeRequest,
+): Promise<{ startDate: string; endDate: string }> {
+  if (body.mode === "initial_import") {
+    return {
+      startDate: body.startDate ?? body.data_inicio ?? "2026-01-01",
+      endDate: body.endDate ?? body.data_fim ?? "2026-05-04",
+    };
+  }
+
+  if (body.mode === "daily_sync") {
+    const { data, error } = await supabase
+      .from("jurisprudences")
+      .select("trial_date")
+      .eq("source", "trf5")
+      .eq("jurisdicao", "CE")
+      .not("trial_date", "is", null)
+      .order("trial_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw new Error("Falha ao consultar ultima data TRF5.");
+
+    const lastTrialDate = typeof data?.trial_date === "string" ? data.trial_date : todayIso();
+    return {
+      startDate: body.startDate ?? subtractDaysIso(lastTrialDate, 5),
+      endDate: body.endDate ?? todayIso(),
+    };
+  }
+
+  return {
+    startDate: body.startDate ?? body.data_inicio ?? "2026-01-01",
+    endDate: body.endDate ?? body.data_fim ?? todayIso(),
+  };
+}
+
+async function fetchWithRetry(url: string, attempts = 3): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json, text/javascript, */*; q=0.01",
+          "User-Agent": SCRAPER_UA,
+          "X-Requested-With": "XMLHttpRequest",
+          Referer: "https://juliapesquisa.trf5.jus.br/julia-pesquisa/pesquisa",
+        },
+      });
+
+      if (response.ok || response.status < 500) return response;
+      lastError = new Error(`TRF5 HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Falha de rede no TRF5.");
+    }
+
+    await sleep(2 ** attempt * 1_000);
+  }
+
+  throw lastError ?? new Error("Falha ao consultar TRF5.");
+}
+
+async function fetchTrf5Page(
+  term: string,
+  orgaoJulgador: string,
+  startDate: string,
+  endDate: string,
+  offset: number,
+): Promise<Trf5Response> {
+  const url = new URL(TRF5_ENDPOINT);
+  const params: Record<string, string> = {
+    pesquisaLivre: term,
+    numeroProcesso: "",
+    orgaoJulgador,
+    relator: "",
+    dataIni: formatDateToBr(startDate),
+    dataFim: formatDateToBr(endDate),
+    draw: "1",
+    start: String(offset),
+    length: String(PAGE_SIZE),
+    orgao: "TRU",
+    secao: "CE",
+  };
+
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+
+  await sleep(PORTAL_DELAY_MS);
+  const response = await fetchWithRetry(url.toString());
+  if (!response.ok) {
+    throw new Error(`TRF5 retornou HTTP ${response.status}`);
+  }
+
+  const payload = (await response.json()) as Trf5Response;
+  if (payload.error) {
+    throw new Error("Portal TRF5 retornou erro na consulta.");
+  }
+
+  return payload;
+}
+
+async function generateEmbedding(text: string, authHeader: string): Promise<number[]> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  if (!supabaseUrl) throw new Error("SUPABASE_URL nao configurada.");
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/ai-proxy`, {
+    method: "POST",
+    headers: {
+      Authorization: authHeader,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "embedding",
+      text: text.slice(0, 25_000),
+      taskType: "RETRIEVAL_DOCUMENT",
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`ai-proxy embedding HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  const embedding = data?.embedding ?? data?.data?.embedding ?? data?.data;
+  if (!Array.isArray(embedding) || embedding.length === 0) {
+    throw new Error("Embedding invalido retornado pelo ai-proxy.");
+  }
+
+  return embedding;
+}
+
+async function persistJurisprudence(
+  supabase: ReturnType<typeof createClient<any, "public", any>>,
+  item: NormalizedJurisprudence,
+  embedding: number[],
+): Promise<PersistResult> {
+  const { data, error } = await supabase.rpc("verificar_inserir_jurisprudencia", {
+    p_process_number: item.process_number,
+    p_process_number_raw: item.process_number_raw,
+    p_trial_date: item.trial_date,
+    p_publication_date: item.trial_date,
+    p_relator: item.relator,
+    p_orgao_julgador: item.orgao_julgador,
+    p_excerpt: item.excerpt,
+    p_full_text: item.full_text,
+    p_tema: item.tema,
+    p_source: item.source,
+    p_jurisdicao: item.jurisdicao,
+    p_source_url: item.source_url,
+    p_external_id: item.external_id,
+    p_embedding: embedding,
+    p_similarity_threshold: SIMILARITY_THRESHOLD,
+  });
+
+  if (error) throw new Error(`Falha ao persistir jurisprudencia: ${error.message}`);
+
+  const first = Array.isArray(data) ? data[0] : data;
+  return {
+    inserted_id: first?.inserted_id ?? null,
+    inserted: Boolean(first?.inserted),
+    was_duplicate: Boolean(first?.was_duplicate),
+    similarity_score: typeof first?.similarity_score === "number" ? first.similarity_score : null,
+    is_unique_teor: Boolean(first?.is_unique_teor),
+    duplicate_reason: first?.duplicate_reason ?? null,
+  };
+}
+
+Deno.serve(async (req: Request) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...headers, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ success: false, error: "Method not allowed" }, 405, corsHeaders);
   }
 
-  // Auth: Aceitar JWT ou Service Key
-  const authHeader = req.headers.get("authorization") ?? "";
-  const serviceKeyHeader = req.headers.get("x-service-key") ?? "";
-  
-  if (!authHeader && !serviceKeyHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...headers, "Content-Type": "application/json" },
-    });
+  const rateLimited = enforceRateLimit(req, origin, 10);
+  if (rateLimited) return rateLimited;
+
+  const auth = await authenticateRequest(req);
+  if (!auth) {
+    return jsonResponse({ success: false, error: "Unauthorized" }, 401, corsHeaders);
+  }
+  if (auth.role !== "service_role") {
+    return jsonResponse({ success: false, error: "Forbidden" }, 403, corsHeaders);
   }
 
-  let bodyData;
+  let parsedBody: ScrapeRequest;
   try {
-    bodyData = await req.json();
+    const body = await req.json();
+    const parsed = RequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return jsonResponse(
+        { success: false, error: "Parametros invalidos", details: parsed.error.issues },
+        400,
+        corsHeaders,
+      );
+    }
+    parsedBody = parsed.data;
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { ...headers, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ success: false, error: "Body JSON invalido" }, 400, corsHeaders);
   }
 
-  const parsedParams = RequestSchema.safeParse(bodyData);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ error: "Parâmetros inválidos", details: parsedParams.error.issues }), {
-      status: 400,
-      headers: { ...headers, "Content-Type": "application/json" },
-    });
-  }
-
-  const params = parsedParams.data;
-  
-  // Supabase Client (Service Role for internal DB operations)
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!supabaseUrl || !serviceRoleKey) {
+    return jsonResponse({ success: false, error: "Supabase env indisponivel" }, 503, corsHeaders);
+  }
 
-  // 1. Chamar o Portal do TRF5
-  // Aqui faríamos a requisição real. Usaremos mock/stub para o SPEC, já que não temos detalhes do JSON do portal
-  // No cenário real, usa fetch() com cookies/sessão e retries.
-  const trf5Url = "https://juliapesquisa.trf5.jus.br/julia-pesquisa/api/pesquisa"; // Hipotético endpoint
-  
-  const payloadTrf5 = {
-    pesquisa_livre: params.pesquisa_livre,
-    orgao: "TRU",
-    secao: "CE",
-    data_julgamento_inicio: params.data_inicio,
-    data_julgamento_fim: params.data_fim,
-    pagina: params.pagina
-  };
+  const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
-  let scrapedResults = [];
   try {
-    // Delay de 1s para rate limiting (Rate Limit estrito 1 req/segundo)
-    await sleep(1000);
+    const { startDate, endDate } = await resolveDateRange(supabase, parsedBody);
+    assertDateRange(startDate, endDate);
 
-    const trfReq = await fetch(trf5Url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"
-      },
-      body: JSON.stringify(payloadTrf5)
-    });
+    const terms = resolveTerms(parsedBody);
+    const maxPagesPerTerm = parsedBody.maxPagesPerTerm ?? (parsedBody.mode === "daily_sync" ? 5 : 20);
+    const authHeader = req.headers.get("authorization") ?? "";
 
-    if (trfReq.ok) {
-      const trfResponse = await trfReq.json();
-      scrapedResults = trfResponse.resultados || []; // Supondo que a API retorna um array 'resultados'
-    } else {
-      console.warn(`Portal TRF5 retornou HTTP ${trfReq.status}`);
-      // Fallback para simulação para testes locais, caso portal esteja inacessível / sem API REST
-      scrapedResults = [
-        {
-          numero_processo: `0500123-45.${new Date().getFullYear()}.4.05.8100`,
-          data_julgamento: params.data_inicio,
-          relator: "JUIZ FEDERAL RELATOR TESTE",
-          orgao_julgador: "1ª RELATORIA DA 1ª TURMA RECURSAL",
-          ementa: "EMENTA: PREVIDENCIÁRIO. BENEFÍCIO ASSISTENCIAL. REQUISITOS PREENCHIDOS. RECURSO DESPROVIDO. " + Math.random()
+    const seenKeys = new Set<string>();
+    const previewItems: Array<Record<string, unknown>> = [];
+    const metrics = {
+      mode: parsedBody.mode,
+      startDate,
+      endDate,
+      terms: terms.length,
+      portalRequests: 0,
+      found: 0,
+      normalized: 0,
+      inserted: 0,
+      updated: 0,
+      ignored: 0,
+      duplicateExact: 0,
+      duplicateSimilarity: 0,
+      unique: 0,
+      errors: 0,
+      truncated: false,
+    };
+
+    for (const term of terms) {
+      for (const orgaoJulgador of TRF5_CE_ORGAOS_JULGADORES) {
+        let offset = 0;
+        let page = 0;
+        let total = Number.POSITIVE_INFINITY;
+
+        while (offset < total && page < maxPagesPerTerm) {
+          const payload = await fetchTrf5Page(term, orgaoJulgador, startDate, endDate, offset);
+          metrics.portalRequests++;
+
+          const rows = Array.isArray(payload.data) ? payload.data : [];
+          total = typeof payload.recordsFiltered === "number"
+            ? payload.recordsFiltered
+            : typeof payload.recordsTotal === "number"
+              ? payload.recordsTotal
+              : rows.length;
+          metrics.found += rows.length;
+
+          if (rows.length === 0) break;
+
+          for (const row of rows) {
+            const normalized = normalizeTrf5Document(row);
+            if (!normalized) {
+              metrics.ignored++;
+              continue;
+            }
+
+            const key = [
+              normalized.process_number,
+              normalized.trial_date ?? "",
+              normalized.orgao_julgador ?? "",
+            ].join("|");
+            if (seenKeys.has(key)) {
+              metrics.ignored++;
+              continue;
+            }
+            seenKeys.add(key);
+            metrics.normalized++;
+
+            try {
+              const embedding = await generateEmbedding(normalized.excerpt, authHeader);
+              const persisted = await persistJurisprudence(supabase, normalized, embedding);
+
+              if (persisted.inserted) metrics.inserted++;
+              else metrics.updated++;
+
+              if (persisted.was_duplicate) metrics.duplicateExact++;
+              if (!persisted.is_unique_teor) metrics.duplicateSimilarity++;
+              if (persisted.is_unique_teor) metrics.unique++;
+
+              if (previewItems.length < 10) {
+                previewItems.push({
+                  id: persisted.inserted_id,
+                  process_number: normalized.process_number,
+                  trial_date: normalized.trial_date,
+                  relator: normalized.relator,
+                  orgao_julgador: normalized.orgao_julgador,
+                  source: normalized.source,
+                  jurisdicao: normalized.jurisdicao,
+                  similarity_score: persisted.similarity_score,
+                  is_unique_teor: persisted.is_unique_teor,
+                });
+              }
+            } catch (error) {
+              metrics.errors++;
+              console.error("[scrape-trf5] item processing failed:", (error as Error).message);
+            }
+          }
+
+          offset += PAGE_SIZE;
+          page++;
         }
-      ];
-    }
-  } catch (e) {
-    console.error("Erro ao acessar TRF5:", e);
-    return new Response(JSON.stringify({ error: "Erro na comunicação com TRF5" }), {
-      status: 502,
-      headers: { ...headers, "Content-Type": "application/json" }
-    });
-  }
 
-  // 2. Processar resultados (Vetorização e Inserção via RPC)
-  let inserted = 0;
-  let uniqueCount = 0;
-  let duplicateCount = 0;
-
-  for (const item of scrapedResults) {
-    const process_number = item.numero_processo || item.process_number;
-    const trial_date = item.data_julgamento || item.trial_date;
-    const relator = item.relator;
-    const orgao_julgador = item.orgao_julgador;
-    const excerpt = item.ementa || item.excerpt;
-
-    if (!process_number || !excerpt) continue;
-
-    // Gerar embedding via ai-proxy
-    const embedding = await generateEmbedding(excerpt, req);
-
-    if (!embedding) {
-      console.warn(`Falha ao gerar embedding para ${process_number}`);
-      continue;
-    }
-
-    // Inserir via RPC no Supabase
-    const { data: rpcData, error: rpcError } = await supabase.rpc("verificar_inserir_jurisprudencia_trf5", {
-      p_process_number: process_number,
-      p_trial_date: trial_date,
-      p_relator: relator,
-      p_orgao_julgador: orgao_julgador,
-      p_excerpt: excerpt,
-      p_embedding: embedding,
-      p_similarity_threshold: 0.85
-    });
-
-    if (rpcError) {
-      console.error(`Erro ao inserir processo ${process_number}:`, rpcError);
-    } else if (rpcData && rpcData.length > 0) {
-      inserted++;
-      if (rpcData[0].was_unique) {
-        uniqueCount++;
-      } else {
-        duplicateCount++;
+        if (offset < total) metrics.truncated = true;
       }
     }
-  }
 
-  // 3. Responder
-  return new Response(
-    JSON.stringify({
-      success: true,
-      metrics: {
-        scraped: scrapedResults.length,
-        inserted: inserted,
-        unique: uniqueCount,
-        duplicates: duplicateCount
-      }
-    }),
-    {
-      status: 200,
-      headers: { ...headers, "Content-Type": "application/json" },
-    }
-  );
+    return jsonResponse(
+      {
+        success: true,
+        metrics,
+        items: previewItems,
+      },
+      200,
+      { ...corsHeaders, ...getRateLimitHeaders(req, 10) },
+    );
+  } catch (error) {
+    console.error("[scrape-trf5] pipeline failed:", (error as Error).message);
+    return jsonResponse(
+      { success: false, error: "Erro ao executar coleta TRF5" },
+      500,
+      corsHeaders,
+    );
+  }
 });
