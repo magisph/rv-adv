@@ -1,5 +1,5 @@
 -- ============================================================================
--- 072_jurisprudences_trf5_canonical_pipeline
+-- 20260504150000_jurisprudences_trf5_canonical_pipeline
 -- Integra TRF5/CE ao fluxo canonico public.jurisprudences.
 -- Nao cria nova tabela de jurisprudencia; descontinua o uso operacional da
 -- tabela legada public.jurisprudencia_trf5 criada na migration 071.
