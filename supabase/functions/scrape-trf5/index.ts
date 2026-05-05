@@ -70,6 +70,10 @@ function jsonResponse(
   });
 }
 
+function sanitizeErrorMessage(message: string): string {
+  return message.replace(/\d{7,}/g, "[number]").slice(0, 240);
+}
+
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -203,13 +207,18 @@ async function fetchTrf5Page(
 async function generateEmbedding(text: string, authHeader: string): Promise<number[]> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   if (!supabaseUrl) throw new Error("SUPABASE_URL nao configurada.");
+  const scraperServiceKey = Deno.env.get("SCRAPER_SERVICE_KEY") ?? "";
+  const headers: Record<string, string> = {
+    Authorization: authHeader,
+    "Content-Type": "application/json",
+  };
+  if (scraperServiceKey) {
+    headers["x-service-key"] = scraperServiceKey;
+  }
 
   const response = await fetch(`${supabaseUrl}/functions/v1/ai-proxy`, {
     method: "POST",
-    headers: {
-      Authorization: authHeader,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       action: "embedding",
       text: text.slice(0, 25_000),
@@ -323,6 +332,7 @@ Deno.serve(async (req: Request) => {
 
     const seenKeys = new Set<string>();
     const previewItems: Array<Record<string, unknown>> = [];
+    const errorSamples: string[] = [];
     const metrics = {
       mode: parsedBody.mode,
       startDate,
@@ -387,8 +397,8 @@ Deno.serve(async (req: Request) => {
               if (persisted.inserted) metrics.inserted++;
               else metrics.updated++;
 
-              if (persisted.was_duplicate) metrics.duplicateExact++;
-              if (!persisted.is_unique_teor) metrics.duplicateSimilarity++;
+              if (persisted.duplicate_reason === "process_number") metrics.duplicateExact++;
+              if (persisted.duplicate_reason === "similarity") metrics.duplicateSimilarity++;
               if (persisted.is_unique_teor) metrics.unique++;
 
               if (previewItems.length < 10) {
@@ -406,7 +416,9 @@ Deno.serve(async (req: Request) => {
               }
             } catch (error) {
               metrics.errors++;
-              console.error("[scrape-trf5] item processing failed:", (error as Error).message);
+              const message = sanitizeErrorMessage((error as Error).message);
+              if (errorSamples.length < 5) errorSamples.push(message);
+              console.error("[scrape-trf5] item processing failed:", message);
             }
           }
 
@@ -423,6 +435,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         metrics,
         items: previewItems,
+        errorSamples,
       },
       200,
       { ...corsHeaders, ...getRateLimitHeaders(req, 10) },

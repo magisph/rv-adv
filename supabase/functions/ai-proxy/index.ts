@@ -32,6 +32,13 @@ function getCorsHeaders(req: Request) {
   };
 }
 
+function isInternalServiceRequest(req: Request): boolean {
+  const configuredKey = Deno.env.get("SCRAPER_SERVICE_KEY") ?? "";
+  const providedKey = req.headers.get("x-service-key") ?? "";
+
+  return configuredKey.length > 0 && providedKey === configuredKey;
+}
+
 // ============================================
 // authenticateRequest imported from _shared/auth.ts
 
@@ -563,7 +570,8 @@ serve(async (req) => {
 
   // 🔒 JWT Authentication Gate
   const auth = await authenticateRequest(req);
-  if (!auth) {
+  const internalServiceRequest = isInternalServiceRequest(req);
+  if (!auth && !internalServiceRequest) {
     return new Response(
       JSON.stringify({ success: false, error: "Unauthorized" }),
       {
