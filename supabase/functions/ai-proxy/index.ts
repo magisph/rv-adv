@@ -32,6 +32,13 @@ function getCorsHeaders(req: Request) {
   };
 }
 
+function isInternalServiceRequest(req: Request): boolean {
+  const configuredKey = Deno.env.get("SCRAPER_SERVICE_KEY") ?? "";
+  const providedKey = req.headers.get("x-service-key") ?? "";
+
+  return configuredKey.length > 0 && providedKey === configuredKey;
+}
+
 // ============================================
 // authenticateRequest imported from _shared/auth.ts
 
@@ -39,6 +46,8 @@ function getCorsHeaders(req: Request) {
 // Timeout helper — AbortController com deadline
 // ============================================
 const AI_TIMEOUT_MS = 45_000; // 45 segundos
+const EMBEDDING_TIMEOUT_MS = 15_000;
+const MAX_EMBEDDING_TEXT_LENGTH = 25_000;
 
 function createTimeoutSignal(ms: number = AI_TIMEOUT_MS): { signal: AbortSignal; clear: () => void } {
   const controller = new AbortController();
@@ -218,6 +227,53 @@ async function callGeminiVision(
   }
 }
 
+async function callGeminiEmbedding(
+  text: string,
+  taskType = "RETRIEVAL_DOCUMENT"
+): Promise<number[]> {
+  const providers = getProviders();
+  const apiKey = providers.GEMINI.apiKey;
+  const url = `${providers.GEMINI.baseUrl}/models/gemini-embedding-001:embedContent`;
+  const validTaskTypes = [
+    "RETRIEVAL_QUERY",
+    "RETRIEVAL_DOCUMENT",
+    "SEMANTIC_SIMILARITY",
+    "CLASSIFICATION",
+    "CLUSTERING",
+  ];
+  const resolvedTaskType = validTaskTypes.includes(taskType)
+    ? taskType
+    : "RETRIEVAL_DOCUMENT";
+
+  const { signal, clear } = createTimeoutSignal(EMBEDDING_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${url}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "models/gemini-embedding-001",
+        content: { parts: [{ text: text.trim().slice(0, MAX_EMBEDDING_TEXT_LENGTH) }] },
+        taskType: resolvedTaskType,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini embedding ${response.status}`);
+    }
+
+    const data = await response.json();
+    const embedding: number[] | undefined = data?.embedding?.values;
+    if (!Array.isArray(embedding) || embedding.length === 0) {
+      throw new Error("Gemini embedding returned empty vector");
+    }
+
+    return embedding;
+  } finally {
+    clear();
+  }
+}
+
 async function callOpenRouterVision(
   prompt: string,
   imageBase64: string,
@@ -354,6 +410,7 @@ interface RequestBody {
   variables?: Record<string, unknown>;
   document_type?: string;
   text?: string;
+  taskType?: string;
   process_data?: unknown;
   analysis_type?: string;
   response_json_schema?: unknown;
@@ -489,6 +546,16 @@ Forneça análises objetivas com fundamentação legal.`;
   }
 }
 
+async function handleEmbedding(body: RequestBody): Promise<{ embedding: number[]; dimensions: number }> {
+  const text = body.text || body.prompt || "";
+  if (typeof text !== "string" || text.trim().length === 0) {
+    throw new Error("Campo 'text' e obrigatorio para embeddings");
+  }
+
+  const embedding = await callGeminiEmbedding(text, body.taskType || "RETRIEVAL_DOCUMENT");
+  return { embedding, dimensions: embedding.length };
+}
+
 // ============================================
 // Main serve handler
 // ============================================
@@ -503,7 +570,8 @@ serve(async (req) => {
 
   // 🔒 JWT Authentication Gate
   const auth = await authenticateRequest(req);
-  if (!auth) {
+  const internalServiceRequest = isInternalServiceRequest(req);
+  if (!auth && !internalServiceRequest) {
     return new Response(
       JSON.stringify({ success: false, error: "Unauthorized" }),
       {
@@ -544,6 +612,9 @@ serve(async (req) => {
         break;
       case "analyze":
         result = await handleAnalyze(body);
+        break;
+      case "embedding":
+        result = await handleEmbedding(body);
         break;
       default:
         return new Response(

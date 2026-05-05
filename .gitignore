@@ -74,3 +74,9 @@ add_link_column.sql
 
 # Configurações de Ferramentas
 .antigravityignore
+
+# Backups locais de banco
+backups/
+*.dump
+*.backup
+*.sql.gz

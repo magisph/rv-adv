@@ -82,11 +82,34 @@ function decodeHeaderUnsafe(token: string): { alg?: string; kid?: string } | nul
  *
  * Fluxo de verificação:
  *   1. Se o token for ES256 → verifica via JWKS (novo padrão Supabase)
- *   2. Se o token for HS256 com role=service_role → aceita sem verificar assinatura
- *      (service_role key é usada apenas internamente, não exposta ao browser)
+ *   2. Se o token for HS256 → aceita apenas role=service_role validado pelo
+ *      REST do Supabase, que verifica a assinatura real do token.
  *   3. Rejeita tokens anônimos (role === 'anon')
  *   4. Rejeita tokens expirados
  */
+async function validateServiceRoleToken(token: string): Promise<boolean> {
+  if (!SUPABASE_URL) return false;
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: token,
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (response.ok) return true;
+
+    console.warn(`[auth] Supabase rejected HS256 service_role token: ${response.status}`);
+    return false;
+  } catch (e) {
+    console.error("[auth] HS256 service_role validation failed:", (e as Error).message);
+    return false;
+  }
+}
+
 export async function authenticateRequest(
   req: Request
 ): Promise<AuthPayload | null> {
@@ -130,9 +153,10 @@ export async function authenticateRequest(
     }
   }
 
-  // ── HS256: legado (service_role, anon, e usuários em projetos antigos) ────
-  // Decodifica sem verificar assinatura (aceitável para service_role interno).
-  // O service_role key NUNCA é exposto ao browser — apenas usado server-side.
+  // ── HS256: legado (service_role) ──────────────────────────────────────────
+  // Nunca confiar apenas no payload HS256 decodificado. Como o Edge Runtime
+  // roda com verify_jwt=false para suportar ES256, validamos service_role via
+  // REST do Supabase antes de aceitar o token.
   if (alg === "HS256") {
     const payload = decodePayloadUnsafe(token);
     if (!payload) return null;
@@ -144,17 +168,12 @@ export async function authenticateRequest(
       return null;
     }
 
-    // Aceita service_role (chamadas internas/testes)
+    // Aceita somente service_role validado pelo REST do Supabase.
     if (payload.role === "service_role") {
-      return payload;
+      const isValidServiceRole = await validateServiceRoleToken(token);
+      return isValidServiceRole ? payload : null;
     }
 
-    // Aceita usuários autenticados (projetos que ainda usam HS256)
-    if (payload.role === "authenticated" && payload.sub) {
-      return payload;
-    }
-
-    // Rejeita anon
     console.warn(`[auth] Rejected HS256 token with role: ${payload.role}`);
     return null;
   }
