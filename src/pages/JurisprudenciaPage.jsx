@@ -5,8 +5,8 @@
 // Skill: coding-standards (named exports, JSDoc, consistent naming)
 //
 // DESIGN DECISIONS:
-// - Coleta de acórdãos é automatizada via GitHub Actions (cron diário 04h BRT)
-// - TRF5/CE também possui painel operacional protegido para execuções pontuais
+// - Coleta de acórdãos é automatizada por rotinas técnicas fora do frontend
+// - TRF5/CE possui painel query-only para consultar a Base Interna
 // - Ementas são exibidas COMPLETAS (sem line-clamp) para facilitar cópia em peças
 // - Filtro: apenas acórdãos reais (sem decisões monocráticas, sem votos)
 // - Ordenação: data do julgamento (trial_date) decrescente
@@ -573,7 +573,7 @@ const PAGE_SIZE = 20;
 
 /**
  * Aba de visualização da Base Interna multi-fonte de jurisprudência.
- * A base recebe importações automatizadas e operações manuais, incluindo TNU e TRF5/CE.
+ * A base recebe coletas automatizadas e importações técnicas controladas, incluindo TNU e TRF5/CE.
  * Exibe acórdãos com ementa COMPLETA e paginação.
  */
 function AbaBaseDados() {
@@ -616,7 +616,7 @@ function AbaBaseDados() {
           <div className="flex items-center gap-1.5 mt-1">
             <Clock className="w-3.5 h-3.5 text-green-600" aria-hidden="true" />
             <p className="text-xs text-slate-500">
-              Base multi-fonte com coletas automatizadas e importação operacional TRF5/CE
+              Base multi-fonte com coletas automatizadas e importações técnicas controladas
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 mt-2">
@@ -637,7 +637,7 @@ function AbaBaseDados() {
       )}
 
       {data?.data && data.data.length === 0 && !isFetching && (
-        <EmptyState message="Nenhum acórdão na Base Interna. Use a importação operacional TRF5/CE ou aguarde as coletas automatizadas." />
+        <EmptyState message="Nenhum acórdão disponível na Base Interna para exibição." />
       )}
 
       {data?.data && data.data.length > 0 && (

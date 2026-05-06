@@ -17,7 +17,7 @@ import {
 import { DEFAULT_PREVIDENCIARY_TERMS, TRF5_CE_ORGAOS_JULGADORES } from "./terms.ts";
 
 const TRF5_ENDPOINT =
-  "https://juliapesquisa.trf5.jus.br/julia-pesquisa/api/v1/documento:dt/TRU";
+  "https://juliapesquisa.trf5.jus.br/julia-pesquisa/api/v1/documento:dt/TR_CE";
 const SCRAPER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36";
 const PAGE_SIZE = 10;
@@ -32,6 +32,7 @@ const RequestSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   terms: z.array(z.string().trim().min(2).max(120)).max(MAX_TERMS).optional(),
+  orgaosJulgadores: z.array(z.string().trim().min(2).max(160)).max(12).optional(),
   maxPagesPerTerm: z.number().int().min(1).max(MAX_PAGES_PER_TERM).optional(),
   pesquisa_livre: z.string().trim().min(2).max(120).optional(),
   data_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -111,6 +112,15 @@ function getTrustedApplicationRole(auth: Awaited<ReturnType<typeof authenticateR
   if (typeof appRole === "string" && appRole.trim()) return appRole;
 
   return null;
+}
+
+function resolveOrgaosJulgadores(body: ScrapeRequest): string[] {
+  if (!body.orgaosJulgadores || body.orgaosJulgadores.length === 0) {
+    return [...TRF5_CE_ORGAOS_JULGADORES];
+  }
+
+  const allowed = new Set<string>(TRF5_CE_ORGAOS_JULGADORES);
+  return [...new Set(body.orgaosJulgadores.map((orgao) => orgao.trim()).filter((orgao) => allowed.has(orgao)))];
 }
 
 function canRunScrape(auth: Awaited<ReturnType<typeof authenticateRequest>>): boolean {
@@ -201,8 +211,6 @@ async function fetchTrf5Page(
     draw: "1",
     start: String(offset),
     length: String(PAGE_SIZE),
-    orgao: "TRU",
-    secao: "CE",
   };
 
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
@@ -233,18 +241,29 @@ async function generateEmbedding(text: string, authHeader: string): Promise<numb
     headers["x-service-key"] = scraperServiceKey;
   }
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/ai-proxy`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      action: "embedding",
-      text: text.slice(0, 25_000),
-      taskType: "RETRIEVAL_DOCUMENT",
-    }),
-  });
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    response = await fetch(`${supabaseUrl}/functions/v1/ai-proxy`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        action: "embedding",
+        text: text.slice(0, 25_000),
+        taskType: "RETRIEVAL_DOCUMENT",
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(`ai-proxy embedding HTTP ${response.status}`);
+    if (response.ok || response.status !== 429) break;
+
+    const retryAfterSeconds = Number(response.headers.get("retry-after"));
+    const retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? retryAfterSeconds * 1_000
+      : 30_000;
+    await sleep(retryAfterMs);
+  }
+
+  if (!response?.ok) {
+    throw new Error(`ai-proxy embedding HTTP ${response?.status ?? "unknown"}`);
   }
 
   const data = await response.json();
@@ -349,6 +368,14 @@ Deno.serve(async (req: Request) => {
     assertDateRange(startDate, endDate);
 
     const terms = resolveTerms(parsedBody);
+    const orgaosJulgadores = resolveOrgaosJulgadores(parsedBody);
+    if (orgaosJulgadores.length === 0) {
+      return jsonResponse(
+        { success: false, error: "Orgao julgador TRF5/CE invalido." },
+        400,
+        corsHeaders,
+      );
+    }
     const maxPagesPerTerm = parsedBody.maxPagesPerTerm ?? (parsedBody.mode === "daily_sync" ? 5 : 20);
     const authHeader = req.headers.get("authorization") ?? "";
 
@@ -360,6 +387,7 @@ Deno.serve(async (req: Request) => {
       startDate,
       endDate,
       terms: terms.length,
+      orgaosJulgadores: orgaosJulgadores.length,
       portalRequests: 0,
       found: 0,
       normalized: 0,
@@ -374,7 +402,7 @@ Deno.serve(async (req: Request) => {
     };
 
     for (const term of terms) {
-      for (const orgaoJulgador of TRF5_CE_ORGAOS_JULGADORES) {
+      for (const orgaoJulgador of orgaosJulgadores) {
         let offset = 0;
         let page = 0;
         let total = Number.POSITIVE_INFINITY;

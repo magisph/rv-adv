@@ -1,4 +1,6 @@
 export const DEFAULT_PREVIDENCIARY_TERMS = [
+  "previdenciario",
+  "beneficio",
   "aposentadoria por idade do segurado especial",
   "aposentadoria por idade rural",
   "aposentadoria por idade urbana",
@@ -18,7 +20,16 @@ export const DEFAULT_PREVIDENCIARY_TERMS = [
 ] as const;
 
 export const TRF5_CE_ORGAOS_JULGADORES = [
-  "REL. 1ª TR/CE",
-  "REL. 2ª TR/CE",
-  "REL. 3ª TR/CE",
+  "PRESIDÊNCIA DA 1ª TURMA RECURSAL DO CEARÁ",
+  "PRESIDÊNCIA DA 2ª TURMA RECURSAL DO CEARÁ",
+  "PRESIDÊNCIA DA 3ª TURMA RECURSAL DO CEARÁ",
+  "1ª RELATORIA DA 1ª TURMA RECURSAL DO CEARÁ",
+  "2ª RELATORIA DA 1ª TURMA RECURSAL DO CEARÁ",
+  "3ª RELATORIA DA 1ª TURMA RECURSAL DO CEARÁ",
+  "1ª RELATORIA DA 2ª TURMA RECURSAL DO CEARÁ",
+  "2ª RELATORIA DA 2ª TURMA RECURSAL DO CEARÁ",
+  "3ª RELATORIA DA 2ª TURMA RECURSAL DO CEARÁ",
+  "1ª RELATORIA DA 3ª TURMA RECURSAL DO CEARÁ",
+  "2ª RELATORIA DA 3ª TURMA RECURSAL DO CEARÁ",
+  "3ª RELATORIA DA 3ª TURMA RECURSAL DO CEARÁ",
 ] as const;

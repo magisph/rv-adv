@@ -93,7 +93,8 @@ export function isCearaTrf5Document(raw: Trf5RawDocument): boolean {
   const orgaoJulgador = nullIfEmpty(raw.orgaoJulgador)?.toUpperCase() ?? "";
   const processNumber = normalizeProcessNumber(raw.numeroProcesso) ?? "";
 
-  return orgaoJulgador.includes("/CE") || processNumber.includes("40581");
+  return orgaoJulgador.includes("/CE") || orgaoJulgador.includes("CEARA") ||
+    orgaoJulgador.includes("CEARÁ") || processNumber.includes("40581");
 }
 
 export function normalizeTrf5Document(raw: Trf5RawDocument): NormalizedJurisprudence | null {
