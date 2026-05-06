@@ -104,14 +104,11 @@ function resolveTerms(body: ScrapeRequest): string[] {
   return [...new Set(rawTerms.map((term) => term.trim()).filter(Boolean))].slice(0, MAX_TERMS);
 }
 
-function getApplicationRole(auth: Awaited<ReturnType<typeof authenticateRequest>>): string | null {
+function getTrustedApplicationRole(auth: Awaited<ReturnType<typeof authenticateRequest>>): string | null {
   if (!auth) return null;
 
   const appRole = auth.app_metadata?.user_role;
   if (typeof appRole === "string" && appRole.trim()) return appRole;
-
-  const userRole = auth.user_metadata?.role;
-  if (typeof userRole === "string" && userRole.trim()) return userRole;
 
   return null;
 }
@@ -120,7 +117,7 @@ function canRunScrape(auth: Awaited<ReturnType<typeof authenticateRequest>>): bo
   if (!auth) return false;
   if (auth.role === "service_role") return true;
 
-  return auth.role === "authenticated" && STAFF_ROLES.has(getApplicationRole(auth) ?? "");
+  return auth.role === "authenticated" && STAFF_ROLES.has(getTrustedApplicationRole(auth) ?? "");
 }
 
 async function resolveDateRange(
@@ -315,7 +312,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ success: false, error: "Unauthorized" }, 401, corsHeaders);
   }
   if (!canRunScrape(auth)) {
-    console.warn("[scrape-trf5] acesso negado para role:", auth.role, getApplicationRole(auth) ?? "sem_perfil");
+    console.warn("[scrape-trf5] acesso negado para role:", auth.role, getTrustedApplicationRole(auth) ?? "sem_perfil");
     return jsonResponse(
       { success: false, error: "Acesso restrito a equipe juridica autorizada." },
       403,
