@@ -25,6 +25,7 @@ const PORTAL_DELAY_MS = 1_000;
 const SIMILARITY_THRESHOLD = 0.85;
 const MAX_TERMS = 20;
 const MAX_PAGES_PER_TERM = 50;
+const STAFF_ROLES = new Set(["admin", "dono", "advogado"]);
 
 const RequestSchema = z.object({
   mode: z.enum(["initial_import", "daily_sync", "manual_range"]).default("manual_range"),
@@ -103,14 +104,33 @@ function resolveTerms(body: ScrapeRequest): string[] {
   return [...new Set(rawTerms.map((term) => term.trim()).filter(Boolean))].slice(0, MAX_TERMS);
 }
 
+function getApplicationRole(auth: Awaited<ReturnType<typeof authenticateRequest>>): string | null {
+  if (!auth) return null;
+
+  const appRole = auth.app_metadata?.user_role;
+  if (typeof appRole === "string" && appRole.trim()) return appRole;
+
+  const userRole = auth.user_metadata?.role;
+  if (typeof userRole === "string" && userRole.trim()) return userRole;
+
+  return null;
+}
+
+function canRunScrape(auth: Awaited<ReturnType<typeof authenticateRequest>>): boolean {
+  if (!auth) return false;
+  if (auth.role === "service_role") return true;
+
+  return auth.role === "authenticated" && STAFF_ROLES.has(getApplicationRole(auth) ?? "");
+}
+
 async function resolveDateRange(
   supabase: ReturnType<typeof createClient<any, "public", any>>,
   body: ScrapeRequest,
 ): Promise<{ startDate: string; endDate: string }> {
   if (body.mode === "initial_import") {
     return {
-      startDate: body.startDate ?? body.data_inicio ?? "2026-01-01",
-      endDate: body.endDate ?? body.data_fim ?? "2026-05-04",
+      startDate: body.startDate ?? body.data_inicio ?? "2025-01-01",
+      endDate: body.endDate ?? body.data_fim ?? "2026-05-05",
     };
   }
 
@@ -294,8 +314,13 @@ Deno.serve(async (req: Request) => {
   if (!auth) {
     return jsonResponse({ success: false, error: "Unauthorized" }, 401, corsHeaders);
   }
-  if (auth.role !== "service_role") {
-    return jsonResponse({ success: false, error: "Forbidden" }, 403, corsHeaders);
+  if (!canRunScrape(auth)) {
+    console.warn("[scrape-trf5] acesso negado para role:", auth.role, getApplicationRole(auth) ?? "sem_perfil");
+    return jsonResponse(
+      { success: false, error: "Acesso restrito a equipe juridica autorizada." },
+      403,
+      corsHeaders,
+    );
   }
 
   let parsedBody: ScrapeRequest;

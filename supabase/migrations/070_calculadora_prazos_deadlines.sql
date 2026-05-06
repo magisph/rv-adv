@@ -27,7 +27,7 @@ COMMENT ON COLUMN public.deadlines.prazo_total_dias_corridos IS
 
 -- Índice para consultas de vencimentos próximos (dashboard Kanban)
 CREATE INDEX IF NOT EXISTS idx_deadlines_due_date_processo
-  ON public.deadlines(due_date, processo_id)
+  ON public.deadlines(due_date, process_id)
   WHERE due_date IS NOT NULL;
 
 -- Índice para filtrar prazos com recesso aplicado (relatórios)
