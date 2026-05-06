@@ -18,6 +18,7 @@ export const JURISPRUDENCIA_QUERY_KEYS = {
   chat: (query) => ['jurisprudencia', 'chat', query],
   listBase: () => ['jurisprudencia', 'list'],
   list: (page, limit) => ['jurisprudencia', 'list', page, limit],
+  trf5CE: (page, limit, filters = {}) => ['jurisprudencia', 'trf5-ce', page, limit, filters],
   sessions: () => ['jurisprudencia', 'chat-sessions'],
   sessionMessages: (sessionId) => ['jurisprudencia', 'chat-messages', sessionId],
 };
@@ -211,6 +212,62 @@ export async function listarJurisprudencias(page = 0, limit = 20, orderBy = 'pub
   return { data: data ?? [], count: count ?? 0 };
 }
 
+/**
+ * Lista julgados TRF5/CE ja persistidos na Base Interna.
+ * Esta consulta nao dispara scraping nem operacao tecnica de importacao.
+ *
+ * @param {number} [page=0] - Pagina atual (0-indexed)
+ * @param {number} [limit=10] - Itens por pagina
+ * @param {{termo?: string, startDate?: string, endDate?: string}} [filters] - Filtros de consulta
+ * @returns {Promise<{data: Array, count: number}>}
+ */
+export async function listarJurisprudenciasTRF5CE(page = 0, limit = 10, filters = {}) {
+  const from = page * limit;
+  const to = from + limit - 1;
+  const termo = typeof filters.termo === 'string' ? filters.termo.trim() : '';
+
+  let query = supabase
+    .from('jurisprudences')
+    .select('id, process_number, publication_date, trial_date, relator, tema, excerpt, full_text, source, jurisdicao, orgao_julgador, source_url, external_id, similarity_score, is_unique_teor', {
+      count: 'exact',
+    })
+    .eq('source', 'trf5')
+    .eq('jurisdicao', 'CE');
+
+  if (filters.startDate) {
+    query = query.gte('trial_date', filters.startDate);
+  }
+
+  if (filters.endDate) {
+    query = query.lte('trial_date', filters.endDate);
+  }
+
+  if (termo) {
+    const escaped = termo.replace(/[%_]/g, '\\$&');
+    query = query.or(
+      [
+        `process_number.ilike.%${escaped}%`,
+        `process_number_raw.ilike.%${escaped}%`,
+        `relator.ilike.%${escaped}%`,
+        `orgao_julgador.ilike.%${escaped}%`,
+        `excerpt.ilike.%${escaped}%`,
+        `full_text.ilike.%${escaped}%`,
+      ].join(',')
+    );
+  }
+
+  const { data, error, count } = await query
+    .order('trial_date', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    throw new Error(`Falha ao listar julgados TRF5/CE: ${error.message}`);
+  }
+
+  return { data: data ?? [], count: count ?? 0 };
+}
+
 // ─── Disparar scraping da TNU via Edge Function ──────────────────────────────
 /**
  * Dispara o scraping de acórdãos da TNU via Edge Function scrape-tnu.
@@ -294,93 +351,4 @@ export async function dispararScrapingTNULote(
   }
 
   return { totalColetados, paginas: lotesProcessados };
-}
-
-// ─── Disparar scraping do TRF5 via Edge Function ──────────────────────────────
-/**
- * Dispara o scraping de acórdãos da Turma Recursal do Ceará (TRF5) via Edge Function.
- *
- * @param {object} payload - Objeto de configuração da busca.
- * @param {'initial_import'|'daily_sync'|'manual_range'} [payload.mode='manual_range']
- * @param {string[]} [payload.terms] - Termos de busca (2-120 caracteres, maximo 20 termos).
- * @param {string} [payload.pesquisa_livre] - Alternativa legada para um unico termo.
- * @param {string} [payload.startDate] - Data inicial no formato YYYY-MM-DD.
- * @param {string} [payload.endDate] - Data final no formato YYYY-MM-DD.
- * @param {number} [payload.maxPagesPerTerm] - Inteiro entre 1 e 50. Quando omitido, o backend define o padrão por modo.
- * @returns {Promise<{success: boolean, metrics: object, items: Array, errorSamples?: string[]}>}
- */
-const TRF5_MAX_PAGES_PER_TERM = 50;
-
-function formatTRF5Details(details) {
-  if (!Array.isArray(details) || details.length === 0) return '';
-
-  return details
-    .slice(0, 3)
-    .map((detail) => {
-      const field = Array.isArray(detail.path) && detail.path.length > 0
-        ? detail.path.join('.')
-        : 'payload';
-      return `${field}: ${detail.message}`;
-    })
-    .join('; ');
-}
-
-function buildTRF5ErrorMessage(data, fallbackMessage) {
-  const baseMessage = data?.error || fallbackMessage || 'Scraping TRF5 falhou sem mensagem de erro.';
-  const details = formatTRF5Details(data?.details);
-
-  return details ? `${baseMessage} (${details})` : baseMessage;
-}
-
-function normalizeTRF5Payload(payload = {}) {
-  const hasMaxPagesPerTerm = payload.maxPagesPerTerm !== undefined
-    && payload.maxPagesPerTerm !== null
-    && payload.maxPagesPerTerm !== '';
-  const maxPagesPerTerm = hasMaxPagesPerTerm ? Number(payload.maxPagesPerTerm) : undefined;
-
-  if (
-    hasMaxPagesPerTerm
-    && (!Number.isInteger(maxPagesPerTerm) || maxPagesPerTerm < 1 || maxPagesPerTerm > TRF5_MAX_PAGES_PER_TERM)
-  ) {
-    throw new Error(`maxPagesPerTerm deve ser um inteiro entre 1 e ${TRF5_MAX_PAGES_PER_TERM}.`);
-  }
-
-  const terms = Array.isArray(payload.terms)
-    ? payload.terms.map((term) => String(term).trim()).filter(Boolean)
-    : undefined;
-
-  return {
-    ...payload,
-    ...(terms ? { terms } : {}),
-    ...(hasMaxPagesPerTerm ? { maxPagesPerTerm } : {}),
-  };
-}
-
-export async function scrapeTRF5(payload) {
-  const body = normalizeTRF5Payload(payload);
-
-  const { data, error } = await supabase.functions.invoke('scrape-trf5', {
-    body,
-  });
-
-  if (error) {
-    let errorMessage = error.message;
-
-    if (error.context && typeof error.context.json === 'function') {
-      try {
-        const errorBody = await error.context.json();
-        errorMessage = buildTRF5ErrorMessage(errorBody, error.message);
-      } catch {
-        errorMessage = error.message;
-      }
-    }
-
-    throw new Error(`Erro no scraping TRF5: ${errorMessage}`);
-  }
-
-  if (!data?.success) {
-    throw new Error(buildTRF5ErrorMessage(data));
-  }
-
-  return data;
 }

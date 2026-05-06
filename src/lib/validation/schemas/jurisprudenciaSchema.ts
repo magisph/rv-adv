@@ -29,6 +29,27 @@ const optionalBrDateSchema = z
     message: 'Data invalida. Use o formato DD/MM/AAAA',
   });
 
+export const trf5BaseSearchSchema = z.object({
+  termo_busca: z
+    .string()
+    .trim()
+    .max(120, 'Use no maximo 120 caracteres')
+    .optional()
+    .default(''),
+  data_julgamento_inicio: optionalBrDateSchema,
+  data_julgamento_fim: optionalBrDateSchema,
+}).refine(data => {
+  if (data.data_julgamento_inicio && data.data_julgamento_fim) {
+    const inicio = parseDateBr(data.data_julgamento_inicio);
+    const fim = parseDateBr(data.data_julgamento_fim);
+    return fim >= inicio;
+  }
+  return true;
+}, {
+  message: 'A data de fim deve ser maior ou igual a data de inicio',
+  path: ['data_julgamento_fim'],
+});
+
 export const trf5SearchSchema = z.object({
   orgao: z.literal('TRU'),
   uf: z.literal('CE'),
@@ -64,3 +85,4 @@ export const trf5SearchSchema = z.object({
 });
 
 export type TRF5SearchFormValues = z.infer<typeof trf5SearchSchema>;
+export type TRF5BaseSearchFormValues = z.infer<typeof trf5BaseSearchSchema>;
