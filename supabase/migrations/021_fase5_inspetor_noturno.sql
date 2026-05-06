@@ -79,11 +79,35 @@ $$ LANGUAGE plpgsql;
 -- -------------------------------------------------------
 -- AGENDAMENTO (pg_cron)
 -- -------------------------------------------------------
-DO $$
+DO $do$
 BEGIN
-    PERFORM cron.unschedule('nightly-audit');
+    IF to_regprocedure('cron.unschedule(text)') IS NOT NULL THEN
+        PERFORM cron.unschedule('nightly-audit');
+    ELSIF to_regprocedure('pg_catalog.unschedule(text)') IS NOT NULL THEN
+        PERFORM pg_catalog.unschedule('nightly-audit');
+    END IF;
 EXCEPTION
     WHEN others THEN NULL;
-END $$;
+END $do$;
 
-SELECT cron.schedule('nightly-audit', '0 3 * * *', $$SELECT rvadv_nightly_audit()$$);
+DO $do$
+BEGIN
+    IF to_regprocedure('cron.schedule(text,text,text)') IS NOT NULL THEN
+        PERFORM cron.schedule(
+            'nightly-audit',
+            '0 3 * * *',
+            $$SELECT rvadv_nightly_audit()$$
+        );
+    ELSIF to_regprocedure('pg_catalog.schedule(text,text,text)') IS NOT NULL THEN
+        PERFORM pg_catalog.schedule(
+            'nightly-audit',
+            '0 3 * * *',
+            $$SELECT rvadv_nightly_audit()$$
+        );
+    ELSE
+        RAISE NOTICE 'pg_cron não disponível neste ambiente; nightly-audit não foi agendado.';
+    END IF;
+EXCEPTION
+    WHEN others THEN
+        RAISE NOTICE 'pg_cron schedule ignorado neste ambiente: %', SQLERRM;
+END $do$;
