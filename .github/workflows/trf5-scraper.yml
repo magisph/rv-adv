@@ -11,11 +11,11 @@ on:
         required: false
         default: "daily_sync"
       start_date:
-        description: "Data inicial YYYY-MM-DD. Obrigatoria para manual_range; opcional nos demais modos."
+        description: "Data inicial YYYY-MM-DD. Obrigatoria para manual_range; initial_import usa 2025-01-01 quando vazio."
         required: false
         default: ""
       end_date:
-        description: "Data final YYYY-MM-DD. Opcional; daily_sync usa hoje quando vazio."
+        description: "Data final YYYY-MM-DD. initial_import usa 2026-05-05 quando vazio; daily_sync usa hoje quando vazio."
         required: false
         default: ""
       terms:
@@ -72,8 +72,8 @@ jobs:
           if terms:
               payload["terms"] = terms
           if payload["mode"] == "initial_import":
-              payload.setdefault("startDate", "2026-01-01")
-              payload.setdefault("endDate", "2026-05-04")
+              payload.setdefault("startDate", "2025-01-01")
+              payload.setdefault("endDate", "2026-05-05")
 
           body = json.dumps(payload).encode()
           url = f"{supabase_url}/functions/v1/scrape-trf5"
@@ -87,10 +87,13 @@ jobs:
           for attempt in range(3):
               try:
                   req = urllib.request.Request(url, data=body, headers=headers, method="POST")
-                  with urllib.request.urlopen(req, timeout=120) as response:
+                  with urllib.request.urlopen(req, timeout=900) as response:
                       result = json.loads(response.read())
                   print(json.dumps(result.get("metrics", result), ensure_ascii=False, indent=2))
                   if not result.get("success"):
+                      sys.exit(1)
+                  if result.get("metrics", {}).get("errors", 0) > 0:
+                      print("FATAL: coleta TRF5 retornou erros por item")
                       sys.exit(1)
                   sys.exit(0)
               except urllib.error.HTTPError as exc:

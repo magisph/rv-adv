@@ -13,8 +13,10 @@ export const EMBEDDING_TASK_TYPES = {
 
 // ─── Cache keys para React Query ─────────────────────────────────────────────
 export const JURISPRUDENCIA_QUERY_KEYS = {
+  root: ['jurisprudencia'],
   search: (query) => ['jurisprudencia', 'search', query],
   chat: (query) => ['jurisprudencia', 'chat', query],
+  listBase: () => ['jurisprudencia', 'list'],
   list: (page, limit) => ['jurisprudencia', 'list', page, limit],
   sessions: () => ['jurisprudencia', 'chat-sessions'],
   sessionMessages: (sessionId) => ['jurisprudencia', 'chat-messages', sessionId],
@@ -22,7 +24,7 @@ export const JURISPRUDENCIA_QUERY_KEYS = {
 
 // ─── Busca semântica via Edge Function + RPC ──────────────────────────────────
 /**
- * Realiza busca semântica vetorial na base de jurisprudência da TNU.
+ * Realiza busca semântica vetorial na Base Interna de jurisprudência.
  * Internamente: gera embedding via Gemini → chama RPC buscar_jurisprudencia.
  *
  * @param {string} query - Texto da consulta jurídica
@@ -299,24 +301,85 @@ export async function dispararScrapingTNULote(
  * Dispara o scraping de acórdãos da Turma Recursal do Ceará (TRF5) via Edge Function.
  *
  * @param {object} payload - Objeto de configuração da busca.
- * @param {string} payload.orgao - Sempre 'TRU'.
- * @param {string} payload.uf - Sempre 'CE'.
- * @param {string} payload.texto_livre - Termo de busca (min: 3, max: 100).
- * @param {string} [payload.data_julgamento_inicio] - Data no formato DD/MM/AAAA.
- * @param {string} [payload.data_julgamento_fim] - Data no formato DD/MM/AAAA.
- * @returns {Promise<object>} Dados retornados pela edge function
+ * @param {'initial_import'|'daily_sync'|'manual_range'} [payload.mode='manual_range']
+ * @param {string[]} [payload.terms] - Termos de busca (2-120 caracteres, maximo 20 termos).
+ * @param {string} [payload.pesquisa_livre] - Alternativa legada para um unico termo.
+ * @param {string} [payload.startDate] - Data inicial no formato YYYY-MM-DD.
+ * @param {string} [payload.endDate] - Data final no formato YYYY-MM-DD.
+ * @param {number} [payload.maxPagesPerTerm] - Inteiro entre 1 e 50. Quando omitido, o backend define o padrão por modo.
+ * @returns {Promise<{success: boolean, metrics: object, items: Array, errorSamples?: string[]}>}
  */
+const TRF5_MAX_PAGES_PER_TERM = 50;
+
+function formatTRF5Details(details) {
+  if (!Array.isArray(details) || details.length === 0) return '';
+
+  return details
+    .slice(0, 3)
+    .map((detail) => {
+      const field = Array.isArray(detail.path) && detail.path.length > 0
+        ? detail.path.join('.')
+        : 'payload';
+      return `${field}: ${detail.message}`;
+    })
+    .join('; ');
+}
+
+function buildTRF5ErrorMessage(data, fallbackMessage) {
+  const baseMessage = data?.error || fallbackMessage || 'Scraping TRF5 falhou sem mensagem de erro.';
+  const details = formatTRF5Details(data?.details);
+
+  return details ? `${baseMessage} (${details})` : baseMessage;
+}
+
+function normalizeTRF5Payload(payload = {}) {
+  const hasMaxPagesPerTerm = payload.maxPagesPerTerm !== undefined
+    && payload.maxPagesPerTerm !== null
+    && payload.maxPagesPerTerm !== '';
+  const maxPagesPerTerm = hasMaxPagesPerTerm ? Number(payload.maxPagesPerTerm) : undefined;
+
+  if (
+    hasMaxPagesPerTerm
+    && (!Number.isInteger(maxPagesPerTerm) || maxPagesPerTerm < 1 || maxPagesPerTerm > TRF5_MAX_PAGES_PER_TERM)
+  ) {
+    throw new Error(`maxPagesPerTerm deve ser um inteiro entre 1 e ${TRF5_MAX_PAGES_PER_TERM}.`);
+  }
+
+  const terms = Array.isArray(payload.terms)
+    ? payload.terms.map((term) => String(term).trim()).filter(Boolean)
+    : undefined;
+
+  return {
+    ...payload,
+    ...(terms ? { terms } : {}),
+    ...(hasMaxPagesPerTerm ? { maxPagesPerTerm } : {}),
+  };
+}
+
 export async function scrapeTRF5(payload) {
+  const body = normalizeTRF5Payload(payload);
+
   const { data, error } = await supabase.functions.invoke('scrape-trf5', {
-    body: payload,
+    body,
   });
 
   if (error) {
-    throw new Error(`Erro no scraping TRF5: ${error.message}`);
+    let errorMessage = error.message;
+
+    if (error.context && typeof error.context.json === 'function') {
+      try {
+        const errorBody = await error.context.json();
+        errorMessage = buildTRF5ErrorMessage(errorBody, error.message);
+      } catch {
+        errorMessage = error.message;
+      }
+    }
+
+    throw new Error(`Erro no scraping TRF5: ${errorMessage}`);
   }
 
   if (!data?.success) {
-    throw new Error(data?.error ?? 'Scraping TRF5 falhou sem mensagem de erro.');
+    throw new Error(buildTRF5ErrorMessage(data));
   }
 
   return data;

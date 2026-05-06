@@ -1,12 +1,12 @@
 // ============================================================================
-// JurisprudenciaPage.jsx — Módulo de Pesquisa Jurisprudencial Semântica (TNU)
+// JurisprudenciaPage.jsx — Módulo de Pesquisa Jurisprudencial Semântica multi-fonte
 // Skill: senior-frontend (React Query, Suspense, error boundaries, a11y)
 // Skill: react-typescript (prop types, controlled state, event handlers)
 // Skill: coding-standards (named exports, JSDoc, consistent naming)
 //
 // DESIGN DECISIONS:
-// - Coleta de acórdãos é 100% automatizada via GitHub Actions (cron diário 03h BRT)
-// - Não há botão manual de coleta — o usuário não precisa interagir para manter a base
+// - Coleta de acórdãos é automatizada via GitHub Actions (cron diário 04h BRT)
+// - TRF5/CE também possui painel operacional protegido para execuções pontuais
 // - Ementas são exibidas COMPLETAS (sem line-clamp) para facilitar cópia em peças
 // - Filtro: apenas acórdãos reais (sem decisões monocráticas, sem votos)
 // - Ordenação: data do julgamento (trial_date) decrescente
@@ -56,20 +56,26 @@ import { TRF5SearchPanel } from '@/components/jurisprudencia/TRF5SearchPanel';
 function AcordaoCard({ acordao, showSimilarity = false }) {
   const [copiado, setCopiado] = useState(false);
 
-  const similarityPct = acordao.similarity
-    ? `${(acordao.similarity * 100).toFixed(1)}%`
+  const rawSimilarity = typeof acordao.similarity === 'number'
+    ? acordao.similarity
+    : acordao.similarity_score;
+  const similarityPct = typeof rawSimilarity === 'number'
+    ? `${(rawSimilarity * 100).toFixed(1)}%`
     : null;
+  const sourceLabel = [acordao.source, acordao.jurisdicao].filter(Boolean).join('/');
 
   // Usa trial_date com fallback para publication_date
   const dataJulgamento = acordao.trial_date || acordao.publication_date;
 
   const handleCopiar = useCallback(() => {
     const linhas = [
+      sourceLabel ? `Fonte: ${sourceLabel}` : null,
       `Processo: ${acordao.process_number || 'Não informado'}`,
       dataJulgamento
         ? `Data do Julgamento: ${new Date(dataJulgamento).toLocaleDateString('pt-BR')}`
         : null,
       acordao.relator ? `Relator(a): ${acordao.relator}` : null,
+      acordao.orgao_julgador ? `Órgão julgador: ${acordao.orgao_julgador}` : null,
       acordao.tema ? `Tema: ${acordao.tema}` : null,
       '',
       acordao.excerpt || '',
@@ -79,7 +85,7 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2500);
     });
-  }, [acordao, dataJulgamento]);
+  }, [acordao, dataJulgamento, sourceLabel]);
 
   return (
     <article
@@ -100,9 +106,14 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {acordao.source && (
+          {sourceLabel && (
             <Badge variant="outline" className="text-xs uppercase">
-              {acordao.source}{acordao.jurisdicao ? `/${acordao.jurisdicao}` : ''}
+              {sourceLabel}
+            </Badge>
+          )}
+          {acordao.orgao_julgador && (
+            <Badge variant="secondary" className="text-xs">
+              {acordao.orgao_julgador}
             </Badge>
           )}
           {showSimilarity && similarityPct && (
@@ -235,7 +246,7 @@ function AbaBuscaSemantica() {
       )}
 
       {!isFetching && !isError && !submittedQuery && (
-        <EmptyState message="Digite uma consulta para pesquisar na base de jurisprudência da TNU." />
+        <EmptyState message="Digite uma consulta para pesquisar na Base Interna multi-fonte." />
       )}
 
       {resultados && resultados.length > 0 && (
@@ -470,7 +481,7 @@ function AbaChatRAG() {
           )}
 
           {!isLoadingSession && mensagens.length === 0 && (
-            <EmptyState message="Faça uma pergunta jurídica sobre a jurisprudência da TNU." />
+            <EmptyState message="Faça uma pergunta jurídica sobre a Base Interna de jurisprudência." />
           )}
 
           {!isLoadingSession && mensagens.map((msg, idx) => (
@@ -561,8 +572,8 @@ function AbaChatRAG() {
 const PAGE_SIZE = 20;
 
 /**
- * Aba de visualização da base de dados de jurisprudência.
- * A coleta é 100% automatizada via GitHub Actions (cron diário às 03h BRT).
+ * Aba de visualização da Base Interna multi-fonte de jurisprudência.
+ * A base recebe importações automatizadas e operações manuais, incluindo TNU e TRF5/CE.
  * Exibe acórdãos com ementa COMPLETA e paginação.
  */
 function AbaBaseDados() {
@@ -584,7 +595,7 @@ function AbaBaseDados() {
 
   return (
     <div className="space-y-4">
-      {/* Header: contagem e informação sobre coleta automática */}
+      {/* Header: contagem e fontes da Base Interna */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
@@ -605,8 +616,12 @@ function AbaBaseDados() {
           <div className="flex items-center gap-1.5 mt-1">
             <Clock className="w-3.5 h-3.5 text-green-600" aria-hidden="true" />
             <p className="text-xs text-slate-500">
-              Coleta automática diária às 03h (horário de Brasília) · Apenas acórdãos com ementa
+              Base multi-fonte com coletas automatizadas e importação operacional TRF5/CE
             </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <Badge variant="outline" className="text-xs">TNU</Badge>
+            <Badge variant="outline" className="text-xs">TRF5/CE</Badge>
           </div>
         </div>
       </div>
@@ -622,7 +637,7 @@ function AbaBaseDados() {
       )}
 
       {data?.data && data.data.length === 0 && !isFetching && (
-        <EmptyState message="Nenhum acórdão na base de dados. A coleta automática ocorre diariamente às 03h." />
+        <EmptyState message="Nenhum acórdão na Base Interna. Use a importação operacional TRF5/CE ou aguarde as coletas automatizadas." />
       )}
 
       {data?.data && data.data.length > 0 && (
@@ -677,7 +692,7 @@ const ABAS = [
 ];
 
 /**
- * Página de pesquisa jurisprudencial semântica da TNU.
+ * Página de pesquisa jurisprudencial semântica multi-fonte.
  * Integra busca vetorial, chat RAG e visualização da base de acórdãos.
  */
 export default function JurisprudenciaPage() {
@@ -692,9 +707,9 @@ export default function JurisprudenciaPage() {
             <BookOpen className="w-5 h-5 text-white" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Jurisprudência TNU</h1>
+            <h1 className="text-2xl font-bold text-slate-800">Jurisprudência — Base Interna</h1>
             <p className="text-sm text-slate-500">
-              Pesquisa semântica vetorial na base de acórdãos da Turma Nacional de Uniformização
+              Pesquisa semântica vetorial em acórdãos de múltiplas fontes, incluindo TNU e TRF5/CE
             </p>
           </div>
         </div>
@@ -712,6 +727,7 @@ export default function JurisprudenciaPage() {
           return (
             <button
               key={aba.id}
+              id={`tab-${aba.id}`}
               role="tab"
               aria-selected={isActive}
               aria-controls={`panel-${aba.id}`}
@@ -735,7 +751,7 @@ export default function JurisprudenciaPage() {
       <div
         id={`panel-${abaAtiva}`}
         role="tabpanel"
-        aria-labelledby={abaAtiva}
+        aria-labelledby={`tab-${abaAtiva}`}
       >
         {abaAtiva === 'base' && <AbaBaseDados />}
         {abaAtiva === 'trf5' && <TRF5SearchPanel />}
