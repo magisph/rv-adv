@@ -1,5 +1,5 @@
 ﻿param(
-  [string]$StartDate = "2025-01-01",
+  [string]$StartDate = "2025-10-01",
   [string]$EndDate = "2026-05-07",
   [int]$InitialWindowDays = 7,
   [int]$InitialMaxPagesPerTerm = 1,
@@ -27,9 +27,16 @@ $Terms = @(
   "aposentadoria por idade",
   "aposentadoria por idade rural",
   "aposentadoria por idade urbana",
+  "segurado especial",
+  "trabalhador rural",
+  "aposentadoria rural",
   "beneficio por incapacidade",
   "auxilio-doenca",
   "aposentadoria por invalidez",
+  "incapacidade temporaria",
+  "incapacidade permanente",
+  "auxilio por incapacidade temporaria",
+  "aposentadoria por incapacidade permanente",
   "pensao por morte",
   "salario-maternidade",
   "previdenciario",
@@ -152,7 +159,8 @@ function Save-State {
 }
 
 function Add-CsvRow([string]$Path, $Row) {
-  $line = ($Row | ConvertTo-Csv -NoTypeInformation)[1]
+  $object = [pscustomobject]$Row
+  $line = ($object | ConvertTo-Csv -NoTypeInformation)[1]
   Add-Content -LiteralPath $Path -Value $line -Encoding UTF8
 }
 
