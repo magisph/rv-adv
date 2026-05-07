@@ -63,6 +63,7 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
     ? `${(rawSimilarity * 100).toFixed(1)}%`
     : null;
   const sourceLabel = [acordao.source, acordao.jurisdicao].filter(Boolean).join('/');
+  const fullText = acordao.full_text || acordao.excerpt || '';
 
   // Usa trial_date com fallback para publication_date
   const dataJulgamento = acordao.trial_date || acordao.publication_date;
@@ -78,14 +79,14 @@ function AcordaoCard({ acordao, showSimilarity = false }) {
       acordao.orgao_julgador ? `Órgão julgador: ${acordao.orgao_julgador}` : null,
       acordao.tema ? `Tema: ${acordao.tema}` : null,
       '',
-      acordao.excerpt || '',
+      fullText,
     ].filter((l) => l !== null);
 
     navigator.clipboard.writeText(linhas.join('\n')).then(() => {
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2500);
     });
-  }, [acordao, dataJulgamento, sourceLabel]);
+  }, [acordao, dataJulgamento, sourceLabel, fullText]);
 
   return (
     <article

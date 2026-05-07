@@ -199,7 +199,7 @@ export async function listarJurisprudencias(page = 0, limit = 20, orderBy = 'pub
 
   const { data, error, count } = await supabase
     .from('jurisprudences')
-    .select('id, process_number, publication_date, trial_date, relator, tema, excerpt, embedding_status, source, jurisdicao, orgao_julgador, similarity_score, is_unique_teor', {
+    .select('id, process_number, publication_date, trial_date, relator, tema, excerpt, full_text, embedding_status, source, jurisdicao, orgao_julgador, similarity_score, is_unique_teor', {
       count: 'exact',
     })
     .order(orderBy, { ascending: false })
