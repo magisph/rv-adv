@@ -14,6 +14,7 @@ import {
   type NormalizedJurisprudence,
   type Trf5RawDocument,
 } from "./normalizer.ts";
+import { type PrevidenciaryEligibility, classifyPrevidenciaryEligibility } from "./previdenciary-filter.ts";
 import { DEFAULT_PREVIDENCIARY_TERMS, TRF5_CE_ORGAOS_JULGADORES } from "./terms.ts";
 
 const TRF5_ENDPOINT =
@@ -55,6 +56,16 @@ interface PersistResult {
   similarity_score: number | null;
   is_unique_teor: boolean;
   duplicate_reason: string | null;
+}
+
+interface FilterSample {
+  process_number: string | null;
+  trial_date: string | null;
+  orgao_julgador: string | null;
+  tema: string | null;
+  reason: string | null;
+  matchedTerms: string[];
+  excludedTerms: string[];
 }
 
 function sleep(ms: number): Promise<void> {
@@ -382,6 +393,19 @@ Deno.serve(async (req: Request) => {
     const seenKeys = new Set<string>();
     const previewItems: Array<Record<string, unknown>> = [];
     const errorSamples: string[] = [];
+    const filterSamples: FilterSample[] = [];
+    const addFilterSample = (item: NormalizedJurisprudence, eligibility: PrevidenciaryEligibility) => {
+      if (filterSamples.length >= 10) return;
+      filterSamples.push({
+        process_number: item.process_number,
+        trial_date: item.trial_date,
+        orgao_julgador: item.orgao_julgador,
+        tema: item.tema,
+        reason: eligibility.reason,
+        matchedTerms: eligibility.matchedTerms,
+        excludedTerms: eligibility.excludedTerms,
+      });
+    };
     const metrics = {
       mode: parsedBody.mode,
       startDate,
@@ -391,9 +415,13 @@ Deno.serve(async (req: Request) => {
       portalRequests: 0,
       found: 0,
       normalized: 0,
+      eligible: 0,
       inserted: 0,
       updated: 0,
       ignored: 0,
+      ignoredOutOfScope: 0,
+      ignoredBySimilarity: 0,
+      ignoredDuplicateProcess: 0,
       duplicateExact: 0,
       duplicateSimilarity: 0,
       unique: 0,
@@ -428,6 +456,15 @@ Deno.serve(async (req: Request) => {
               continue;
             }
 
+            const eligibility = classifyPrevidenciaryEligibility(normalized);
+            if (!eligibility.eligible) {
+              metrics.ignored++;
+              metrics.ignoredOutOfScope++;
+              addFilterSample(normalized, eligibility);
+              continue;
+            }
+            metrics.eligible++;
+
             const key = [
               normalized.process_number,
               normalized.trial_date ?? "",
@@ -435,6 +472,7 @@ Deno.serve(async (req: Request) => {
             ].join("|");
             if (seenKeys.has(key)) {
               metrics.ignored++;
+              metrics.ignoredDuplicateProcess++;
               continue;
             }
             seenKeys.add(key);
@@ -444,8 +482,18 @@ Deno.serve(async (req: Request) => {
               const embedding = await generateEmbedding(normalized.excerpt, authHeader);
               const persisted = await persistJurisprudence(supabase, normalized, embedding);
 
-              if (persisted.inserted) metrics.inserted++;
-              else metrics.updated++;
+              if (persisted.inserted) {
+                metrics.inserted++;
+              } else if (persisted.duplicate_reason === "similarity") {
+                metrics.ignored++;
+                metrics.ignoredBySimilarity++;
+                addFilterSample(normalized, {
+                  ...eligibility,
+                  reason: "similarity",
+                });
+              } else {
+                metrics.updated++;
+              }
 
               if (persisted.duplicate_reason === "process_number") metrics.duplicateExact++;
               if (persisted.duplicate_reason === "similarity") metrics.duplicateSimilarity++;
@@ -485,6 +533,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         metrics,
         items: previewItems,
+        filterSamples,
         errorSamples,
       },
       200,

@@ -16,7 +16,7 @@ $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $BaseReportDir = Join-Path $Root "reports\trf5-ce-history-import"
 $Importer = Join-Path $Root "scripts\import-trf5-ce-history.mjs"
-$SummaryHeader = "timestamp,startDate,endDate,term,orgao,maxPages,success,found,normalized,inserted,updated,ignored,errors,portalRequests,truncated,exitCode,reportDir"
+$SummaryHeader = "timestamp,startDate,endDate,term,orgao,maxPages,success,found,normalized,eligible,inserted,updated,ignored,ignoredOutOfScope,ignoredBySimilarity,ignoredDuplicateProcess,errors,portalRequests,truncated,exitCode,reportDir"
 $FailuresHeader = "timestamp,startDate,endDate,term,orgao,maxPages,reason,exitCode,reportDir"
 
 $Terms = @(
@@ -240,9 +240,13 @@ function Write-Summary($State, $Batch, $Report, [int]$ExitCode, [string]$ReportD
     success = [bool]$Report.success
     found = [int]$Report.found
     normalized = [int]$Report.normalized
+    eligible = [int]$Report.eligible
     inserted = [int]$Report.inserted
     updated = [int]$Report.updated
     ignored = [int]$Report.ignored
+    ignoredOutOfScope = [int]$Report.ignoredOutOfScope
+    ignoredBySimilarity = [int]$Report.ignoredBySimilarity
+    ignoredDuplicateProcess = [int]$Report.ignoredDuplicateProcess
     errors = [int]$Report.errors
     portalRequests = [int]$Report.portalRequests
     truncated = [bool]$Report.truncated
