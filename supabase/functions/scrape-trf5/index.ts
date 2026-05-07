@@ -240,6 +240,20 @@ async function fetchTrf5Page(
   return payload;
 }
 
+function buildEmbeddingText(item: NormalizedJurisprudence): string {
+  const parts = [
+    item.tema,
+    item.excerpt,
+    item.full_text,
+  ]
+    .map((value) => typeof value === "string" ? value.trim() : "")
+    .filter(Boolean);
+
+  const text = [...new Set(parts)].join("\n\n");
+
+  return text || item.excerpt || item.full_text || item.tema || "";
+}
+
 async function generateEmbedding(text: string, authHeader: string): Promise<number[]> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   if (!supabaseUrl) throw new Error("SUPABASE_URL nao configurada.");
@@ -479,7 +493,8 @@ Deno.serve(async (req: Request) => {
             metrics.normalized++;
 
             try {
-              const embedding = await generateEmbedding(normalized.excerpt, authHeader);
+              const embeddingText = buildEmbeddingText(normalized);
+              const embedding = await generateEmbedding(embeddingText, authHeader);
               const persisted = await persistJurisprudence(supabase, normalized, embedding);
 
               if (persisted.inserted) {
@@ -510,6 +525,7 @@ Deno.serve(async (req: Request) => {
                   jurisdicao: normalized.jurisdicao,
                   similarity_score: persisted.similarity_score,
                   is_unique_teor: persisted.is_unique_teor,
+                  embedding_text_length: embeddingText.length,
                 });
               }
             } catch (error) {
