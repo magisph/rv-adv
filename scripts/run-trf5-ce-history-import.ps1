@@ -22,25 +22,12 @@ $FailuresHeader = "timestamp,startDate,endDate,term,orgao,maxPages,reason,exitCo
 $Terms = @(
   "LOAS",
   "BPC",
-  "beneficio assistencial",
-  "aposentadoria",
   "aposentadoria por idade",
-  "aposentadoria por idade rural",
-  "aposentadoria por idade urbana",
   "segurado especial",
-  "trabalhador rural",
-  "aposentadoria rural",
-  "beneficio por incapacidade",
-  "auxilio-doenca",
-  "aposentadoria por invalidez",
   "incapacidade temporaria",
   "incapacidade permanente",
-  "auxilio por incapacidade temporaria",
-  "aposentadoria por incapacidade permanente",
   "pensao por morte",
-  "salario-maternidade",
-  "previdenciario",
-  "beneficio"
+  "salario-maternidade"
 )
 
 $Presidencias = @(
@@ -158,6 +145,36 @@ function Save-State {
   Set-Content -LiteralPath (Join-Path $State.runDir "state.json") -Value $json -Encoding UTF8
 }
 
+function Set-StateProperty($State, [string]$Name, $Value) {
+  if ($State -is [System.Collections.IDictionary]) {
+    $State[$Name] = $Value
+    return
+  }
+
+  $property = $State.PSObject.Properties[$Name]
+  if ($property) {
+    $property.Value = $Value
+  } else {
+    Add-Member -InputObject $State -NotePropertyName $Name -NotePropertyValue $Value
+  }
+}
+
+function Get-StateProperty($State, [string]$Name) {
+  if ($State -is [System.Collections.IDictionary]) {
+    if ($State.Contains($Name)) { return $State[$Name] }
+    return $null
+  }
+
+  $property = $State.PSObject.Properties[$Name]
+  if ($property) { return $property.Value }
+  return $null
+}
+
+function Save-StateAfterBatchDecision($State) {
+  Set-StateProperty $State "currentBatch" $null
+  Save-State $State
+}
+
 function Add-CsvRow([string]$Path, $Row) {
   $object = [pscustomobject]$Row
   $line = ($object | ConvertTo-Csv -NoTypeInformation)[1]
@@ -186,13 +203,35 @@ function Invoke-ImporterBatch($Batch, [string]$ReportDir, [string]$LogPath) {
     "--report-dir", $ReportDir
   )
 
-  $output = & node @args 2>&1
-  $exitCode = $LASTEXITCODE
-  $output | Set-Content -LiteralPath $LogPath -Encoding UTF8
+  $previousErrorActionPreference = $ErrorActionPreference
+  $hadNativeErrorPreference = Test-Path variable:PSNativeCommandUseErrorActionPreference
+  $previousNativeErrorPreference = if ($hadNativeErrorPreference) { $PSNativeCommandUseErrorActionPreference } else { $null }
+  $output = @()
+  $exitCode = 1
+
+  try {
+    $ErrorActionPreference = "Continue"
+    if ($hadNativeErrorPreference) {
+      $PSNativeCommandUseErrorActionPreference = $false
+    }
+    $output = @(& node @args 2>&1)
+    $exitCode = $LASTEXITCODE
+  } catch {
+    $exitCode = 1
+    $output += ("UNEXPECTED_ORCHESTRATOR_EXCEPTION: {0}: {1}" -f $_.Exception.GetType().FullName, $_.Exception.Message)
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+    if ($hadNativeErrorPreference) {
+      $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
+    }
+  }
+
+  $logText = ($output | ForEach-Object { [string]$_ }) -join "`n"
+  Set-Content -LiteralPath $LogPath -Value $logText -Encoding UTF8
 
   return [ordered]@{
     exitCode = $exitCode
-    output = ($output -join "`n")
+    output = $logText
   }
 }
 
@@ -311,6 +350,31 @@ function Add-PendingFrontSingle($State, $Batch) {
   $State.pendingBatches = @($Batch) + @($State.pendingBatches)
 }
 
+function Test-BatchCollectionContains($Batches, [string]$BatchId) {
+  if ([string]::IsNullOrWhiteSpace($BatchId)) { return $false }
+  return @($Batches | Where-Object { $_.id -eq $BatchId }).Count -gt 0
+}
+
+function Restore-CurrentBatchOnResume($State) {
+  $currentBatch = Get-StateProperty $State "currentBatch"
+  if (!$currentBatch) {
+    Set-StateProperty $State "currentBatch" $null
+    return
+  }
+
+  $batchId = [string]$currentBatch.id
+  $known = (Test-BatchCollectionContains $State.pendingBatches $batchId) -or
+    (Test-BatchCollectionContains $State.completedBatches $batchId) -or
+    (Test-BatchCollectionContains $State.failedBatches $batchId)
+
+  if (!$known) {
+    Add-PendingFrontSingle $State $currentBatch
+  }
+
+  Set-StateProperty $State "currentBatch" $null
+  Save-State $State
+}
+
 function Wait-Conservative([int]$Seconds, [string]$Reason) {
   if ($Seconds -le 0) { return }
   Write-Host ("Aguardando {0}s ({1})..." -f $Seconds, $Reason)
@@ -397,7 +461,7 @@ function Invoke-Decision($State, $Batch, [int]$ExitCode, $Report, [string]$LogTe
 
   if ($hasValidReport -and [int]$Report.errors -eq 0 -and -not [bool]$Report.truncated) {
     Add-Completed $State $Batch $ReportDir
-    Save-State $State
+    Save-StateAfterBatchDecision $State
     Wait-Conservative $effectiveDelay "lote concluido"
     return
   }
@@ -405,7 +469,7 @@ function Invoke-Decision($State, $Batch, [int]$ExitCode, $Report, [string]$LogTe
   if ($hasValidReport -and [int]$Report.errors -eq 0 -and [bool]$Report.truncated) {
     if ($days -gt 1) {
       Add-PendingFront $State (Split-Batch $Batch 1 "truncated_split")
-      Save-State $State
+      Save-StateAfterBatchDecision $State
       Wait-Conservative $effectiveDelay "truncamento; janela dividida"
       return
     }
@@ -414,13 +478,13 @@ function Invoke-Decision($State, $Batch, [int]$ExitCode, $Report, [string]$LogTe
       $retry = New-Batch $Batch.stage $Batch.startDate $Batch.endDate $Batch.term $Batch.orgao ([int]$Batch.maxPages + 1) "truncated_more_pages"
       $retry.attempt = [int]$Batch.attempt + 1
       Add-PendingFrontSingle $State $retry
-      Save-State $State
+      Save-StateAfterBatchDecision $State
       Wait-Conservative $effectiveDelay "truncamento em 1 dia; maxPages aumentado"
       return
     }
 
     Add-Failed $State $Batch "truncated_at_max_pages" $ExitCode $ReportDir
-    Save-State $State
+    Save-StateAfterBatchDecision $State
     Wait-Conservative $effectiveDelay "truncamento no teto de paginas"
     return
   }
@@ -433,7 +497,7 @@ function Invoke-Decision($State, $Batch, [int]$ExitCode, $Report, [string]$LogTe
 
     if ($days -gt 1) {
       Add-PendingFront $State (Split-Batch $Batch 1 "error_split")
-      Save-State $State
+      Save-StateAfterBatchDecision $State
       if ($retryAfterMs -gt 0) {
         Wait-Conservative ([math]::Ceiling(($retryAfterMs + 15000) / 1000)) "rate limit informado"
       } else {
@@ -446,7 +510,7 @@ function Invoke-Decision($State, $Batch, [int]$ExitCode, $Report, [string]$LogTe
       $retry = New-Batch $Batch.stage $Batch.startDate $Batch.endDate $Batch.term $Batch.orgao 1 "retry"
       $retry.attempt = [int]$Batch.attempt + 1
       Add-PendingFrontSingle $State $retry
-      Save-State $State
+      Save-StateAfterBatchDecision $State
       if ($retryAfterMs -gt 0) {
         Wait-Conservative ([math]::Ceiling(($retryAfterMs + 15000) / 1000)) "rate limit informado"
       } else {
@@ -457,13 +521,13 @@ function Invoke-Decision($State, $Batch, [int]$ExitCode, $Report, [string]$LogTe
 
     $reason = if ($isWorkerLimit) { "worker_limit_or_http_546" } elseif ($isRateLimit) { "rate_limit_retry_exhausted" } elseif ($hasValidReport) { "errors_retry_exhausted" } else { "missing_report_retry_exhausted" }
     Add-Failed $State $Batch $reason $ExitCode $ReportDir
-    Save-State $State
+    Save-StateAfterBatchDecision $State
     Wait-Conservative $effectiveRetryDelay "falha registrada"
     return
   }
 
   Add-Failed $State $Batch "unhandled_failure" $ExitCode $ReportDir
-  Save-State $State
+  Save-StateAfterBatchDecision $State
   Wait-Conservative $effectiveRetryDelay "falha nao classificada"
 }
 
@@ -483,6 +547,7 @@ function Start-ImportLoop($State) {
 
     $batch = $State.pendingBatches[0]
     $State.pendingBatches = @($State.pendingBatches | Select-Object -Skip 1)
+    Set-StateProperty $State "currentBatch" $batch
     Save-State $State
 
     $reportDir = Join-Path $State.runDir ("reports\{0}" -f $batch.id)
@@ -532,6 +597,7 @@ if ($Resume) {
     $script:NextBatchNumber = 0
   }
   Write-Host ("Retomando execucao em {0}" -f $State.runDir)
+  Restore-CurrentBatchOnResume $State
   Start-ImportLoop $State
   exit 0
 }
@@ -560,6 +626,7 @@ $State = [ordered]@{
   pendingBatches = @(New-InitialQueue)
   completedBatches = @()
   failedBatches = @()
+  currentBatch = $null
   sanityCheck = [ordered]@{ passed = $false }
   nextBatchNumber = $script:NextBatchNumber
   lastUpdated = (Get-Date).ToUniversalTime().ToString("o")
