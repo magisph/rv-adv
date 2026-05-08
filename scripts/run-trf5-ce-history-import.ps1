@@ -30,23 +30,20 @@ $Terms = @(
   "salario-maternidade"
 )
 
-$Presidencias = @(
-  "PRESIDÊNCIA DA 1ª TURMA RECURSAL DO CEARÁ",
-  "PRESIDÊNCIA DA 2ª TURMA RECURSAL DO CEARÁ",
-  "PRESIDÊNCIA DA 3ª TURMA RECURSAL DO CEARÁ"
-)
+$OrdinalFeminine = [char]0x00AA
+$AWithAcute = [char]0x00C1
+$EWithCircumflex = [char]0x00CA
+$TurmaRecursalCeara = "$OrdinalFeminine TURMA RECURSAL DO CEAR$AWithAcute"
 
-$Relatorias = @(
-  "1ª RELATORIA DA 1ª TURMA RECURSAL DO CEARÁ",
-  "2ª RELATORIA DA 1ª TURMA RECURSAL DO CEARÁ",
-  "3ª RELATORIA DA 1ª TURMA RECURSAL DO CEARÁ",
-  "1ª RELATORIA DA 2ª TURMA RECURSAL DO CEARÁ",
-  "2ª RELATORIA DA 2ª TURMA RECURSAL DO CEARÁ",
-  "3ª RELATORIA DA 2ª TURMA RECURSAL DO CEARÁ",
-  "1ª RELATORIA DA 3ª TURMA RECURSAL DO CEARÁ",
-  "2ª RELATORIA DA 3ª TURMA RECURSAL DO CEARÁ",
-  "3ª RELATORIA DA 3ª TURMA RECURSAL DO CEARÁ"
-)
+$Presidencias = @(1..3 | ForEach-Object {
+  "PRESID$EWithCircumflex" + ("NCIA DA {0}{1}" -f $_, $TurmaRecursalCeara)
+})
+
+$Relatorias = foreach ($turma in 1..3) {
+  foreach ($relatoria in 1..3) {
+    "{0}{1} RELATORIA DA {2}{3}" -f $relatoria, $OrdinalFeminine, $turma, $TurmaRecursalCeara
+  }
+}
 
 function ConvertTo-IsoDate([datetime]$Date) {
   return $Date.ToString("yyyy-MM-dd")
