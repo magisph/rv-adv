@@ -500,6 +500,7 @@ Deno.serve(async (req: Request) => {
     const seenKeys = new Set<string>();
     const previewItems: Array<Record<string, unknown>> = [];
     const errorSamples: string[] = [];
+    const warningSamples: string[] = [];
     const filterSamples: FilterSample[] = [];
     const addFilterSample = (item: NormalizedJurisprudence, eligibility: PrevidenciaryEligibility) => {
       if (filterSamples.length >= 10) return;
@@ -642,7 +643,7 @@ Deno.serve(async (req: Request) => {
                 metrics.embeddingDeferred++;
 
                 const message = sanitizeErrorMessage((error as Error).message);
-                if (errorSamples.length < 5) errorSamples.push(`embedding_deferred: ${message}`);
+                if (warningSamples.length < 5) warningSamples.push(`embedding_deferred: ${message}`);
                 console.warn("[scrape-trf5] embedding deferred:", message);
 
                 if (previewItems.length < 10) {
@@ -727,6 +728,7 @@ Deno.serve(async (req: Request) => {
         items: previewItems,
         filterSamples,
         errorSamples,
+        warningSamples,
       },
       200,
       { ...corsHeaders, ...getRateLimitHeaders(req, 10) },
