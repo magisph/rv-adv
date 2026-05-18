@@ -16,6 +16,7 @@ import {
 } from "./normalizer.ts";
 import { type PrevidenciaryEligibility, classifyPrevidenciaryEligibility } from "./previdenciary-filter.ts";
 import { DEFAULT_PREVIDENCIARY_TERMS, TRF5_CE_ORGAOS_JULGADORES } from "./terms.ts";
+import { resolveRunBudget, shouldStopRun, type StopReason } from "./budget.ts";
 
 const TRF5_ENDPOINT =
   "https://juliapesquisa.trf5.jus.br/julia-pesquisa/api/v1/documento:dt/TR_CE";
@@ -26,6 +27,10 @@ const PORTAL_DELAY_MS = 1_000;
 const SIMILARITY_THRESHOLD = 0.85;
 const MAX_TERMS = 20;
 const MAX_PAGES_PER_TERM = 50;
+const MAX_ITEMS_PER_RUN = 100;
+const MAX_PORTAL_REQUESTS = 100;
+const MIN_RUNTIME_MS = 30_000;
+const MAX_RUNTIME_MS = 120_000;
 const STAFF_ROLES = new Set(["admin", "dono", "advogado"]);
 
 const RequestSchema = z.object({
@@ -35,6 +40,9 @@ const RequestSchema = z.object({
   terms: z.array(z.string().trim().min(2).max(120)).max(MAX_TERMS).optional(),
   orgaosJulgadores: z.array(z.string().trim().min(2).max(160)).max(12).optional(),
   maxPagesPerTerm: z.number().int().min(1).max(MAX_PAGES_PER_TERM).optional(),
+  maxItemsPerRun: z.number().int().min(1).max(MAX_ITEMS_PER_RUN).optional(),
+  maxPortalRequests: z.number().int().min(1).max(MAX_PORTAL_REQUESTS).optional(),
+  maxRuntimeMs: z.number().int().min(MIN_RUNTIME_MS).max(MAX_RUNTIME_MS).optional(),
   pesquisa_livre: z.string().trim().min(2).max(120).optional(),
   data_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   data_fim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -336,6 +344,23 @@ async function persistJurisprudence(
   };
 }
 
+async function findExistingJurisprudenceId(
+  supabase: ReturnType<typeof createClient<any, "public", any>>,
+  item: NormalizedJurisprudence,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("jurisprudences")
+    .select("id")
+    .eq("process_number", item.process_number)
+    .eq("source", item.source)
+    .eq("jurisdicao", item.jurisdicao)
+    .maybeSingle();
+
+  if (error) throw new Error(`Falha ao consultar jurisprudencia existente: ${error.message}`);
+
+  return typeof data?.id === "string" ? data.id : null;
+}
+
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
@@ -389,6 +414,7 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
   try {
+    const startedAt = Date.now();
     const { startDate, endDate } = await resolveDateRange(supabase, parsedBody);
     assertDateRange(startDate, endDate);
 
@@ -401,8 +427,16 @@ Deno.serve(async (req: Request) => {
         corsHeaders,
       );
     }
-    const maxPagesPerTerm = parsedBody.maxPagesPerTerm ?? (parsedBody.mode === "daily_sync" ? 5 : 20);
+    const budget = resolveRunBudget({
+      mode: parsedBody.mode,
+      maxItemsPerRun: parsedBody.maxItemsPerRun,
+      maxPortalRequests: parsedBody.maxPortalRequests,
+      maxRuntimeMs: parsedBody.maxRuntimeMs,
+      maxPagesPerTerm: parsedBody.maxPagesPerTerm,
+    });
+    const maxPagesPerTerm = budget.maxPagesPerTerm;
     const authHeader = req.headers.get("authorization") ?? "";
+    let processedItems = 0;
 
     const seenKeys = new Set<string>();
     const previewItems: Array<Record<string, unknown>> = [];
@@ -440,9 +474,25 @@ Deno.serve(async (req: Request) => {
       duplicateSimilarity: 0,
       unique: 0,
       errors: 0,
+      ignoredExistingProcess: 0,
       truncated: false,
+      stopReason: null as StopReason | null,
     };
 
+    const stopIfBudgetReached = (): boolean => {
+      const reason = shouldStopRun({
+        processedItems,
+        portalRequests: metrics.portalRequests,
+        elapsedMs: Date.now() - startedAt,
+      }, budget);
+      if (!reason) return false;
+
+      metrics.truncated = true;
+      metrics.stopReason = reason;
+      return true;
+    };
+
+    outer:
     for (const term of terms) {
       for (const orgaoJulgador of orgaosJulgadores) {
         let offset = 0;
@@ -450,6 +500,8 @@ Deno.serve(async (req: Request) => {
         let total = Number.POSITIVE_INFINITY;
 
         while (offset < total && page < maxPagesPerTerm) {
+          if (stopIfBudgetReached()) break outer;
+
           const payload = await fetchTrf5Page(term, orgaoJulgador, startDate, endDate, offset);
           metrics.portalRequests++;
 
@@ -464,6 +516,8 @@ Deno.serve(async (req: Request) => {
           if (rows.length === 0) break;
 
           for (const row of rows) {
+            if (stopIfBudgetReached()) break outer;
+
             const normalized = normalizeTrf5Document(row);
             if (!normalized) {
               metrics.ignored++;
@@ -493,6 +547,25 @@ Deno.serve(async (req: Request) => {
             metrics.normalized++;
 
             try {
+              const existingId = await findExistingJurisprudenceId(supabase, normalized);
+              if (existingId) {
+                metrics.ignored++;
+                metrics.ignoredExistingProcess++;
+                if (previewItems.length < 10) {
+                  previewItems.push({
+                    id: existingId,
+                    process_number: normalized.process_number,
+                    trial_date: normalized.trial_date,
+                    relator: normalized.relator,
+                    orgao_julgador: normalized.orgao_julgador,
+                    source: normalized.source,
+                    jurisdicao: normalized.jurisdicao,
+                    duplicate_reason: "existing_process",
+                  });
+                }
+                continue;
+              }
+
               const embeddingText = buildEmbeddingText(normalized);
               const embedding = await generateEmbedding(embeddingText, authHeader);
               const persisted = await persistJurisprudence(supabase, normalized, embedding);
@@ -533,6 +606,8 @@ Deno.serve(async (req: Request) => {
               const message = sanitizeErrorMessage((error as Error).message);
               if (errorSamples.length < 5) errorSamples.push(message);
               console.error("[scrape-trf5] item processing failed:", message);
+            } finally {
+              processedItems++;
             }
           }
 

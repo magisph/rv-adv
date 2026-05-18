@@ -24,6 +24,7 @@ export default defineConfig({
       "tests/**/*.test.js",
       "src/**/*.test.ts",
       "src/**/*.test.js",
+      "supabase/functions/**/*.test.ts",
     ],
     exclude: ["**/node_modules/**", "**/dist/**"],
     coverage: {
