@@ -35,6 +35,13 @@ export interface ScrapeErrorMetrics extends ScrapeWorkMetrics {
   errors: number;
 }
 
+export type PersistenceAction = "inserted" | "insert_similar" | "updated";
+
+export interface PersistenceActionInput {
+  inserted: boolean;
+  duplicateReason: string | null;
+}
+
 export function resolveRunBudget(input: RunBudgetInput): RunBudget {
   const isDailySync = input.mode === "daily_sync";
 
@@ -75,4 +82,17 @@ export function hasSuccessfulScrapeWork(metrics: ScrapeWorkMetrics): boolean {
 
 export function shouldFailForItemErrors(metrics: ScrapeErrorMetrics): boolean {
   return metrics.errors > 0 && !hasSuccessfulScrapeWork(metrics);
+}
+
+export function shouldRetryEmbeddingStatus(status: number, attempt: number, maxAttempts: number): boolean {
+  if (attempt >= maxAttempts - 1) return false;
+
+  return [408, 409, 425, 429, 500, 502, 503, 504].includes(status);
+}
+
+export function resolvePersistenceAction(input: PersistenceActionInput): PersistenceAction {
+  if (input.inserted) return "inserted";
+  if (input.duplicateReason === "similarity") return "insert_similar";
+
+  return "updated";
 }

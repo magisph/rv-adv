@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
   hasSuccessfulScrapeWork,
+  resolvePersistenceAction,
   resolveRunBudget,
   shouldFailForItemErrors,
+  shouldRetryEmbeddingStatus,
   shouldStopRun,
 } from "./budget";
 
@@ -66,5 +68,19 @@ describe("scrape-trf5 run budget", () => {
       ignoredExistingProcess: 1,
       ignoredDuplicateProcess: 0,
     })).toBe(true);
+  });
+
+  test("retries transient embedding provider failures before giving up", () => {
+    expect(shouldRetryEmbeddingStatus(429, 0, 5)).toBe(true);
+    expect(shouldRetryEmbeddingStatus(500, 1, 5)).toBe(true);
+    expect(shouldRetryEmbeddingStatus(503, 3, 5)).toBe(true);
+    expect(shouldRetryEmbeddingStatus(400, 0, 5)).toBe(false);
+    expect(shouldRetryEmbeddingStatus(500, 4, 5)).toBe(false);
+  });
+
+  test("treats similar new jurisprudence as an insert action", () => {
+    expect(resolvePersistenceAction({ inserted: true, duplicateReason: null })).toBe("inserted");
+    expect(resolvePersistenceAction({ inserted: false, duplicateReason: "similarity" })).toBe("insert_similar");
+    expect(resolvePersistenceAction({ inserted: false, duplicateReason: "process_number" })).toBe("updated");
   });
 });

@@ -16,7 +16,13 @@ import {
 } from "./normalizer.ts";
 import { type PrevidenciaryEligibility, classifyPrevidenciaryEligibility } from "./previdenciary-filter.ts";
 import { DEFAULT_PREVIDENCIARY_TERMS, TRF5_CE_ORGAOS_JULGADORES } from "./terms.ts";
-import { resolveRunBudget, shouldStopRun, type StopReason } from "./budget.ts";
+import {
+  resolvePersistenceAction,
+  resolveRunBudget,
+  shouldRetryEmbeddingStatus,
+  shouldStopRun,
+  type StopReason,
+} from "./budget.ts";
 
 const TRF5_ENDPOINT =
   "https://juliapesquisa.trf5.jus.br/julia-pesquisa/api/v1/documento:dt/TR_CE";
@@ -31,6 +37,7 @@ const MAX_ITEMS_PER_RUN = 100;
 const MAX_PORTAL_REQUESTS = 100;
 const MIN_RUNTIME_MS = 30_000;
 const MAX_RUNTIME_MS = 120_000;
+const EMBEDDING_MAX_ATTEMPTS = 5;
 const STAFF_ROLES = new Set(["admin", "dono", "advogado"]);
 
 const RequestSchema = z.object({
@@ -64,6 +71,13 @@ interface PersistResult {
   similarity_score: number | null;
   is_unique_teor: boolean;
   duplicate_reason: string | null;
+}
+
+interface InsertJurisprudenceOptions {
+  embedding: number[] | null;
+  embeddingStatus: "pending" | "completed";
+  similarityScore: number | null;
+  isUniqueTeor: boolean;
 }
 
 interface FilterSample {
@@ -275,7 +289,8 @@ async function generateEmbedding(text: string, authHeader: string): Promise<numb
   }
 
   let response: Response | null = null;
-  for (let attempt = 0; attempt < 4; attempt++) {
+  let lastErrorText = "";
+  for (let attempt = 0; attempt < EMBEDDING_MAX_ATTEMPTS; attempt++) {
     response = await fetch(`${supabaseUrl}/functions/v1/ai-proxy`, {
       method: "POST",
       headers,
@@ -286,17 +301,21 @@ async function generateEmbedding(text: string, authHeader: string): Promise<numb
       }),
     });
 
-    if (response.ok || response.status !== 429) break;
+    if (response.ok) break;
+
+    lastErrorText = await response.text().catch(() => "");
+    if (!shouldRetryEmbeddingStatus(response.status, attempt, EMBEDDING_MAX_ATTEMPTS)) break;
 
     const retryAfterSeconds = Number(response.headers.get("retry-after"));
     const retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
       ? retryAfterSeconds * 1_000
-      : 30_000;
+      : Math.min(2 ** attempt * 1_000, 8_000);
     await sleep(retryAfterMs);
   }
 
   if (!response?.ok) {
-    throw new Error(`ai-proxy embedding HTTP ${response?.status ?? "unknown"}`);
+    const suffix = lastErrorText ? `: ${sanitizeErrorMessage(lastErrorText)}` : "";
+    throw new Error(`ai-proxy embedding HTTP ${response?.status ?? "unknown"}${suffix}`);
   }
 
   const data = await response.json();
@@ -306,6 +325,46 @@ async function generateEmbedding(text: string, authHeader: string): Promise<numb
   }
 
   return embedding;
+}
+
+async function insertJurisprudenceRow(
+  supabase: ReturnType<typeof createClient<any, "public", any>>,
+  item: NormalizedJurisprudence,
+  options: InsertJurisprudenceOptions,
+): Promise<{ id: string | null }> {
+  const payload: Record<string, unknown> = {
+    process_number: item.process_number,
+    process_number_raw: item.process_number_raw,
+    trial_date: item.trial_date,
+    publication_date: item.trial_date,
+    relator: item.relator,
+    orgao_julgador: item.orgao_julgador,
+    excerpt: item.excerpt,
+    full_text: item.full_text,
+    tema: item.tema || "previdenciario",
+    source: item.source,
+    jurisdicao: item.jurisdicao,
+    source_url: item.source_url,
+    external_id: item.external_id,
+    embedding_status: options.embeddingStatus,
+    similarity_score: options.similarityScore,
+    is_unique_teor: options.isUniqueTeor,
+    last_scraped_at: new Date().toISOString(),
+  };
+
+  if (options.embedding) {
+    payload.embedding = options.embedding;
+  }
+
+  const { data, error } = await supabase
+    .from("jurisprudences")
+    .insert(payload)
+    .select("id")
+    .single();
+
+  if (error) throw new Error(`Falha ao inserir jurisprudencia: ${error.message}`);
+
+  return { id: typeof data?.id === "string" ? data.id : null };
 }
 
 async function persistJurisprudence(
@@ -475,6 +534,8 @@ Deno.serve(async (req: Request) => {
       unique: 0,
       errors: 0,
       ignoredExistingProcess: 0,
+      insertedSimilar: 0,
+      embeddingDeferred: 0,
       truncated: false,
       stopReason: null as StopReason | null,
     };
@@ -567,18 +628,58 @@ Deno.serve(async (req: Request) => {
               }
 
               const embeddingText = buildEmbeddingText(normalized);
-              const embedding = await generateEmbedding(embeddingText, authHeader);
-              const persisted = await persistJurisprudence(supabase, normalized, embedding);
-
-              if (persisted.inserted) {
-                metrics.inserted++;
-              } else if (persisted.duplicate_reason === "similarity") {
-                metrics.ignored++;
-                metrics.ignoredBySimilarity++;
-                addFilterSample(normalized, {
-                  ...eligibility,
-                  reason: "similarity",
+              let embedding: number[] | null = null;
+              try {
+                embedding = await generateEmbedding(embeddingText, authHeader);
+              } catch (error) {
+                const inserted = await insertJurisprudenceRow(supabase, normalized, {
+                  embedding: null,
+                  embeddingStatus: "pending",
+                  similarityScore: null,
+                  isUniqueTeor: true,
                 });
+                metrics.inserted++;
+                metrics.embeddingDeferred++;
+
+                const message = sanitizeErrorMessage((error as Error).message);
+                if (errorSamples.length < 5) errorSamples.push(`embedding_deferred: ${message}`);
+                console.warn("[scrape-trf5] embedding deferred:", message);
+
+                if (previewItems.length < 10) {
+                  previewItems.push({
+                    id: inserted.id,
+                    process_number: normalized.process_number,
+                    trial_date: normalized.trial_date,
+                    relator: normalized.relator,
+                    orgao_julgador: normalized.orgao_julgador,
+                    source: normalized.source,
+                    jurisdicao: normalized.jurisdicao,
+                    embedding_status: "pending",
+                    embedding_text_length: embeddingText.length,
+                  });
+                }
+                continue;
+              }
+
+              const persisted = await persistJurisprudence(supabase, normalized, embedding);
+              let previewId = persisted.inserted_id;
+              const persistenceAction = resolvePersistenceAction({
+                inserted: persisted.inserted,
+                duplicateReason: persisted.duplicate_reason,
+              });
+
+              if (persistenceAction === "inserted") {
+                metrics.inserted++;
+              } else if (persistenceAction === "insert_similar") {
+                const inserted = await insertJurisprudenceRow(supabase, normalized, {
+                  embedding,
+                  embeddingStatus: "completed",
+                  similarityScore: persisted.similarity_score,
+                  isUniqueTeor: false,
+                });
+                metrics.inserted++;
+                metrics.insertedSimilar++;
+                previewId = inserted.id;
               } else {
                 metrics.updated++;
               }
@@ -589,7 +690,7 @@ Deno.serve(async (req: Request) => {
 
               if (previewItems.length < 10) {
                 previewItems.push({
-                  id: persisted.inserted_id,
+                  id: previewId,
                   process_number: normalized.process_number,
                   trial_date: normalized.trial_date,
                   relator: normalized.relator,
